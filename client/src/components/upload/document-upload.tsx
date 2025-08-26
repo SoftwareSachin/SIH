@@ -296,7 +296,7 @@ export default function DocumentUpload() {
                             {uploadFile.result.ocrResults.entities && (
                               <div className="flex flex-wrap gap-1 mt-2">
                                 {Object.entries(uploadFile.result.ocrResults.entities).map(([key, values]) => {
-                                  if (!values || values.length === 0) return null;
+                                  if (!values || !Array.isArray(values) || values.length === 0) return null;
                                   return (
                                     <Badge key={key} variant="secondary" className="text-xs">
                                       {key}: {values.length}

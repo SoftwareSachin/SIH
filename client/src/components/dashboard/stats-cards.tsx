@@ -40,17 +40,13 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
     {
       title: "Total Claims",
       value: stats?.totalClaims || 0,
-      change: "+12.5%",
-      changeLabel: "from last month",
       icon: FileText,
       bgColor: "bg-primary/10",
       iconColor: "text-primary"
     },
     {
-      title: "Verified Claims",
+      title: "Verified Claims", 
       value: stats?.verifiedClaims || 0,
-      change: "77%",
-      changeLabel: "verification rate",
       icon: CheckCircle,
       bgColor: "bg-accent/10",
       iconColor: "text-accent"
@@ -58,8 +54,6 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
     {
       title: "AI Processing",
       value: stats?.aiProcessing || 0,
-      change: "23 docs",
-      changeLabel: "in queue",
       icon: Brain,
       bgColor: "bg-secondary/50",
       iconColor: "text-secondary-foreground"
@@ -67,8 +61,6 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
     {
       title: "Active Villages",
       value: stats?.activeVillages || 0,
-      change: "4 states",
-      changeLabel: "coverage",
       icon: Home,
       bgColor: "bg-accent/10",
       iconColor: "text-accent"
@@ -89,12 +81,6 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
               </div>
               <div className={`p-3 ${stat.bgColor} rounded-full`}>
                 <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
-              </div>
-            </div>
-            <div className="mt-4">
-              <div className="flex items-center text-sm">
-                <span className="text-accent font-medium">{stat.change}</span>
-                <span className="text-muted-foreground ml-1">{stat.changeLabel}</span>
               </div>
             </div>
           </CardContent>

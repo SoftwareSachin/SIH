@@ -18,14 +18,14 @@ export default function AIProcessingPanel() {
   const processingSteps = [
     {
       name: "OCR Processing",
-      description: `${ocrHealth?.workersActive || 0}/${ocrHealth?.totalWorkers || 0} workers active`,
+      description: `${(ocrHealth as any)?.workersActive || 0}/${(ocrHealth as any)?.totalWorkers || 0} workers active`,
       icon: Scan,
       processed: (processingStatus as any)?.totalProcessed || 0,
       total: Math.max((processingStatus as any)?.totalProcessed + (processingStatus as any)?.ocrQueue || 1, 1),
       bgColor: "bg-primary/10",
       iconColor: "text-primary",
       progressColor: "bg-primary",
-      status: ocrHealth?.status || 'unknown'
+      status: (ocrHealth as any)?.status || 'unknown'
     },
     {
       name: "NER Extraction", 

@@ -174,7 +174,7 @@ export default function OCRProcessor() {
   const getHealthStatus = () => {
     if (!ocrHealth) return { color: "bg-gray-500", text: "Unknown" };
     
-    switch (ocrHealth.status) {
+    switch ((ocrHealth as any).status) {
       case 'healthy':
         return { color: "bg-green-500", text: "Healthy" };
       case 'degraded':
@@ -208,7 +208,7 @@ export default function OCRProcessor() {
               <div>
                 <p className="text-sm font-medium">Active Workers</p>
                 <p className="text-xs text-muted-foreground">
-                  {ocrHealth?.workersActive || 0} / {ocrHealth?.totalWorkers || 0}
+                  {(ocrHealth as any)?.workersActive || 0} / {(ocrHealth as any)?.totalWorkers || 0}
                 </p>
               </div>
             </div>

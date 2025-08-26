@@ -102,15 +102,19 @@ export default function AIProcessing() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">OCR Processing</p>
-                          <p className="text-xs text-muted-foreground">Document digitization</p>
+                          <p className="text-xs text-muted-foreground">Real document digitization</p>
                         </div>
                       </div>
                       <div className="text-right flex items-center space-x-4">
                         <div>
-                          <p className="text-sm font-medium">142/167</p>
-                          <Progress value={85} className="w-20" />
+                          <p className="text-sm font-medium">
+                            {(processingStatus as any)?.totalProcessed || 0}/{(processingStatus as any)?.totalProcessed + (processingStatus as any)?.ocrQueue || 0}
+                          </p>
+                          <Progress value={Math.min(100, ((processingStatus as any)?.totalProcessed || 0) / Math.max(1, (processingStatus as any)?.totalProcessed + (processingStatus as any)?.ocrQueue || 1) * 100)} className="w-20" />
                         </div>
-                        <Badge variant="secondary">85%</Badge>
+                        <Badge variant="secondary">
+                          {Math.round(((processingStatus as any)?.totalProcessed || 0) / Math.max(1, (processingStatus as any)?.totalProcessed + (processingStatus as any)?.ocrQueue || 1) * 100)}%
+                        </Badge>
                       </div>
                     </div>
 
@@ -121,15 +125,19 @@ export default function AIProcessing() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">NER Extraction</p>
-                          <p className="text-xs text-muted-foreground">Entity recognition</p>
+                          <p className="text-xs text-muted-foreground">Real entity recognition</p>
                         </div>
                       </div>
                       <div className="text-right flex items-center space-x-4">
                         <div>
-                          <p className="text-sm font-medium">98/142</p>
-                          <Progress value={69} className="w-20" />
+                          <p className="text-sm font-medium">
+                            {(processingStatus as any)?.nerProcessed || 0}/{(processingStatus as any)?.nerTotal || 0}
+                          </p>
+                          <Progress value={Math.min(100, ((processingStatus as any)?.nerProcessed || 0) / Math.max(1, (processingStatus as any)?.nerTotal || 1) * 100)} className="w-20" />
                         </div>
-                        <Badge variant="secondary">69%</Badge>
+                        <Badge variant="secondary">
+                          {Math.round(((processingStatus as any)?.nerProcessed || 0) / Math.max(1, (processingStatus as any)?.nerTotal || 1) * 100)}%
+                        </Badge>
                       </div>
                     </div>
 
@@ -140,15 +148,19 @@ export default function AIProcessing() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">Asset Detection</p>
-                          <p className="text-xs text-muted-foreground">Satellite imagery analysis</p>
+                          <p className="text-xs text-muted-foreground">Real satellite analysis</p>
                         </div>
                       </div>
                       <div className="text-right flex items-center space-x-4">
                         <div>
-                          <p className="text-sm font-medium">67/98</p>
-                          <Progress value={68} className="w-20" />
+                          <p className="text-sm font-medium">
+                            {(processingStatus as any)?.assetProcessed || 0}/{(processingStatus as any)?.assetTotal || 0}
+                          </p>
+                          <Progress value={Math.min(100, ((processingStatus as any)?.assetProcessed || 0) / Math.max(1, (processingStatus as any)?.assetTotal || 1) * 100)} className="w-20" />
                         </div>
-                        <Badge variant="secondary">68%</Badge>
+                        <Badge variant="secondary">
+                          {Math.round(((processingStatus as any)?.assetProcessed || 0) / Math.max(1, (processingStatus as any)?.assetTotal || 1) * 100)}%
+                        </Badge>
                       </div>
                     </div>
                   </div>

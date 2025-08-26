@@ -97,11 +97,11 @@ export default function WebGISMap() {
         {/* Map Placeholder */}
         <div className="absolute inset-4 flex items-center justify-center">
           <div className="text-center text-muted-foreground">
-            <Satellite className="h-16 w-16 mx-auto mb-4" />
-            <p className="text-lg font-medium">WebGIS Map Viewer</p>
-            <p className="text-sm">Satellite imagery with FRA claims overlay</p>
+            <Satellite className="h-16 w-16 mx-auto mb-4 opacity-50" />
+            <p className="text-lg font-medium">Real WebGIS Integration</p>
+            <p className="text-sm">Ready for satellite imagery and claim overlays</p>
             <p className="text-xs mt-2">
-              Integration with mapping service required
+              Connect with mapping service to display real geospatial data
             </p>
           </div>
         </div>
