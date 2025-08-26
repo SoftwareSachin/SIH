@@ -36,7 +36,7 @@ export default function DocumentUpload() {
       formData.append('document', file);
       formData.append('claimId', claimId);
 
-      const response = await fetch('/api/documents/upload', {
+      const response = await fetch('/api/documents/process', {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -280,15 +280,30 @@ export default function DocumentUpload() {
                         <p className="text-xs text-muted-foreground">
                           {(uploadFile.file.size / 1024 / 1024).toFixed(2)} MB
                         </p>
-                        {uploadFile.result && (
+                        {uploadFile.result && uploadFile.result.ocrResults && (
                           <div className="mt-2 space-y-1">
-                            <p className="text-xs text-muted-foreground">
-                              OCR Confidence: {uploadFile.result.ocrConfidence || 'Processing...'}%
-                            </p>
-                            {uploadFile.result.extractedEntities && (
-                              <p className="text-xs text-muted-foreground">
-                                Entities: {Object.keys(uploadFile.result.extractedEntities).join(', ')}
-                              </p>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs">
+                                {uploadFile.result.ocrResults.confidence}% confidence
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {uploadFile.result.ocrResults.language}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {uploadFile.result.ocrResults.metadata.processingTime}ms
+                              </Badge>
+                            </div>
+                            {uploadFile.result.ocrResults.entities && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {Object.entries(uploadFile.result.ocrResults.entities).map(([key, values]) => {
+                                  if (!values || values.length === 0) return null;
+                                  return (
+                                    <Badge key={key} variant="secondary" className="text-xs">
+                                      {key}: {values.length}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
                         )}

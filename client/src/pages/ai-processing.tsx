@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/upload/document-upload";
+import OCRProcessor from "@/components/ocr/ocr-processor";
 import { Scan, Brain, Satellite, Upload, RefreshCw } from "lucide-react";
 
 export default function AIProcessing() {
@@ -34,7 +35,7 @@ export default function AIProcessing() {
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="upload">Document Upload</TabsTrigger>
-              <TabsTrigger value="ocr">OCR Processing</TabsTrigger>
+              <TabsTrigger value="ocr">Real OCR Testing</TabsTrigger>
               <TabsTrigger value="assets">Asset Detection</TabsTrigger>
             </TabsList>
 
@@ -160,47 +161,9 @@ export default function AIProcessing() {
             </TabsContent>
 
             <TabsContent value="ocr" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>OCR Processing Results</CardTitle>
-                    <Button variant="outline" size="sm" data-testid="button-refresh-ocr">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Refresh
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium">claim_document_001.pdf</h4>
-                        <Badge variant="secondary">Processing</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Confidence: 94%
-                      </p>
-                      <div className="bg-muted p-3 rounded text-sm">
-                        <p>Extracted Text: "Forest Right Claim Application for Individual Forest Right (IFR)..."</p>
-                      </div>
-                    </div>
-
-                    <div className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium">survey_map_002.jpg</h4>
-                        <Badge>Completed</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Confidence: 87%
-                      </p>
-                      <div className="bg-muted p-3 rounded text-sm">
-                        <p>Extracted Entities: Village: Khandwa, Area: 2.5 acres, Claimant: Rajesh Kumar Singh</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <OCRProcessor />
             </TabsContent>
+
 
             <TabsContent value="assets" className="space-y-6">
               <Card>

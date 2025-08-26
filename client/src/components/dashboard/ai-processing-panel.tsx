@@ -10,36 +10,44 @@ export default function AIProcessingPanel() {
     refetchInterval: 10000, // Refetch every 10 seconds
   });
 
+  const { data: ocrHealth } = useQuery({
+    queryKey: ["/api/test/ocr/health"],
+    refetchInterval: 30000, // Check health every 30 seconds
+  });
+
   const processingSteps = [
     {
       name: "OCR Processing",
-      description: "Document digitization",
+      description: `${ocrHealth?.workersActive || 0}/${ocrHealth?.totalWorkers || 0} workers active`,
       icon: Scan,
-      processed: (processingStatus as any)?.totalProcessed || 142,
-      total: (processingStatus as any)?.totalProcessed + (processingStatus as any)?.ocrQueue || 167,
+      processed: (processingStatus as any)?.totalProcessed || 0,
+      total: Math.max((processingStatus as any)?.totalProcessed + (processingStatus as any)?.ocrQueue || 1, 1),
       bgColor: "bg-primary/10",
       iconColor: "text-primary",
-      progressColor: "bg-primary"
+      progressColor: "bg-primary",
+      status: ocrHealth?.status || 'unknown'
     },
     {
       name: "NER Extraction", 
       description: "Entity recognition",
       icon: Brain,
-      processed: 98,
-      total: 142,
+      processed: (processingStatus as any)?.nerProcessed || 0,
+      total: Math.max((processingStatus as any)?.nerQueue + (processingStatus as any)?.nerProcessed || 1, 1),
       bgColor: "bg-accent/10",
       iconColor: "text-accent",
-      progressColor: "bg-accent"
+      progressColor: "bg-accent",
+      status: 'active'
     },
     {
       name: "Asset Detection",
-      description: "Land-use classification", 
+      description: "Satellite analysis", 
       icon: Satellite,
-      processed: 67,
-      total: 98,
+      processed: (processingStatus as any)?.assetDetectionProcessed || 0,
+      total: Math.max((processingStatus as any)?.assetDetectionQueue + (processingStatus as any)?.assetDetectionProcessed || 1, 1),
       bgColor: "bg-blue-100",
       iconColor: "text-blue-600",
-      progressColor: "bg-blue-600"
+      progressColor: "bg-blue-600",
+      status: 'active'
     }
   ];
 
@@ -82,12 +90,18 @@ export default function AIProcessingPanel() {
                 {isLoading ? (
                   <Skeleton className="h-5 w-10" />
                 ) : (
-                  <div className={`w-4 h-2 ${step.progressColor} rounded-full`}
-                    style={{ 
-                      width: `${Math.round((step.processed / step.total) * 100)}%`,
-                      minWidth: '4px'
-                    }}
-                  />
+                  <div className={`flex items-center space-x-1`}>
+                    <div 
+                      className={`w-2 h-2 rounded-full ${
+                        step.status === 'healthy' ? 'bg-green-500' : 
+                        step.status === 'degraded' ? 'bg-yellow-500' : 
+                        step.status === 'active' ? 'bg-blue-500' : 'bg-gray-500'
+                      }`} 
+                    />
+                    <span className="text-xs font-medium">
+                      {Math.round((step.processed / step.total) * 100)}%
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
