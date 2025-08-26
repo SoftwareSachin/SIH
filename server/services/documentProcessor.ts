@@ -23,6 +23,7 @@ interface ProcessedDocument {
     surveyNumbers?: string[];
     boundaries?: string[];
   };
+  claimRecords?: any[];
   metadata: {
     processingTime: number;
     imageQuality: string;
@@ -943,11 +944,11 @@ ${text.substring(0, 4000)}`;
     let claimType = 'Unknown';
     if (entities.claimTypes?.length > 0) {
       const types = entities.claimTypes;
-      if (types.some(t => t.toUpperCase().includes('IFR') || t.toLowerCase().includes('individual'))) {
+      if (types.some((t: string) => t.toUpperCase().includes('IFR') || t.toLowerCase().includes('individual'))) {
         claimType = 'IFR';
-      } else if (types.some(t => t.toUpperCase().includes('CFR') || t.toLowerCase().includes('community forest'))) {
+      } else if (types.some((t: string) => t.toUpperCase().includes('CFR') || t.toLowerCase().includes('community forest'))) {
         claimType = 'CFR';
-      } else if (types.some(t => t.toUpperCase().includes('CR') || t.toLowerCase().includes('community rights'))) {
+      } else if (types.some((t: string) => t.toUpperCase().includes('CR') || t.toLowerCase().includes('community rights'))) {
         claimType = 'CR';
       } else {
         claimType = types[0];
@@ -958,11 +959,11 @@ ${text.substring(0, 4000)}`;
     let claimStatus = 'pending';
     if (entities.claimStatus?.length > 0) {
       const statuses = entities.claimStatus;
-      if (statuses.some(s => s.toLowerCase().includes('approved') || s.includes('स्वीकृत'))) {
+      if (statuses.some((s: string) => s.toLowerCase().includes('approved') || s.includes('स्वीकृत'))) {
         claimStatus = 'approved';
-      } else if (statuses.some(s => s.toLowerCase().includes('rejected') || s.includes('अस्वीकृत'))) {
+      } else if (statuses.some((s: string) => s.toLowerCase().includes('rejected') || s.includes('अस्वीकृत'))) {
         claimStatus = 'rejected';
-      } else if (statuses.some(s => s.toLowerCase().includes('verified') || s.includes('सत्यापित'))) {
+      } else if (statuses.some((s: string) => s.toLowerCase().includes('verified') || s.includes('सत्यापित'))) {
         claimStatus = 'verified';
       } else {
         claimStatus = statuses[0].toLowerCase();
@@ -976,11 +977,11 @@ ${text.substring(0, 4000)}`;
     const coordinates = entities.coordinates?.length > 0 ? entities.coordinates[0] : null;
     
     // Extract important dates
-    const applicationDate = entities.dates?.find(d => 
+    const applicationDate = entities.dates?.find((d: string) => 
       d.match(/application|आवेदन/i)
     ) || entities.dates?.[0] || null;
     
-    const approvalDate = entities.dates?.find(d => 
+    const approvalDate = entities.dates?.find((d: string) => 
       d.match(/approval|अनुमोदन|approved/i)
     ) || null;
     

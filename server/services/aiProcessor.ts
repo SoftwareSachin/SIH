@@ -104,8 +104,8 @@ class AIProcessor {
           villageId,
           assetType: asset.type as any,
           coordinates: asset.coordinates,
-          area: asset.area,
-          confidence: asset.confidence,
+          area: asset.area?.toString(),
+          confidence: asset.confidence.toString(),
           detectedAt: new Date(),
         });
       }

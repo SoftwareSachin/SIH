@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupSimpleAuth, isAuthenticated } from "./simpleAuth";
 import { z } from "zod";
 import { insertClaimSchema, insertDocumentSchema } from "@shared/schema";
 import multer from "multer";
@@ -30,7 +30,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Secure OCR processing endpoint - requires authentication
   app.post('/api/documents/process', isAuthenticated, upload.single('document'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { claimId } = req.body;
       const { file } = req;
       
@@ -182,12 +182,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Auth middleware
-  await setupAuth(app);
+  await setupSimpleAuth(app);
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -199,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats
   app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -217,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Claims routes
   app.get('/api/claims', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -262,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/claims', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const claimData = insertClaimSchema.parse(req.body);
       
       // Generate claim ID
@@ -295,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/claims/:id/status', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user || !user.role || !['admin', 'state', 'district'].includes(user.role)) {
@@ -325,7 +325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Document upload and processing
   app.post('/api/documents/upload', isAuthenticated, upload.single('document'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const file = req.file;
       const { claimId } = req.body;
 
@@ -396,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/ai/reprocess-document/:documentId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user || !user.role || !['admin', 'state'].includes(user.role)) {
@@ -427,7 +427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Asset detection
   app.post('/api/assets/detect/:villageId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user || !user.role || !['admin', 'state', 'district'].includes(user.role)) {
@@ -465,7 +465,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/dss/implement-recommendation/:recommendationId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user || !user.role || !['admin', 'state', 'district'].includes(user.role)) {
@@ -542,7 +542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Batch processing endpoints
   app.post('/api/documents/batch', isAuthenticated, upload.array('documents', 50), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const files = req.files as Express.Multer.File[];
       const { claimIds } = req.body; // JSON array of claim IDs
       
@@ -663,7 +663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Export routes
   app.get('/api/export/claims', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
