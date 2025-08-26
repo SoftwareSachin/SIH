@@ -1,0 +1,101 @@
+Essential items that must be included in the project
+
+Below is a concise, focused checklist of things that must be part of your FRA-Atlas + WebGIS + DSS project (only items required by the problem statement — no extras).
+
+Data & ingestion
+
+Canonical claims dataset (IFR / CR / CFR) schema and ingestion pipeline (CSV/PDF/image import).
+
+Legacy document digitization pipeline (OCR for printed + handwritten + attachments).
+
+Village / administrative boundary shapefiles (GeoJSON/Shapefile, EPSG:4326).
+
+Patta-holder spatial linking (ability to attach claim → village polygon / homestead point).
+
+Provenance metadata for each record (source, date, confidence).
+
+Spatial & remote-sensing inputs
+
+High-resolution satellite imagery baselayers (integrated in WebGIS).
+
+Raster/vector support (GeoTIFF, tile service, GeoJSON).
+
+Relevant ancillary layers: forest boundaries, groundwater index, major infrastructure.
+
+AI / processing components
+
+NER / information-extraction to parse claims (name, village, area, status, dates, coords).
+
+Land-use classification (LULC) model to identify agriculture/forest/water/built-up.
+
+Asset detection models to identify ponds, homesteads, farms, other capital/social assets.
+
+Model versioning and per-feature confidence scores.
+
+WebGIS & visualization
+
+Interactive map viewer with layer toggles, legends, popups.
+
+Feature detail panel showing extracted claim fields + attached scanned docs.
+
+Filters & search (state → district → village → claimant → claim status).
+
+Ability to upload/download GeoJSON/Shapefile and export query results.
+
+Decision Support System (DSS)
+
+Rule-based eligibility engine to map patta-holders → applicable CSS schemes.
+
+Priority scoring mechanism for interventions (water, livelihoods, infrastructure).
+
+Exportable recommendations (PDF/CSV) for officers.
+
+Workflows & verification
+
+Verification workflow for field-inspectors (status updates, photo attachments, sign-off).
+
+Audit trail for every status change (user, timestamp, notes).
+
+Mobile-capable data capture (forms + attachments) with offline sync support.
+
+Access, roles & security
+
+Role-based access control (RBAC) (Admin, State, District, Field, NGO, Public).
+
+Data encryption in transit & at rest; HTTPS enforced.
+
+PII masking/anonymization options for exports.
+
+APIs & integration
+
+REST APIs for CRUD on claims, villages, assets, and DSS outputs.
+
+Batch import/export endpoints for bulk data exchange.
+
+Validation, testing & metrics
+
+Validation dataset & metrics for OCR/NER and CV models (accuracy, precision/recall, CER).
+
+Ground-truthing plan (small real sample) and active-learning feedback loop.
+
+Documentation & deliverables
+
+Data statement (synthetic vs real, consent status, limitations).
+
+README, API documentation, deployment steps, and user manual.
+
+Demo package: sample dataset, short demo video, slide deck, and instructions to reproduce.
+
+Legal, ethics & policy
+
+Written consent / MoU templates for real data access.
+
+Privacy & tribal community consent procedures documented.
+
+Anonymization and data-retention policy.
+
+Operations & scalability
+
+Storage strategy for imagery & documents (object storage + backups).
+
+Model & data versioning, backup, monitoring, and basic alerting.

@@ -1,0 +1,89 @@
+Development of an AI-powered FRA Atlas and WebGIS-based Decision Support System (DSS) for Integrated Monitoring of Forest Rights Act (FRA) Implementation (States to be concentrated: Madhya Pradesh, Tripura, Odisha, Telangana)
+
+Problem background
+
+The Forest Rights Act (FRA), 2006 recognizes the rights of forest-dwelling communities over land and forest resources. However, significant challenges persist:
+
+Legacy records of Individual Forest Rights (IFR), Community Rights (CR), and Community Forest Resource Rights (CFR) are scattered, non-digitized, and difficult to verify.
+
+There is no centralized, real-time visual repository (e.g., an FRA Atlas) of FRA claims and granted titles.
+
+Integration of satellite-based asset mapping (land, water bodies, farms, etc.) with FRA data is missing.
+
+Integration of legacy data with an FRA Atlas is missing.
+
+Decision-makers lack a Decision Support System (DSS) to layer Central Sector Schemes (CSS) benefits (e.g., PM-KISAN, Jal Jeevan Mission, MGNREGA, DAJGUA) for FRA patta holders.
+
+Project objectives
+
+Digitize and standardize legacy data of FRA claims, verifications, and pattas, and integrate FRA patta holders’ shapefiles with an FRA Atlas.
+
+Create an FRA Atlas showing potential and granted FRA areas using AI and satellite data.
+
+Integrate a WebGIS portal to visualize and manage spatial and socio-economic data.
+
+Use Remote Sensing and AI/ML to map capital and social assets (ponds, farms, forest resources) of FRA-holding villages.
+
+Build a Decision Support System (DSS) to recommend and layer Central Sector Schemes based on mapped data, enhancing targeted development.
+
+AI & tech components
+
+Data Digitization
+
+Use suitable models to extract and standardize text from scanned FRA documents.
+
+Apply Named Entity Recognition (NER) to identify village names, patta holders, coordinates, and claim status.
+
+AI-based Asset Mapping
+
+Employ Computer Vision on high-resolution satellite imagery to detect:
+
+Agricultural land
+
+Forest cover
+
+Water bodies (ponds, streams)
+
+Homesteads
+
+Classify land-use using supervised ML models (e.g., Random Forest, CNN).
+
+Add layers of information with respect to forest data, groundwater data, and infrastructure data (e.g., PM Gati Shakti).
+
+WebGIS Integration
+
+Interactive layers (IFR/CR, village boundaries, land-use, assets).
+
+Filters by state/district/village/tribal group.
+
+FRA progress tracking (village/block/district/state level).
+
+Decision Support System (DSS)
+
+Build a rule-based plus AI-enhanced DSS engine that:
+
+Cross-links FRA holders with eligibility for CSS schemes such as DAJGUA and others.
+
+Prioritizes interventions (e.g., borewells under Jal Shakti for villages with low water index).
+
+Deliverables
+
+AI-processed digital archive of FRA claims and decisions.
+
+An interactive FRA Atlas on a WebGIS platform.
+
+AI-generated asset maps for all FRA villages.
+
+A DSS engine for scheme layering and policy formulation.
+
+Target users
+
+Ministry of Tribal Affairs
+
+District-level Tribal Welfare Departments & Line Departments of DAJGUA
+
+Forest and Revenue Departments
+
+Planning & Development Authorities
+
+NGOs working with tribal communitie
