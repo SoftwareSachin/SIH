@@ -1,0 +1,151 @@
+1. Document Digitization & OCR Pipeline
+
+Purpose: Convert all printed and handwritten Forest Rights Act (FRA) claim documents into machine-readable text.
+Key Functions:
+
+Scanning & Preprocessing: Enhance image quality, remove noise, skew correction.
+
+OCR Engine: Extract text from printed and handwritten documents (multi-language support).
+
+Output Formats: Store results as structured JSON or database records.
+
+Integration: Pass extracted text to the NER system for further processing.
+
+2. Named Entity Recognition (NER) for FRA Claims Data
+
+Purpose: Automatically detect and extract key claim details from OCR output.
+Data to Extract:
+
+Claimant name(s)
+
+Village name
+
+Area claimed (in acres/hectares)
+
+Claim type (IFR – Individual Forest Rights, CR – Community Rights, CFR – Community Forest Rights)
+
+Claim status (pending, approved, rejected)
+
+Important dates (application date, approval date, etc.)
+
+Geographic coordinates (if available)
+
+Output: Structured claim records ready for spatial linking in GIS.
+
+3. Interactive WebGIS Platform
+
+Purpose: Provide a map-based interface for visualization and analysis of claims and assets.
+Features:
+
+Satellite Imagery Integration: High-resolution imagery from public or licensed sources.
+
+Multiple Data Layers: Claims boundaries, village boundaries, land-use, assets, infrastructure.
+
+Layer Control: Turn layers on/off, adjust transparency, reorder layers.
+
+Zoom & Pan: Map navigation for district, block, and village-level views.
+
+Spatial Query: Search and highlight claims/assets based on location or attributes.
+
+4. AI/ML-based Land-Use Classification
+
+Purpose: Identify and classify land cover from satellite images.
+Classes to Detect:
+
+Agriculture land
+
+Forest areas
+
+Water bodies
+
+Built-up areas (settlements, roads, etc.)
+
+Approach:
+
+Pre-trained CNN or Random Forest on remote sensing data.
+
+Post-processing to align with GIS layers.
+
+5. Asset Detection
+
+Purpose: Automatically detect physical and social infrastructure assets relevant to FRA claims.
+Assets to Detect:
+
+Ponds and water bodies
+
+Homesteads (houses, compounds)
+
+Farms and cultivation areas
+
+Social infrastructure (schools, health centers, community halls)
+
+Use Cases:
+
+Identify existing resources for scheme eligibility.
+
+Cross-verify claims with asset proximity.
+
+6. Role-Based Access Control (RBAC)
+
+Purpose: Ensure secure and restricted access to system functionalities.
+Roles:
+
+Admin: Full access, manage system settings, approve/reject claims.
+
+State Officer: View and approve district data for their state.
+
+District Officer: Manage claims within their district.
+
+Field Officer: Upload documents, perform verifications.
+
+NGO Partner: Submit supporting documents and assist in claims.
+
+Public User: View approved claim maps and public datasets.
+
+7. Decision Support System (DSS)
+
+Purpose: Recommend suitable Central Sector Schemes (CSS) and state schemes to claimants.
+Key Functions:
+
+Rule-Based Eligibility Engine: Match claimant data with scheme requirements.
+
+Scheme Knowledge Base: Maintain database of eligibility rules.
+
+Recommendation Output: Provide ranked list of schemes with application guidance.
+
+8. Claims Data Management System
+
+Purpose: Centralized management of all claims and their spatial data.
+Features:
+
+Store data in IFR, CR, CFR schemas.
+
+Link claims with spatial boundaries (polygon mapping).
+
+Maintain metadata (upload date, uploaded by, verification status).
+
+9. Verification Workflow & Audit Trails
+
+Purpose: Standardize and track claim verification processes.
+Workflow Stages:
+
+Document Upload → OCR & NER → Spatial Linking → Field Verification → Approval/Rejection.
+
+Each action recorded with timestamp, role, and user ID.
+
+Audit trails for compliance and transparency.
+
+10. REST APIs for Data Operations
+
+Purpose: Allow integration with external systems and enable modular development.
+Key APIs:
+
+Claims CRUD (Create, Read, Update, Delete)
+
+Bulk data import/export (CSV, JSON, GeoJSON)
+
+Document upload & OCR trigger API
+
+Scheme recommendation API
+
+GIS data retrieval API

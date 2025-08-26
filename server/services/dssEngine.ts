@@ -190,60 +190,119 @@ class DSSEngine {
 
     switch (scheme.id) {
       case 'pm-kisan':
+        // Real PM-KISAN eligibility criteria
         if (claim.claimType === 'IFR' && claim.area && claim.area <= scheme.eligibilityCriteria.maxLandSize) {
-          score += 40;
-          rationale.push('IFR claim qualifies for farmer benefits');
+          score += 50;
+          benefit = scheme.benefits.amount;
+          rationale.push(`Eligible as small farmer with ${claim.area} hectares under IFR`);
         }
-        if (claim.status === 'verified') {
-          score += 30;
-          rationale.push('Verified claim increases eligibility');
+        if (claim.status === 'approved') {
+          score += 25;
+          rationale.push('Approved FRA claim provides clear land ownership for PM-KISAN');
         }
-        if (village.tribalPopulation && village.tribalPopulation > 0) {
-          score += 20;
-          rationale.push('Tribal area gets priority');
+        if (['MP', 'Odisha', 'Telangana', 'Tripura'].includes(village.stateName)) {
+          score += 15;
+          rationale.push('Target state for agricultural development programs');
         }
-        benefit = scheme.benefits.amount;
-        requirements.push('Aadhaar card required', 'Bank account linking needed');
+        requirements.push('Aadhaar card mandatory', 'Bank account with IFSC code', 'Land ownership documents', 'Cultivation certificate from revenue official');
         break;
 
       case 'jal-jeevan-mission':
-        if (village.population && village.population > 100) {
-          score += 50;
-          rationale.push('Village size qualifies for water infrastructure');
+        // Real JJM eligibility criteria
+        if (village.type === 'rural') {
+          score += 40;
+          rationale.push('Rural household eligible for Har Ghar Jal program');
         }
-        if (village.tribalPopulation && village.tribalPopulation > village.population * 0.3) {
-          score += 30;
-          rationale.push('High tribal population gets priority');
+        if (!village.waterAccess || village.waterQuality === 'poor') {
+          score += 40;
+          rationale.push('Priority village due to inadequate water access/quality');
         }
-        benefit = scheme.benefits.estimatedCost * (village.population || 100) / 5; // Assume 5 people per household
-        requirements.push('Village water committee formation', 'Community contribution');
+        if (claim.claimType === 'IFR') {
+          score += 20;
+          rationale.push('Forest rights holders prioritized for water connections');
+        }
+        const households = Math.ceil((village.population || 100) / 5);
+        benefit = households * 35000; // Cost per tap connection
+        requirements.push('Household survey completion', 'Village Water and Sanitation Committee formation', 'Community contribution (10-15%)', 'Quality testing protocol');
         break;
 
       case 'mgnrega':
-        if (claim.claimType === 'CFR') {
+        // Real MGNREGA eligibility criteria
+        if (village.type === 'rural') {
+          score += 30;
+          rationale.push('Rural area eligible for employment guarantee');
+        }
+        if (['IFR', 'CFR', 'CR'].includes(claim.claimType)) {
           score += 40;
-          rationale.push('Community forest rights enable collective employment');
+          rationale.push('Forest rights holders prioritized for livelihood support and asset creation');
         }
-        if (village.tribalPopulation && village.tribalPopulation > 0) {
-          score += 35;
-          rationale.push('Tribal areas have guaranteed MGNREGA access');
+        if (claim.status === 'approved' && claim.area > 0.5) {
+          score += 30;
+          rationale.push('Approved forestland suitable for watershed development and asset creation');
         }
-        const households = Math.ceil((village.population || 100) / 5);
-        benefit = households * scheme.benefits.guaranteedDays * scheme.benefits.wageRate;
-        requirements.push('Job card registration', 'Gram Sabha approval');
+        const eligibleHouseholds = Math.ceil((village.population || 100) / 5);
+        benefit = eligibleHouseholds * scheme.benefits.guaranteedDays * scheme.benefits.wageRate;
+        requirements.push('Job card registration with photo', 'Bank account mandatory', 'Work demand application', 'Gram Sabha social audit participation');
         break;
 
-      case 'dajgua':
-        if (village.tribalPopulation && village.tribalPopulation > village.population * 0.5) {
-          score += 60;
-          rationale.push('High tribal population qualifies for DAJGUA');
+      case 'pmjdy':
+        // PM Jan Dhan Yojana eligibility
+        score += 60;
+        rationale.push('Universal financial inclusion program for all adults');
+        if (claim.claimType) {
+          score += 20;
+          rationale.push('FRA claimants need banking services for government transfers');
         }
-        if (claim.status === 'verified') {
-          score += 25;
-          rationale.push('Verified FRA claims support development planning');
+        benefit = scheme.benefits.accidentInsurance + scheme.benefits.overdraftFacility;
+        requirements.push('Aadhaar card', 'Address proof document', 'Passport size photograph', 'Initial deposit Rs. 0');
+        break;
+
+      case 'pmfby':
+        // PM Fasal Bima Yojana eligibility
+        if (claim.claimType === 'IFR' && claim.area && claim.area > 0) {
+          score += 50;
+          benefit = claim.area * 25000; // Average coverage per hectare
+          rationale.push(`Cultivator with ${claim.area} hectares eligible for comprehensive crop insurance`);
         }
-        benefit = 500000; // Estimated package benefit
-        requirements.push('Tribal Sub-Plan allocation', 'Multi-sector coordination');
+        if (claim.status === 'approved') {
+          score += 30;
+          rationale.push('Legal land rights enable proper insurance coverage');
+        }
+        requirements.push('Land ownership/cultivation rights', 'Aadhaar-linked bank account', 'Crop sowing details', 'Premium payment (2% kharif, 1.5% rabi)');
+        break;
+
+      case 'pm-awas-gramin':
+        // PM Awas Yojana Gramin eligibility
+        if (village.type === 'rural') {
+          score += 45;
+          rationale.push('Rural family eligible for pucca house construction');
+        }
+        if (claim.claimType && claim.status === 'approved') {
+          score += 35;
+          rationale.push('Forest rights holders with approved claims prioritized for housing');
+        }
+        if (village.elevation > 1000 || village.tribalPopulation > 30) {
+          benefit = scheme.benefits.hillAssistance;
+          score += 20;
+          rationale.push('Hill/difficult area eligible for enhanced assistance');
+        } else {
+          benefit = scheme.benefits.plainAssistance;
+        }
+        requirements.push('SECC 2011 beneficiary verification', 'Aadhaar card', 'Bank account', 'No pucca house certificate', 'Convergence with other schemes');
+        break;
+
+      case 'swachh-bharat-mission':
+        // Swachh Bharat Mission Gramin eligibility
+        if (village.type === 'rural') {
+          score += 50;
+          benefit = scheme.benefits.toiletConstruction;
+          rationale.push('Rural household without toilet eligible for IHHL construction');
+        }
+        if (claim.claimType && village.forestArea > 50) {
+          score += 30;
+          rationale.push('Forest-dwelling communities prioritized for sanitation coverage');
+        }
+        requirements.push('Household survey verification', 'No existing toilet certificate', 'Beneficiary contribution (Labour/material)', 'Post-construction verification');
         break;
     }
 
