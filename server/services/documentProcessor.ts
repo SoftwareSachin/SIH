@@ -197,37 +197,87 @@ class DocumentProcessor {
         quality = 'high';
       }
       
-      const sharpInstance = sharp(filePath);
+      let sharpInstance = sharp(filePath);
       
-      // Advanced preprocessing pipeline
+      // Advanced preprocessing pipeline for FRA documents
       
-      // 1. Resize for optimal OCR (min 300 DPI equivalent)
+      // 1. Auto-rotation correction based on EXIF data
+      sharpInstance = sharpInstance.rotate();
+      applied.push('auto-rotate');
+      
+      // 2. Resize for optimal OCR (300-600 DPI equivalent)
       if (metadata.width && metadata.width < 1200) {
-        sharpInstance.resize(null, 1600, { withoutEnlargement: true });
-        applied.push('upscale');
-      } else if (metadata.width && metadata.width > 4000) {
-        sharpInstance.resize(null, 3000, { withoutEnlargement: true });
-        applied.push('downscale');
+        sharpInstance = sharpInstance.resize(null, 1800, { 
+          withoutEnlargement: true,
+          kernel: sharp.kernel.lanczos3 // High-quality upscaling
+        });
+        applied.push('upscale-lanczos');
+      } else if (metadata.width && metadata.width > 4500) {
+        sharpInstance = sharpInstance.resize(null, 3500, { 
+          withoutEnlargement: true,
+          kernel: sharp.kernel.lanczos3
+        });
+        applied.push('downscale-lanczos');
       }
       
-      // 2. Deskew and straighten
-      // Note: Sharp doesn't have built-in deskew, but we can detect rotation
+      // 3. Advanced noise reduction and document enhancement
+      sharpInstance = sharpInstance
+        .median(3) // Strong noise reduction for document scanning artifacts
+        .blur(0.3) // Slight blur to smooth out scan lines
+        .sharpen({ 
+          sigma: 1.2, 
+          m1: 1.0, 
+          m2: 2.5,
+          x1: 2,
+          y2: 10 
+        }) // Enhanced edge sharpening for text clarity
+        .normalize({ lower: 1, upper: 99 }) // Aggressive contrast normalization
+        .gamma(1.1) // Fine-tune gamma for document readability
+        .linear(1.1, -(128 * 1.1) + 128); // Increase contrast linearly
       
-      // 3. Noise reduction and enhancement
-      sharpInstance
-        .median(2) // Remove noise
-        .normalize() // Auto-contrast
-        .sharpen({ sigma: 1.0, m1: 1.0, m2: 2.0 }) // Enhance edges
-        .gamma(1.2); // Improve contrast
+      applied.push('advanced-noise-reduction', 'document-blur', 'edge-enhance', 'contrast-normalize', 'gamma-tune', 'linear-contrast');
       
-      applied.push('noise-reduction', 'normalize', 'sharpen', 'gamma-correction');
+      // 4. Convert to grayscale for better OCR performance on handwritten documents
+      sharpInstance = sharpInstance.greyscale();
+      applied.push('grayscale-conversion');
       
-      // 4. Convert to optimal format for OCR
+      // 5. Adaptive thresholding simulation using levels adjustment
+      sharpInstance = sharpInstance.normalise({
+        lower: 5, // Black point
+        upper: 95  // White point - creates cleaner text boundaries
+      });
+      applied.push('adaptive-threshold');
+      
+      // 6. Final optimization for OCR
       await sharpInstance
-        .jpeg({ quality: 95, progressive: false })
+        .jpeg({ 
+          quality: 98, 
+          progressive: false,
+          mozjpeg: true // Better compression for documents
+        })
         .toFile(processedPath);
       
-      applied.push('format-optimization');
+      applied.push('mozjpeg-optimization');
+      
+      // 7. Advanced quality assessment
+      const processedMetadata = await sharp(processedPath).metadata();
+      const stats = await sharp(processedPath).stats();
+      
+      // Check if processing improved quality based on image statistics
+      if (stats.channels && stats.channels.length > 0) {
+        const meanBrightness = stats.channels[0].mean;
+        const stdDev = stats.channels[0].stdev;
+        
+        if (stdDev > 40 && meanBrightness > 50 && meanBrightness < 200) {
+          quality = 'excellent';
+        } else if (stdDev > 25) {
+          quality = 'good';
+        } else {
+          quality = 'fair';
+        }
+      }
+      
+      console.log(`Image preprocessing complete: ${quality} quality, applied: ${applied.join(', ')}`);
       
       return {
         processedPath,
@@ -321,15 +371,76 @@ class DocumentProcessor {
     language: string;
     quality: string;
   }> {
-    // Note: This would require pdf2pic or similar library
-    // For now, return placeholder that indicates PDF processing needs implementation
-    console.log('PDF processing not yet implemented for:', filePath);
-    return {
-      text: 'PDF processing requires additional libraries (pdf2pic, pdf-poppler). Please convert to image format.',
-      confidence: 0,
-      language: 'eng',
-      quality: 'unknown'
-    };
+    try {
+      const pdf = await import('pdf-poppler');
+      const tempDir = path.dirname(filePath);
+      const pdfFileName = path.basename(filePath, path.extname(filePath));
+      
+      // Convert PDF to images
+      const options = {
+        type: 'jpeg',
+        size: 2048,
+        density: 300,
+        outputdir: tempDir,
+        outputname: `${pdfFileName}_page`,
+        page: null // Convert all pages
+      };
+      
+      const imageFiles = await pdf.convert(filePath, options);
+      console.log(`PDF converted to ${imageFiles.length} images`);
+      
+      let combinedText = '';
+      let totalConfidence = 0;
+      let detectedLanguage = 'eng';
+      let quality = 'good';
+      
+      // Process each page
+      for (const imagePath of imageFiles) {
+        const fullImagePath = path.join(tempDir, imagePath);
+        
+        // Enhanced preprocessing for PDF-extracted images
+        const preprocessingResult = await this.enhancedPreprocessImage(fullImagePath);
+        const processedPath = preprocessingResult.processedPath;
+        quality = preprocessingResult.quality;
+        
+        // Auto-detect language for each page
+        const pageLanguage = await this.detectLanguage(processedPath);
+        
+        // OCR processing
+        const { data } = await this.ocrScheduler.addJob('recognize', processedPath, {
+          lang: pageLanguage
+        });
+        
+        combinedText += data.text + '\n\n';
+        totalConfidence += data.confidence;
+        
+        if (data.confidence > 60) {
+          detectedLanguage = pageLanguage;
+        }
+        
+        // Clean up processed image
+        if (processedPath !== fullImagePath && fs.existsSync(processedPath)) {
+          fs.unlinkSync(processedPath);
+        }
+        
+        // Clean up converted image
+        if (fs.existsSync(fullImagePath)) {
+          fs.unlinkSync(fullImagePath);
+        }
+      }
+      
+      const avgConfidence = totalConfidence / imageFiles.length;
+      
+      return {
+        text: combinedText.trim(),
+        confidence: avgConfidence,
+        language: detectedLanguage,
+        quality
+      };
+    } catch (error) {
+      console.error('PDF processing failed:', error);
+      throw new Error(`PDF processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private async storeOCRResults(documentId: string, text: string, confidence: number, hocr: string, tsv: string, language: string, processingTime: number, imageQuality: string, preprocessingApplied: string[]): Promise<void> {

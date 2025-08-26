@@ -8,6 +8,7 @@ import multer from "multer";
 import { documentProcessor } from "./services/documentProcessor";
 import { aiProcessor } from "./services/aiProcessor";
 import { dssEngine } from "./services/dssEngine";
+import { batchProcessor } from "./services/batchProcessor";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -52,7 +53,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filePath: file.path,
       });
 
-      // Process document with enhanced OCR pipeline
+      // Use batch processor for real-time processing with queue management
+      await batchProcessor.addDocument({
+        id: document.id,
+        filePath: file.path,
+        fileType: file.mimetype,
+        claimId,
+        priority: 'high' // Real-time uploads get high priority
+      });
+      
+      // For immediate response, also process synchronously
       const processedData = await documentProcessor.processDocument(file.path, file.mimetype, document.id);
       
       // Update document with OCR results
@@ -463,6 +473,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // OCR health check endpoint
+  app.get('/api/ocr/health', async (req, res) => {
+    try {
+      const health = await documentProcessor.healthCheck();
+      res.json(health);
+    } catch (error) {
+      console.error("OCR health check failed:", error);
+      res.status(500).json({
+        status: 'unhealthy',
+        workersActive: 0,
+        totalWorkers: 0,
+        supportedLanguages: [],
+        lastError: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Batch processing endpoints
+  app.post('/api/documents/batch', isAuthenticated, upload.array('documents', 50), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const files = req.files as Express.Multer.File[];
+      const { claimIds } = req.body; // JSON array of claim IDs
+      
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const parsedClaimIds = JSON.parse(claimIds);
+      if (parsedClaimIds.length !== files.length) {
+        return res.status(400).json({ message: "Number of claim IDs must match number of files" });
+      }
+
+      console.log(`Processing batch of ${files.length} FRA documents`);
+      
+      // Create document records and prepare for batch processing
+      const documents = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const claimId = parsedClaimIds[i];
+        
+        const document = await storage.createDocument({
+          claimId,
+          fileName: file.originalname,
+          fileType: file.mimetype,
+          fileSize: file.size,
+          filePath: file.path,
+        });
+        
+        documents.push({
+          id: document.id,
+          filePath: file.path,
+          fileType: file.mimetype,
+          claimId,
+          priority: 'normal' as const
+        });
+
+        // Log audit trail for each upload
+        await storage.createAuditTrail({
+          entityType: 'documents',
+          entityId: document.id,
+          action: 'batch_upload',
+          userId,
+          newValues: document,
+          notes: `Document uploaded in batch processing`
+        });
+      }
+
+      // Submit batch for processing
+      const batchId = await batchProcessor.addBatch(documents);
+
+      res.json({
+        success: true,
+        batchId,
+        documentsCount: documents.length,
+        message: `Batch processing started for ${documents.length} documents`
+      });
+    } catch (error) {
+      console.error("Batch upload failed:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to process batch upload",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get batch processing status
+  app.get('/api/batch/:batchId', isAuthenticated, async (req, res) => {
+    try {
+      const { batchId } = req.params;
+      const batchStatus = batchProcessor.getBatchStatus(batchId);
+      
+      if (!batchStatus) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      
+      res.json(batchStatus);
+    } catch (error) {
+      console.error("Failed to get batch status:", error);
+      res.status(500).json({ message: "Failed to get batch status" });
+    }
+  });
+
+  // Get processing queue status
+  app.get('/api/ocr/queue', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      // Only admin and state users can view queue status
+      if (!['admin', 'state'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      
+      const queueStatus = batchProcessor.getQueueStatus();
+      const processingStats = await batchProcessor.getProcessingStats();
+      
+      res.json({
+        queue: queueStatus,
+        stats: processingStats
+      });
+    } catch (error) {
+      console.error("Failed to get queue status:", error);
+      res.status(500).json({ message: "Failed to get processing queue status" });
+    }
+  });
+
+  // Get OCR processing statistics
+  app.get('/api/ocr/stats', isAuthenticated, async (req, res) => {
+    try {
+      const processingStats = await documentProcessor.getProcessingStats();
+      res.json(processingStats);
+    } catch (error) {
+      console.error("Failed to get OCR stats:", error);
+      res.status(500).json({ message: "Failed to get processing statistics" });
+    }
+  });
+
   // Export routes
   app.get('/api/export/claims', isAuthenticated, async (req: any, res) => {
     try {
@@ -476,9 +624,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const format = req.query.format || 'csv';
       const exportData = await storage.exportClaims({
         userId,
-        userRole: user.role,
-        state: user.state,
-        district: user.district,
+        userRole: user.role || undefined,
+        state: user.state || undefined,
+        district: user.district || undefined,
         format,
       });
 
