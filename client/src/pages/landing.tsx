@@ -27,7 +27,7 @@ export default function Landing() {
               <div className="mt-10 flex items-center justify-center gap-x-6">
                 <Button 
                   size="lg" 
-                  onClick={() => window.location.href = '/api/login'}
+                  onClick={() => window.location.href = '/login'}
                   data-testid="button-login"
                 >
                   Access System
