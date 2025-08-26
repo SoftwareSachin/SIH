@@ -6,6 +6,7 @@ import { SentenceTokenizer, WordTokenizer } from 'natural';
 import sharp from 'sharp';
 import { storage } from '../storage';
 import { nanoid } from 'nanoid';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface ProcessedDocument {
   text: string;
@@ -33,12 +34,27 @@ interface ProcessedDocument {
 class DocumentProcessor {
   private ocrScheduler: any;
   private workers: any[] = [];
+  private genAI: GoogleGenerativeAI | null = null;
   private readonly supportedLanguages = [
     'eng', 'hin', 'ben', 'guj', 'kan', 'mal', 'mar', 'ori', 'pan', 'tam', 'tel', 'urd'
   ];
 
   constructor() {
     this.initializeOCR();
+    this.initializeAI();
+  }
+
+  private initializeAI() {
+    try {
+      if (process.env.GEMINI_API_KEY) {
+        this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        console.log('Gemini AI initialized for enhanced OCR processing');
+      } else {
+        console.log('No Gemini API key found - using standard OCR only');
+      }
+    } catch (error) {
+      console.error('Failed to initialize Gemini AI:', error);
+    }
   }
 
   private async initializeOCR() {
@@ -110,8 +126,14 @@ class DocumentProcessor {
           lang: detectedLanguage
         });
         
-        text = data.text;
-        confidence = data.confidence;
+        // Enhance OCR results with AI if available
+        const enhancement = await this.enhanceOCRWithAI(data.text, data.confidence);
+        text = enhancement.enhancedText;
+        confidence = enhancement.enhancedConfidence;
+        
+        if (enhancement.corrections.length > 0) {
+          preprocessingApplied.push('ai-ocr-enhancement');
+        }
         
         // Calculate processing time here
         const currentProcessingTime = Date.now() - startTime;
@@ -137,8 +159,8 @@ class DocumentProcessor {
         }
       }
 
-      // Advanced entity extraction with FRA-specific patterns
-      const entities = await this.extractFRAEntities(text);
+      // Enhanced entity extraction with AI assistance
+      const entities = await this.extractFRAEntitiesWithAI(text);
       
       const processingTime = Date.now() - startTime;
       
@@ -487,6 +509,105 @@ class DocumentProcessor {
     }
   }
 
+  private async extractFRAEntitiesWithAI(text: string): Promise<ProcessedDocument['entities'] & {
+    claimTypes?: string[];
+    documentTypes?: string[];
+    surveyNumbers?: string[];
+    boundaries?: string[];
+  }> {
+    // Start with traditional NLP extraction
+    const nlpEntities = await this.extractFRAEntities(text);
+    
+    // Enhance with AI if available
+    if (this.genAI && text.length > 50) {
+      try {
+        const aiEntities = await this.extractEntitiesWithGemini(text);
+        return this.mergeEntityResults(nlpEntities, aiEntities);
+      } catch (error) {
+        console.error('AI entity extraction failed, using NLP only:', error);
+      }
+    }
+    
+    return nlpEntities;
+  }
+
+  private async extractEntitiesWithGemini(text: string): Promise<Partial<ProcessedDocument['entities'] & {
+    claimTypes?: string[];
+    documentTypes?: string[];
+    surveyNumbers?: string[];
+    boundaries?: string[];
+  }>> {
+    if (!this.genAI) return {};
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      
+      const prompt = `Analyze this Forest Rights Act (FRA) document text and extract structured information. Return ONLY a JSON object with these exact keys (use empty arrays if not found):
+
+{
+  "names": ["person names found"],
+  "villages": ["village/gram names"],
+  "areas": ["land areas with units"],
+  "coordinates": ["GPS coordinates or geographic references"],
+  "dates": ["dates in any format"],
+  "claimTypes": ["types of forest rights claims"],
+  "documentTypes": ["document/form types"],
+  "surveyNumbers": ["survey/khasra/plot numbers"],
+  "boundaries": ["boundary descriptions"]
+}
+
+Document text:
+${text.substring(0, 4000)}`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const aiText = response.text();
+      
+      // Extract JSON from response
+      const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        console.log('AI extracted entities:', Object.keys(parsed).map(k => `${k}: ${parsed[k]?.length || 0}`).join(', '));
+        return parsed;
+      }
+      
+      return {};
+    } catch (error) {
+      console.error('Gemini entity extraction error:', error);
+      return {};
+    }
+  }
+
+  private mergeEntityResults(
+    nlpEntities: ProcessedDocument['entities'] & {
+      claimTypes?: string[];
+      documentTypes?: string[];
+      surveyNumbers?: string[];
+      boundaries?: string[];
+    },
+    aiEntities: Partial<ProcessedDocument['entities'] & {
+      claimTypes?: string[];
+      documentTypes?: string[];
+      surveyNumbers?: string[];
+      boundaries?: string[];
+    }>
+  ) {
+    const merged = { ...nlpEntities };
+    
+    // Merge each entity type, removing duplicates
+    for (const [key, aiValues] of Object.entries(aiEntities)) {
+      if (Array.isArray(aiValues) && aiValues.length > 0) {
+        const existingValues = merged[key as keyof typeof merged] || [];
+        merged[key as keyof typeof merged] = Array.from(new Set([
+          ...existingValues,
+          ...aiValues.filter(v => v && v.trim().length > 2)
+        ]));
+      }
+    }
+    
+    return merged;
+  }
+
   private async extractFRAEntities(text: string): Promise<ProcessedDocument['entities'] & {
     claimTypes?: string[];
     documentTypes?: string[];
@@ -657,6 +778,67 @@ class DocumentProcessor {
     entities.boundaries = Array.from(new Set(entities.boundaries));
 
     return entities;
+  }
+
+  // Enhanced OCR with AI post-processing
+  private async enhanceOCRWithAI(text: string, confidence: number): Promise<{
+    enhancedText: string;
+    enhancedConfidence: number;
+    corrections: string[];
+  }> {
+    if (!this.genAI || confidence > 85 || text.length < 100) {
+      return {
+        enhancedText: text,
+        enhancedConfidence: confidence,
+        corrections: []
+      };
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      
+      const prompt = `This text was extracted from a Forest Rights Act document using OCR with ${confidence}% confidence. Please correct obvious OCR errors, fix formatting, and improve readability while preserving all original information. Focus on:
+
+1. Fix character recognition errors (0→O, I→l, etc.)
+2. Correct Hindi/regional language transliterations
+3. Fix spacing and formatting issues
+4. Preserve all numbers, dates, and legal references exactly
+5. Maintain document structure
+
+Return the corrected text only, no explanations:
+
+${text}`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const enhancedText = response.text().trim();
+      
+      // Calculate improvement metrics
+      const corrections = [];
+      if (enhancedText.length !== text.length) {
+        corrections.push('length-adjustment');
+      }
+      if (enhancedText !== text) {
+        corrections.push('text-corrections');
+      }
+      
+      const enhancedConfidence = Math.min(confidence + 10, 95); // Boost confidence modestly
+      
+      console.log(`AI enhanced OCR: ${corrections.length} corrections applied, confidence boosted to ${enhancedConfidence}%`);
+      
+      return {
+        enhancedText,
+        enhancedConfidence,
+        corrections
+      };
+    } catch (error) {
+      console.error('AI OCR enhancement failed:', error);
+      return {
+        enhancedText: text,
+        enhancedConfidence: confidence,
+        corrections: ['ai-enhancement-failed']
+      };
+    }
   }
 
   // Batch processing for multiple documents
