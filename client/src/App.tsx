@@ -10,6 +10,7 @@ import Claims from "@/pages/claims";
 import WebGIS from "@/pages/webgis";
 import AIProcessing from "@/pages/ai-processing";
 import DecisionSupport from "@/pages/decision-support";
+import { NERTester } from "@/components/test/ner-tester";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -25,6 +26,7 @@ function Router() {
           <Route path="/claims" component={Claims} />
           <Route path="/webgis" component={WebGIS} />
           <Route path="/ai-processing" component={AIProcessing} />
+          <Route path="/test/ner" component={NERTester} />
           <Route path="/decision-support" component={DecisionSupport} />
         </>
       )}

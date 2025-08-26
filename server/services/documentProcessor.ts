@@ -138,7 +138,17 @@ class DocumentProcessor {
         // Calculate processing time here
         const currentProcessingTime = Date.now() - startTime;
         
-        // Store OCR results in database if documentId provided
+        // Extract entities from the enhanced text immediately after OCR
+        const extractedEntities = await this.extractFRAEntitiesWithAI(text);
+        
+        // Create structured FRA claim records from extracted entities
+        const structuredClaimRecords = this.createStructuredClaimRecords(
+          extractedEntities, 
+          documentId || 'temp-' + Date.now(), 
+          confidence
+        );
+        
+        // Store OCR results with entities and claim records if documentId provided
         if (documentId) {
           await this.storeOCRResults(
             documentId, 
@@ -149,7 +159,9 @@ class DocumentProcessor {
             detectedLanguage,
             currentProcessingTime,
             imageQuality,
-            preprocessingApplied
+            preprocessingApplied,
+            extractedEntities,
+            structuredClaimRecords
           );
         }
         
@@ -159,33 +171,32 @@ class DocumentProcessor {
         }
       }
 
-      // Enhanced entity extraction with AI assistance
-      const entities = await this.extractFRAEntitiesWithAI(text);
+      // Enhanced entity extraction with AI assistance (for non-image files or fallback)
+      let entities = {};
+      let claimRecords = [];
+      
+      // For PDFs or if entities weren't extracted in image processing
+      if (fileType === 'application/pdf' || !documentId) {
+        entities = await this.extractFRAEntitiesWithAI(text);
+        claimRecords = this.createStructuredClaimRecords(
+          entities, 
+          documentId || 'temp-' + Date.now(), 
+          confidence
+        );
+      }
       
       const processingTime = Date.now() - startTime;
       
-      // Store extracted entities if documentId provided
-      if (documentId && Object.keys(entities).some(key => {
-        const entityArray = entities[key as keyof typeof entities];
-        return Array.isArray(entityArray) && entityArray.length > 0;
-      })) {
-        try {
-          await storage.updateDocument(documentId, {
-            extractedEntities: entities,
-            entityExtractionConfidence: confidence.toString() // Convert to string for storage
-          });
-        } catch (error) {
-          console.error('Failed to store extracted entities:', error);
-        }
-      }
-      
       console.log(`Document processed: ${processingTime}ms, confidence: ${confidence}%, language: ${detectedLanguage}`);
+      console.log(`Total entities extracted: ${Object.keys(entities).map(k => `${k}: ${(entities as any)[k]?.length || 0}`).join(', ')}`);
+      console.log(`Structured claim records: ${claimRecords.length}`);
 
       return {
         text,
         confidence,
         language: detectedLanguage,
         entities,
+        claimRecords,
         metadata: {
           processingTime,
           imageQuality,
@@ -465,7 +476,7 @@ class DocumentProcessor {
     }
   }
 
-  private async storeOCRResults(documentId: string, text: string, confidence: number, hocr: string, tsv: string, language: string, processingTime: number, imageQuality: string, preprocessingApplied: string[]): Promise<void> {
+  private async storeOCRResults(documentId: string, text: string, confidence: number, hocr: string, tsv: string, language: string, processingTime: number, imageQuality: string, preprocessingApplied: string[], extractedEntities?: any, structuredClaimRecords?: any[]): Promise<void> {
     try {
       // Parse languages used
       const languagesArray = language.split('+').filter(lang => lang.length > 0);
@@ -482,6 +493,10 @@ class DocumentProcessor {
         preprocessingApplied,
         processedAt: new Date(),
         // Store OCR metadata as proper object (not stringified)
+        // Store extracted entities for NER results
+        extractedEntities: extractedEntities || {},
+        // Store structured claim records ready for GIS integration
+        claimRecords: structuredClaimRecords || [],
         ocrData: { 
           hocr, 
           tsv, 
@@ -533,6 +548,7 @@ class DocumentProcessor {
 
   private async extractEntitiesWithGemini(text: string): Promise<Partial<ProcessedDocument['entities'] & {
     claimTypes?: string[];
+    claimStatus?: string[];
     documentTypes?: string[];
     surveyNumbers?: string[];
     boundaries?: string[];
@@ -542,19 +558,28 @@ class DocumentProcessor {
     try {
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
-      const prompt = `Analyze this Forest Rights Act (FRA) document text and extract structured information. Return ONLY a JSON object with these exact keys (use empty arrays if not found):
+      const prompt = `You are an expert in Forest Rights Act (FRA) document analysis. Extract ALL relevant information from this FRA document text with HIGH ACCURACY. Return ONLY a valid JSON object with these exact keys:
 
 {
-  "names": ["person names found"],
-  "villages": ["village/gram names"],
-  "areas": ["land areas with units"],
-  "coordinates": ["GPS coordinates or geographic references"],
-  "dates": ["dates in any format"],
-  "claimTypes": ["types of forest rights claims"],
-  "documentTypes": ["document/form types"],
-  "surveyNumbers": ["survey/khasra/plot numbers"],
-  "boundaries": ["boundary descriptions"]
+  "names": ["Full claimant names (individuals or community representatives)"],
+  "villages": ["Village/Gram/Settlement names with correct spellings"],
+  "areas": ["Claimed land areas with units (acres/hectares/bigha)"],
+  "coordinates": ["GPS coordinates, survey coordinates, or geographic references"],
+  "dates": ["Application dates, approval dates, survey dates - all dates found"],
+  "claimTypes": ["IFR (Individual Forest Rights), CFR (Community Forest Resource Rights), CR (Community Rights), or specific rights claimed"],
+  "claimStatus": ["pending, approved, rejected, under review, verified, or other status indicators"],
+  "documentTypes": ["Form numbers, application types, official document classifications"],
+  "surveyNumbers": ["Survey numbers, Khasra numbers, Plot numbers, Sub-division numbers"],
+  "boundaries": ["North, South, East, West boundary descriptions with landmarks"]
 }
+
+Focus on:
+- Indian names (including regional variations)
+- Multi-language content (Hindi, Bengali, Tamil, Telugu, Gujarati)
+- FRA-specific terminology and abbreviations
+- Land measurement units common in India
+- Official document references and numbers
+- Geographic and administrative boundaries
 
 Document text:
 ${text.substring(0, 4000)}`;
@@ -581,12 +606,14 @@ ${text.substring(0, 4000)}`;
   private mergeEntityResults(
     nlpEntities: ProcessedDocument['entities'] & {
       claimTypes?: string[];
+      claimStatus?: string[];
       documentTypes?: string[];
       surveyNumbers?: string[];
       boundaries?: string[];
     },
     aiEntities: Partial<ProcessedDocument['entities'] & {
       claimTypes?: string[];
+      claimStatus?: string[];
       documentTypes?: string[];
       surveyNumbers?: string[];
       boundaries?: string[];
@@ -610,6 +637,7 @@ ${text.substring(0, 4000)}`;
 
   private async extractFRAEntities(text: string): Promise<ProcessedDocument['entities'] & {
     claimTypes?: string[];
+    claimStatus?: string[];
     documentTypes?: string[];
     surveyNumbers?: string[];
     boundaries?: string[];
@@ -621,6 +649,7 @@ ${text.substring(0, 4000)}`;
       coordinates: [] as string[],
       dates: [] as string[],
       claimTypes: [] as string[],
+      claimStatus: [] as string[],
       documentTypes: [] as string[],
       surveyNumbers: [] as string[],
       boundaries: [] as string[]
@@ -629,30 +658,105 @@ ${text.substring(0, 4000)}`;
     // Use Compromise NLP for advanced entity extraction
     const doc = nlp(text);
     
-    // Extract person names using NLP
+    // Enhanced person name extraction for Indian context
     const people = doc.people().out('array');
-    const indianNamePattern = /\b(?:[A-Z][a-z]+\s+(?:Singh|Kumar|Devi|Rani|Prasad|Sharma|Gupta|Yadav|Patel|Das|Ray|Bai|Wati))\b/g;
-    const indianNames = text.match(indianNamePattern) || [];
-    const uniqueNames = new Set([...people, ...indianNames]);
+    
+    // Comprehensive Indian name patterns including regional variations
+    const indianNamePatterns = [
+      // Hindi names with common surnames
+      /\b(?:[A-Z][a-z]+\s+(?:Singh|Kumar|Devi|Rani|Prasad|Sharma|Gupta|Yadav|Patel|Das|Ray|Bai|Wati|Shah|Jain|Agrawal|Mishra|Tiwari|Pandey|Chaudhary|Verma|Srivastava))\b/g,
+      
+      // Bengali names
+      /\b(?:[A-Z][a-z]+\s+(?:Chakraborty|Bhattacharya|Mukherjee|Banerjee|Roy|Ghosh|Sen|Basu|Mitra|Dutta|Bose|Sarkar|Paul|Das|Ray))\b/g,
+      
+      // Tamil names  
+      /\b(?:[A-Z][a-z]+\s+(?:Raman|Krishnan|Murugan|Subramanian|Natarajan|Iyer|Iyengar|Reddy|Naidu|Pillai|Nair))\b/g,
+      
+      // Telugu names
+      /\b(?:[A-Z][a-z]+\s+(?:Reddy|Naidu|Rao|Raju|Prasad|Kumar|Devi|Lakshmi|Krishna|Rama))\b/g,
+      
+      // Tribal/Adivasi names common in FRA documents
+      /\b(?:[A-Z][a-z]+\s+(?:Bhil|Gond|Santhal|Munda|Oraon|Khond|Baiga|Korku|Bharia|Sahariya))\b/g,
+      
+      // General Indian name patterns
+      /\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,2}\b/g,
+      
+      // Devanagari script names
+      /\b[\u0900-\u097F]+(?:\s+[\u0900-\u097F]+){1,2}\b/g,
+      
+      // Bengali script names
+      /\b[\u0980-\u09FF]+(?:\s+[\u0980-\u09FF]+){1,2}\b/g,
+      
+      // Telugu script names
+      /\b[\u0C00-\u0C7F]+(?:\s+[\u0C00-\u0C7F]+){1,2}\b/g,
+      
+      // Tamil script names
+      /\b[\u0B80-\u0BFF]+(?:\s+[\u0B80-\u0BFF]+){1,2}\b/g
+    ];
+    
+    let extractedNames = [...people];
+    for (const pattern of indianNamePatterns) {
+      const matches = text.match(pattern) || [];
+      extractedNames = [...extractedNames, ...matches];
+    }
+    
+    // Filter out common false positives and ensure quality
+    const nameExclusions = ['Village', 'District', 'State', 'Claim', 'Forest', 'Rights', 'Form', 'Application', 'Survey', 'Number', 'Date', 'Block', 'Tehsil', 'Gram', 'Panchayat', 'Officer', 'Department', 'Government', 'Committee'];
+    const uniqueNames = new Set(extractedNames);
     entities.names = Array.from(uniqueNames).filter(name => 
-      name.length > 2 && !['Village', 'District', 'State', 'Claim', 'Forest', 'Rights'].includes(name)
+      name.length > 2 && 
+      name.trim().length > 2 &&
+      !nameExclusions.some(exclusion => name.includes(exclusion)) &&
+      !/^\d+$/.test(name.trim()) && // Not just numbers
+      !/^[^A-Za-z\u0900-\u097F\u0980-\u09FF\u0C00-\u0C7F\u0B80-\u0BFF]/.test(name.trim()) // Must start with letter
     );
 
-    // Enhanced FRA-specific claim types
+    // Enhanced FRA-specific claim types with comprehensive patterns
     const claimTypePatterns = [
-      /(?:Individual|Community|Community Forest Rights|CFR|IFR)\s+(?:Forest Rights|Claim)/gi,
-      /(?:NTFP|Non-Timber Forest Produce)\s+Rights/gi,
-      /(?:Grazing|Pastoral)\s+Rights/gi,
-      /(?:Fish|Fishing)\s+Rights/gi,
-      /(?:Water|Water Body)\s+Rights/gi,
-      /(?:Cultivation|Agricultural)\s+Rights/gi,
-      /(?:Settlement|Habitation)\s+Rights/gi
+      // Primary FRA claim types
+      /\b(?:IFR|Individual\s+Forest\s+Rights?)\b/gi,
+      /\b(?:CFR|Community\s+Forest\s+Resource\s+Rights?)\b/gi,
+      /\b(?:CR|Community\s+Rights?)\b/gi,
+      
+      // Specific forest rights categories
+      /(?:NTFP|Non[-\s]?Timber\s+Forest\s+Produce)\s+(?:Rights?|Collection)/gi,
+      /(?:Grazing|Pastoral|चराई)\s+(?:Rights?|अधिकार)/gi,
+      /(?:Fish|Fishing|मत्स्य)\s+(?:Rights?|अधिकार)/gi,
+      /(?:Water|जल)\s+(?:Rights?|अधिकार|Body)/gi,
+      /(?:Cultivation|कृषि|Agricultural)\s+(?:Rights?|अधिकार)/gi,
+      /(?:Settlement|Habitation|निवास|आवास)\s+(?:Rights?|अधिकार)/gi,
+      /(?:Homestead|घर\s*स्थल)\s+(?:Rights?|अधिकार)/gi,
+      
+      // Document-specific patterns
+      /Form\s*[A-Z]\s*(?:Application|आवेदन)/gi,
+      /(?:Title|पट्टा|स्वामित्व)\s+(?:Rights?|अधिकार)/gi
     ];
     
     for (const pattern of claimTypePatterns) {
       let match;
       while ((match = pattern.exec(text)) !== null) {
         entities.claimTypes.push(match[0].trim());
+      }
+    }
+
+    // Claim Status Detection
+    const statusPatterns = [
+      /\b(?:approved|स्वीकृत|मंजूर)\b/gi,
+      /\b(?:rejected|अस्वीकृत|नामंजूर)\b/gi,
+      /\b(?:pending|लंबित|विचाराधीन)\b/gi,
+      /\b(?:under\s+(?:review|consideration)|समीक्षाधीन)\b/gi,
+      /\b(?:verified|सत्यापित|जांचा\s+गया)\b/gi,
+      /\b(?:survey\s+(?:completed|done)|सर्वेक्षण\s+(?:पूर्ण|हो\s+गया))\b/gi,
+      /\b(?:title\s+(?:granted|issued)|पट्टा\s+(?:दिया\s+गया|जारी))\b/gi,
+      /\b(?:in\s+process|प्रक्रियाधीन)\b/gi,
+      /\b(?:objection|आपत्ति)\b/gi,
+      /\b(?:withdrawn|वापस\s+लिया\s+गया)\b/gi
+    ];
+    
+    for (const pattern of statusPatterns) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        entities.claimStatus.push(match[0].trim());
       }
     }
 
@@ -706,13 +810,22 @@ ${text.substring(0, 4000)}`;
       }
     }
 
-    // Enhanced village name extraction
+    // Enhanced village name extraction with regional variations
     const villagePatterns = [
-      /(?:Village|Gram|ग्राम|गाँव|गांव)[\s:]+([A-Za-z\u0900-\u097F\s]+)/gi,
-      /(?:Vill|V\.)[\s:]+([A-Za-z\u0900-\u097F\s]+)/gi,
+      // Standard village patterns
+      /(?:Village|Gram|ग्राम|गाँव|गांव|গ্রাম|గ్రామం|গাঁও)[\s:]+([A-Za-z\u0900-\u097F\s\u0980-\u09FF\u0C00-\u0C7F\u0B80-\u0BFF]+)/gi,
+      /(?:Vill|V\.)[\s:]+([A-Za-z\u0900-\u097F\s\u0980-\u09FF\u0C00-\u0C7F\u0B80-\u0BFF]+)/gi,
       /गाव[\s:]+([A-Za-z\u0900-\u097F\s]+)/gi,
-      /(?:Tehsil|तहसील)[\s:]+([A-Za-z\u0900-\u097F\s]+)/gi,
-      /(?:Block|ब्लॉक)[\s:]+([A-Za-z\u0900-\u097F\s]+)/gi
+      
+      // Administrative divisions
+      /(?:Tehsil|तहसील|তহসিল|তেহসিল)[\s:]+([A-Za-z\u0900-\u097F\s\u0980-\u09FF]+)/gi,
+      /(?:Block|ब्लॉक|ব্লক|బ్లాక్)[\s:]+([A-Za-z\u0900-\u097F\s\u0980-\u09FF\u0C00-\u0C7F]+)/gi,
+      /(?:District|जिला|জেলা|जिल्हा|జిల్లా)[\s:]+([A-Za-z\u0900-\u097F\s\u0980-\u09FF\u0C00-\u0C7F]+)/gi,
+      /(?:Mandal|मंडल|মণ্ডল)[\s:]+([A-Za-z\u0900-\u097F\s\u0980-\u09FF]+)/gi,
+      
+      // Forest areas and settlements
+      /(?:Forest|वन|বন|అరణ్యం|ป่า)[\s:]+([A-Za-z\u0900-\u097F\s\u0980-\u09FF\u0C00-\u0C7F]+)/gi,
+      /(?:Settlement|बस्ती|বসতি|నివాసం)[\s:]+([A-Za-z\u0900-\u097F\s\u0980-\u09FF\u0C00-\u0C7F]+)/gi
     ];
     
     for (const pattern of villagePatterns) {
@@ -725,11 +838,32 @@ ${text.substring(0, 4000)}`;
       }
     }
 
-    // Enhanced area extraction with multiple units
+    // Enhanced area extraction with comprehensive Indian land measurement units
     const areaPatterns = [
-      /(\d+(?:\.\d+)?)\s*(?:acre|hectare|bigha|गुंठा|एकड़|बीघा|हेक्टेयर)/gi,
-      /(\d+(?:\.\d+)?)\s*(?:sq\s*m|sqm|square\s*meter)/gi,
-      /Area[\s:]+([\d\.]+)\s*(?:acre|hectare)/gi
+      // Standard international units
+      /(\d+(?:\.\d+)?)\s*(?:acre|hectare|आकर|हेक्टेयर)/gi,
+      /(\d+(?:\.\d+)?)\s*(?:sq\s*m|sqm|square\s*meter|वर्ग\s*मीटर)/gi,
+      
+      // Traditional Indian units by region
+      // North India
+      /(\d+(?:\.\d+)?)\s*(?:bigha|बीघा|biswa|बिस्वा|katha|कट्ठा|dhur|धूर)/gi,
+      
+      // Maharashtra/Gujarat
+      /(\d+(?:\.\d+)?)\s*(?:guntha|गुंठा|ropani|रोपनी|satak|शतक)/gi,
+      
+      // South India  
+      /(\d+(?:\.\d+)?)\s*(?:cent|ground|kani|veli|வேலி|gajam|గజం|killa)/gi,
+      
+      // Bengal/Eastern India
+      /(\d+(?:\.\d+)?)\s*(?:katha|কাঠা|chhatak|ছাটাক|decimal)/gi,
+      
+      // Context-based area extraction
+      /(?:Area|Land|Plot|Khasra)[\s:]+(\d+(?:\.\d+)?)\s*(?:acre|hectare|bigha|एकड़|बीघा|गुंठा)/gi,
+      /(?:क्षेत्रफल|क्षेत्र|जमीन)[\s:]+(\d+(?:\.\d+)?)\s*(?:एकड़|बीघा|गुंठा|हेक्टेयर)/gi,
+      
+      // Area ranges and fractions
+      /(\d+(?:\.\d+)?\s*[-–]\s*\d+(?:\.\d+)?)\s*(?:acre|hectare|bigha|एकड़)/gi,
+      /(\d+\/\d+)\s*(?:acre|hectare|bigha|एकड़)/gi
     ];
     
     for (const pattern of areaPatterns) {
@@ -753,12 +887,26 @@ ${text.substring(0, 4000)}`;
       }
     }
 
-    // Enhanced date extraction with Indian formats
+    // Enhanced date extraction with comprehensive Indian date formats
     const datePatterns = [
+      // Standard formats
       /\b\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}\b/gi,
-      /\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4}\b/gi,
-      /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{2,4}\b/gi,
-      /\d{4}-\d{2}-\d{2}/gi
+      /\b\d{4}-\d{2}-\d{2}\b/gi,
+      
+      // English month formats
+      /\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[,\s]+\d{2,4}\b/gi,
+      /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[,\s]+\d{1,2}[,\s]+\d{2,4}\b/gi,
+      
+      // Hindi month names
+      /\b\d{1,2}\s+(?:जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितम्बर|अक्टूबर|नवम्बर|दिसम्बर)[,\s]+\d{2,4}\b/gi,
+      
+      // Bengali month names  
+      /\b\d{1,2}\s+(?:জানুয়ারি|ফেব্রুয়ারি|মার্চ|এপ্রিল|মে|জুন|জুলাই|আগস্ট|সেপ্টেম্বর|অক্টোবর|নভেম্বর|ডিসেম্বর)[,\s]+\d{2,4}\b/gi,
+      
+      // Context-based dates
+      /(?:Application\s+(?:Date|dated)|आवेदन\s+(?:दिनांक|तारीख))[\s:]+([\d\/\-\.]+)/gi,
+      /(?:Survey\s+(?:Date|dated)|सर्वेक्षण\s+(?:दिनांक|तारीख))[\s:]+([\d\/\-\.]+)/gi,
+      /(?:Approval\s+(?:Date|dated)|अनुमोदन\s+(?:दिनांक|तारीख))[\s:]+([\d\/\-\.]+)/gi
     ];
     
     for (const pattern of datePatterns) {
@@ -766,18 +914,118 @@ ${text.substring(0, 4000)}`;
       entities.dates = [...entities.dates, ...dates];
     }
 
-    // Remove duplicates
-    entities.names = Array.from(new Set(entities.names));
-    entities.villages = Array.from(new Set(entities.villages));
-    entities.areas = Array.from(new Set(entities.areas));
-    entities.coordinates = Array.from(new Set(entities.coordinates));
-    entities.dates = Array.from(new Set(entities.dates));
-    entities.claimTypes = Array.from(new Set(entities.claimTypes));
-    entities.documentTypes = Array.from(new Set(entities.documentTypes));
-    entities.surveyNumbers = Array.from(new Set(entities.surveyNumbers));
-    entities.boundaries = Array.from(new Set(entities.boundaries));
+    // Remove duplicates and clean data
+    entities.names = Array.from(new Set(entities.names)).filter(name => name && name.trim().length > 1);
+    entities.villages = Array.from(new Set(entities.villages)).filter(village => village && village.trim().length > 1);
+    entities.areas = Array.from(new Set(entities.areas)).filter(area => area && area.trim().length > 0);
+    entities.coordinates = Array.from(new Set(entities.coordinates)).filter(coord => coord && coord.trim().length > 2);
+    entities.dates = Array.from(new Set(entities.dates)).filter(date => date && date.trim().length > 4);
+    entities.claimTypes = Array.from(new Set(entities.claimTypes)).filter(type => type && type.trim().length > 1);
+    entities.claimStatus = Array.from(new Set(entities.claimStatus)).filter(status => status && status.trim().length > 2);
+    entities.documentTypes = Array.from(new Set(entities.documentTypes)).filter(doc => doc && doc.trim().length > 1);
+    entities.surveyNumbers = Array.from(new Set(entities.surveyNumbers)).filter(survey => survey && survey.trim().length > 0);
+    entities.boundaries = Array.from(new Set(entities.boundaries)).filter(boundary => boundary && boundary.trim().length > 3);
 
     return entities;
+  }
+
+  // Convert extracted entities into structured FRA claim records
+  private createStructuredClaimRecords(entities: any, documentId: string, confidence: number): any[] {
+    const claimRecords = [];
+    
+    // Determine primary claimant (first name found)
+    const primaryClaimant = entities.names?.[0] || 'Unknown Claimant';
+    
+    // Determine primary village (first village found)
+    const primaryVillage = entities.villages?.[0] || 'Unknown Village';
+    
+    // Extract claim type (prioritize IFR, CFR, CR)
+    let claimType = 'Unknown';
+    if (entities.claimTypes?.length > 0) {
+      const types = entities.claimTypes;
+      if (types.some(t => t.toUpperCase().includes('IFR') || t.toLowerCase().includes('individual'))) {
+        claimType = 'IFR';
+      } else if (types.some(t => t.toUpperCase().includes('CFR') || t.toLowerCase().includes('community forest'))) {
+        claimType = 'CFR';
+      } else if (types.some(t => t.toUpperCase().includes('CR') || t.toLowerCase().includes('community rights'))) {
+        claimType = 'CR';
+      } else {
+        claimType = types[0];
+      }
+    }
+    
+    // Extract claim status
+    let claimStatus = 'pending';
+    if (entities.claimStatus?.length > 0) {
+      const statuses = entities.claimStatus;
+      if (statuses.some(s => s.toLowerCase().includes('approved') || s.includes('स्वीकृत'))) {
+        claimStatus = 'approved';
+      } else if (statuses.some(s => s.toLowerCase().includes('rejected') || s.includes('अस्वीकृत'))) {
+        claimStatus = 'rejected';
+      } else if (statuses.some(s => s.toLowerCase().includes('verified') || s.includes('सत्यापित'))) {
+        claimStatus = 'verified';
+      } else {
+        claimStatus = statuses[0].toLowerCase();
+      }
+    }
+    
+    // Extract area claimed
+    const areaClaimed = entities.areas?.[0] || null;
+    
+    // Extract coordinates
+    const coordinates = entities.coordinates?.length > 0 ? entities.coordinates[0] : null;
+    
+    // Extract important dates
+    const applicationDate = entities.dates?.find(d => 
+      d.match(/application|आवेदन/i)
+    ) || entities.dates?.[0] || null;
+    
+    const approvalDate = entities.dates?.find(d => 
+      d.match(/approval|अनुमोदन|approved/i)
+    ) || null;
+    
+    // Extract survey numbers
+    const surveyNumber = entities.surveyNumbers?.[0] || null;
+    
+    // Create structured claim record
+    const claimRecord = {
+      documentId,
+      extractionConfidence: confidence,
+      claimantName: primaryClaimant,
+      villageName: primaryVillage,
+      claimType,
+      claimStatus,
+      areaClaimed,
+      coordinates,
+      applicationDate,
+      approvalDate,
+      surveyNumber,
+      boundaries: entities.boundaries || [],
+      allNames: entities.names || [],
+      allVillages: entities.villages || [],
+      allDates: entities.dates || [],
+      documentTypes: entities.documentTypes || [],
+      extractedAt: new Date().toISOString(),
+      // Raw entities for further processing
+      rawEntities: entities
+    };
+    
+    claimRecords.push(claimRecord);
+    
+    // If multiple claimants found, create additional records
+    if (entities.names?.length > 1) {
+      for (let i = 1; i < entities.names.length; i++) {
+        const additionalRecord = {
+          ...claimRecord,
+          claimantName: entities.names[i],
+          isPrimaryClaimant: false,
+          relatedToDocumentId: documentId
+        };
+        claimRecords.push(additionalRecord);
+      }
+    }
+    
+    return claimRecords;
   }
 
   // Enhanced OCR with AI post-processing

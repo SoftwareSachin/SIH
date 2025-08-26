@@ -132,6 +132,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test NER extraction with sample FRA text
+  app.post('/api/test/ner', async (req, res) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({ error: 'Text content is required' });
+      }
+      
+      const processor = documentProcessor;
+      
+      // Extract entities using the enhanced NER system
+      const entities = await (processor as any).extractFRAEntitiesWithAI(text);
+      
+      // Create structured claim records
+      const claimRecords = (processor as any).createStructuredClaimRecords(
+        entities,
+        'test-' + Date.now(),
+        95 // High confidence for manual text input
+      );
+      
+      res.json({
+        success: true,
+        extractedEntities: entities,
+        structuredClaimRecords: claimRecords,
+        summary: {
+          namesFound: entities.names?.length || 0,
+          villagesFound: entities.villages?.length || 0,
+          areasFound: entities.areas?.length || 0,
+          coordinatesFound: entities.coordinates?.length || 0,
+          datesFound: entities.dates?.length || 0,
+          claimTypesFound: entities.claimTypes?.length || 0,
+          claimStatusFound: entities.claimStatus?.length || 0,
+          documentTypesFound: entities.documentTypes?.length || 0,
+          surveyNumbersFound: entities.surveyNumbers?.length || 0,
+          boundariesFound: entities.boundaries?.length || 0
+        },
+        claimsCreated: claimRecords.length
+      });
+      
+    } catch (error) {
+      console.error('NER test error:', error);
+      res.status(500).json({ 
+        error: 'NER processing failed', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
   // Auth middleware
   await setupAuth(app);
 

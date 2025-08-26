@@ -14,7 +14,8 @@ import {
   Download, 
   CheckCircle,
   Menu,
-  X
+  X,
+  TestTube2
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -26,6 +27,7 @@ export default function Sidebar() {
     { name: 'WebGIS Portal', href: '/webgis', icon: Map },
     { name: 'Claims Management', href: '/claims', icon: FileText },
     { name: 'AI Processing', href: '/ai-processing', icon: Brain },
+    { name: 'NER Tester', href: '/test/ner', icon: TestTube2 },
     { name: 'Decision Support', href: '/decision-support', icon: BarChart3 },
   ];
 
