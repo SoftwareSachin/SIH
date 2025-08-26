@@ -98,6 +98,10 @@ export const claims = pgTable("claims", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Document processing status enum
+export const documentStatusEnum = pgEnum('document_status', ['pending', 'processing', 'processed', 'failed', 'requires_review']);
+export const documentLanguageEnum = pgEnum('document_language', ['eng', 'hin', 'ben', 'guj', 'kan', 'mal', 'mar', 'ori', 'pan', 'tam', 'tel', 'urd', 'mixed']);
+
 // Documents
 export const documents = pgTable("documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -106,11 +110,26 @@ export const documents = pgTable("documents", {
   fileType: varchar("file_type").notNull(),
   fileSize: integer("file_size"),
   filePath: varchar("file_path").notNull(),
+  // OCR Processing fields
   ocrText: text("ocr_text"),
   ocrConfidence: decimal("ocr_confidence", { precision: 5, scale: 2 }),
+  ocrLanguage: documentLanguageEnum("ocr_language"),
+  languagesUsed: jsonb("languages_used"), // Array of actual languages used
+  ocrData: jsonb("ocr_data"), // Stores HOCR, TSV, and other OCR metadata
+  // Processing metadata
+  processingStatus: documentStatusEnum("processing_status").default('pending'),
+  processingTime: integer("processing_time"), // in milliseconds
+  imageQuality: varchar("image_quality"), // 'low', 'medium', 'high'
+  preprocessingApplied: jsonb("preprocessing_applied"), // Array of preprocessing steps
+  processingAttempts: integer("processing_attempts").default(0),
+  lastError: text("last_error"),
+  // Entity extraction
   extractedEntities: jsonb("extracted_entities"),
+  entityExtractionConfidence: decimal("entity_extraction_confidence", { precision: 5, scale: 2 }),
+  // Timestamps
   processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Asset types enum

@@ -31,7 +31,7 @@ import {
   type InsertAuditTrail,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sql, ilike } from "drizzle-orm";
+import { eq, and, desc, count, sql, ilike, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -159,6 +159,13 @@ export class DatabaseStorage implements IStorage {
       const [totalClaimsResult] = await totalClaimsQuery;
       const totalClaims = totalClaimsResult?.count || 0;
 
+      // Get AI processing count (documents pending processing)
+      const [aiProcessingResult] = await db
+        .select({ count: count() })
+        .from(documents)
+        .where(isNull(documents.processedAt));
+      const aiProcessing = aiProcessingResult?.count || 0;
+
       // Get verified claims
       const verifiedClaimsQuery = db
         .select({ count: count() })
@@ -166,21 +173,23 @@ export class DatabaseStorage implements IStorage {
         .where(eq(claims.status, 'verified'));
         
       if (conditions.length > 0) {
-        verifiedClaimsQuery
+        const verifiedConditions = [eq(claims.status, 'verified'), ...conditions];
+        const [verifiedWithConditionsResult] = await db
+          .select({ count: count() })
+          .from(claims)
           .leftJoin(villages, eq(claims.villageId, villages.id))
           .leftJoin(districts, eq(villages.districtId, districts.id))
-          .where(and(eq(claims.status, 'verified'), ...conditions));
+          .where(and(...verifiedConditions));
+        return {
+          totalClaims,
+          verifiedClaims: verifiedWithConditionsResult?.count || 0,
+          aiProcessing,
+          activeVillages: 0,
+        };
       }
 
       const [verifiedClaimsResult] = await verifiedClaimsQuery;
       const verifiedClaims = verifiedClaimsResult?.count || 0;
-
-      // Get AI processing count (documents pending processing)
-      const [aiProcessingResult] = await db
-        .select({ count: count() })
-        .from(documents)
-        .where(eq(documents.processedAt, sql`NULL`));
-      const aiProcessing = aiProcessingResult?.count || 0;
 
       // Get active villages count
       const activeVillagesQuery = db
@@ -189,10 +198,19 @@ export class DatabaseStorage implements IStorage {
         .where(eq(claims.status, 'verified'));
 
       if (conditions.length > 0) {
-        activeVillagesQuery
+        const activeConditions = [eq(claims.status, 'verified'), ...conditions];
+        const activeWithConditionsResults = await db
+          .selectDistinct({ villageId: claims.villageId })
+          .from(claims)
           .leftJoin(villages, eq(claims.villageId, villages.id))
           .leftJoin(districts, eq(villages.districtId, districts.id))
-          .where(and(eq(claims.status, 'verified'), ...conditions));
+          .where(and(...activeConditions));
+        return {
+          totalClaims,
+          verifiedClaims,
+          aiProcessing,
+          activeVillages: activeWithConditionsResults.length,
+        };
       }
 
       const activeVillagesResults = await activeVillagesQuery;

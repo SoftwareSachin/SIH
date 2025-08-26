@@ -26,6 +26,102 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Secure OCR processing endpoint - requires authentication
+  app.post('/api/documents/process', isAuthenticated, upload.single('document'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { claimId } = req.body;
+      const { file } = req;
+      
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      if (!claimId) {
+        return res.status(400).json({ message: "Claim ID is required" });
+      }
+
+      console.log(`Processing FRA document: ${file.originalname} for claim ${claimId}`);
+      
+      // Save document record first
+      const document = await storage.createDocument({
+        claimId,
+        fileName: file.originalname,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        filePath: file.path,
+      });
+
+      // Process document with enhanced OCR pipeline
+      const processedData = await documentProcessor.processDocument(file.path, file.mimetype, document.id);
+      
+      // Update document with OCR results
+      await storage.updateDocument(document.id, {
+        ocrText: processedData.text,
+        ocrConfidence: processedData.confidence,
+        extractedEntities: processedData.entities,
+        processedAt: new Date(),
+        processingStatus: 'completed'
+      });
+
+      // Log audit trail
+      await storage.createAuditTrail({
+        entityType: 'documents',
+        entityId: document.id,
+        action: 'process',
+        userId,
+        newValues: { ocrConfidence: processedData.confidence, language: processedData.language },
+        notes: `Document processed with ${processedData.confidence}% confidence`
+      });
+      
+      // Clean up uploaded file  
+      try {
+        const fs = await import('fs');
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      } catch (cleanupError) {
+        console.log('File cleanup skipped:', cleanupError);
+      }
+      
+      res.json({
+        success: true,
+        documentId: document.id,
+        originalFileName: file.originalname,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        claimId,
+        ocrResults: {
+          text: processedData.text,
+          confidence: processedData.confidence,
+          language: processedData.language,
+          entities: processedData.entities,
+          metadata: processedData.metadata
+        }
+      });
+    } catch (error) {
+      console.error("OCR test processing failed:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "OCR processing failed", 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // OCR health check endpoint
+  app.get('/api/test/ocr/health', async (req, res) => {
+    try {
+      const healthStatus = await documentProcessor.healthCheck();
+      res.json(healthStatus);
+    } catch (error) {
+      res.status(500).json({ 
+        status: 'unhealthy',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Auth middleware
   await setupAuth(app);
 
