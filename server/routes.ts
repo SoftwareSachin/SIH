@@ -68,10 +68,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update document with OCR results
       await storage.updateDocument(document.id, {
         ocrText: processedData.text,
-        ocrConfidence: processedData.confidence,
+        ocrConfidence: processedData.confidence.toString(),
         extractedEntities: processedData.entities,
         processedAt: new Date(),
-        processingStatus: 'completed'
+        processingStatus: 'processed'
       });
 
       // Log audit trail
@@ -157,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const stats = await storage.getDashboardStats(user.state, user.district, user.role);
+      const stats = await storage.getDashboardStats(user.state || undefined, user.district || undefined, user.role || undefined);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
@@ -182,9 +182,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const claims = await storage.getClaims({
         userId,
-        userRole: user.role,
-        state: user.state,
-        district: user.district,
+        userRole: user.role || undefined,
+        state: user.state || undefined,
+        district: user.district || undefined,
         page,
         limit,
         status,
@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !['admin', 'state', 'district'].includes(user.role)) {
+      if (!user || !user.role || !['admin', 'state', 'district'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -303,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await storage.updateDocument(document.id, {
           ocrText: processedData.text,
-          ocrConfidence: processedData.confidence,
+          ocrConfidence: processedData.confidence.toString(),
           extractedEntities: processedData.entities,
           processedAt: new Date(),
         });
@@ -350,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !['admin', 'state'].includes(user.role)) {
+      if (!user || !user.role || !['admin', 'state'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -363,7 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.updateDocument(document.id, {
         ocrText: processedData.text,
-        ocrConfidence: processedData.confidence,
+        ocrConfidence: processedData.confidence.toString(),
         extractedEntities: processedData.entities,
         processedAt: new Date(),
       });
@@ -381,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !['admin', 'state', 'district'].includes(user.role)) {
+      if (!user || !user.role || !['admin', 'state', 'district'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -419,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !['admin', 'state', 'district'].includes(user.role)) {
+      if (!user || !user.role || !['admin', 'state', 'district'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 

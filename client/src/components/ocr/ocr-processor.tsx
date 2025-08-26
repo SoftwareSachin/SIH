@@ -217,7 +217,7 @@ export default function OCRProcessor() {
               <div>
                 <p className="text-sm font-medium">Languages</p>
                 <p className="text-xs text-muted-foreground">
-                  {ocrHealth?.supportedLanguages?.length || 0} supported
+                  {(ocrHealth as any)?.supportedLanguages?.length || 0} supported
                 </p>
               </div>
             </div>
@@ -233,7 +233,7 @@ export default function OCRProcessor() {
               <div>
                 <p className="text-sm font-medium">Ready</p>
                 <p className="text-xs text-muted-foreground">
-                  {ocrHealth?.status === 'healthy' ? 'Yes' : 'No'}
+                  {(ocrHealth as any)?.status === 'healthy' ? 'Yes' : 'No'}
                 </p>
               </div>
             </div>
