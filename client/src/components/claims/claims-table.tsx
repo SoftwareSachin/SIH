@@ -213,10 +213,10 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
         </Table>
       </div>
       
-      {claims?.pagination && (
+      {(claims as any)?.pagination && (
         <div className="p-4 border-t border-border flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Showing {((currentPage - 1) * 10) + 1}-{Math.min(currentPage * 10, claims.pagination.total)} of {claims.pagination.total} claims
+            Showing {((currentPage - 1) * 10) + 1}-{Math.min(currentPage * 10, (claims as any).pagination.total)} of {(claims as any).pagination.total} claims
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -235,7 +235,7 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
             >
               1
             </Button>
-            {claims.pagination.pages > 1 && (
+            {(claims as any).pagination.pages > 1 && (
               <>
                 <Button
                   variant={currentPage === 2 ? "default" : "outline"}
@@ -244,7 +244,7 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
                 >
                   2
                 </Button>
-                {claims.pagination.pages > 2 && (
+                {(claims as any).pagination.pages > 2 && (
                   <Button
                     variant={currentPage === 3 ? "default" : "outline"}
                     size="sm"
@@ -258,7 +258,7 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
             <Button
               variant="outline"
               size="sm"
-              disabled={currentPage >= (claims.pagination.pages || 1)}
+              disabled={currentPage >= ((claims as any).pagination.pages || 1)}
               onClick={() => setCurrentPage(currentPage + 1)}
               data-testid="button-next-page"
             >
