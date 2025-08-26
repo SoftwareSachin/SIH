@@ -56,7 +56,7 @@ export default function Dashboard() {
         
         <div className="p-6 overflow-y-auto h-full">
           {/* Stats Overview */}
-          <StatsCards stats={stats} isLoading={statsLoading} />
+          <StatsCards stats={stats as any} isLoading={statsLoading} />
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">

@@ -17,13 +17,13 @@ interface ClaimsTableProps {
 
 export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: claims, isLoading, error } = useQuery({
-    queryKey: ["/api/claims", { page: currentPage, status: statusFilter, claimType: typeFilter }],
+    queryKey: ["/api/claims", { page: currentPage, status: statusFilter === 'all' ? undefined : statusFilter, claimType: typeFilter === 'all' ? undefined : typeFilter }],
     retry: false,
   });
 
@@ -105,7 +105,7 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
                   <SelectValue placeholder="Filter by Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="verified">Verified</SelectItem>
                   <SelectItem value="under_review">Under Review</SelectItem>
@@ -118,7 +118,7 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="IFR">IFR</SelectItem>
                   <SelectItem value="CFR">CFR</SelectItem>
                   <SelectItem value="CR">CR</SelectItem>
@@ -158,8 +158,8 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
                   <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                 </TableRow>
               ))
-            ) : claims?.data && claims.data.length > 0 ? (
-              claims.data.map((claim: any) => (
+            ) : (claims as any)?.data && (claims as any).data.length > 0 ? (
+              (claims as any).data.map((claim: any) => (
                 <TableRow key={claim.id} className="hover:bg-muted/50">
                   <TableCell className="font-mono text-sm">
                     {claim.claimId || claim.id}

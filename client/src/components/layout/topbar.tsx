@@ -73,28 +73,28 @@ export default function TopBar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center space-x-2 p-2" data-testid="button-user-menu">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.profileImageUrl} />
+                  <AvatarImage src={(user as any)?.profileImageUrl} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                    {getInitials(user?.firstName, user?.lastName)}
+                    {getInitials((user as any)?.firstName, (user as any)?.lastName)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-left hidden sm:block">
                   <div className="text-sm font-medium">
-                    {user?.firstName} {user?.lastName}
+                    {(user as any)?.firstName} {(user as any)?.lastName}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {getRoleLabel(user?.role)}
+                    {getRoleLabel((user as any)?.role)}
                   </div>
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <div className="px-2 py-1.5">
-                <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
+                <p className="text-sm font-medium">{(user as any)?.firstName} {(user as any)?.lastName}</p>
+                <p className="text-xs text-muted-foreground">{(user as any)?.email}</p>
                 <div className="mt-1">
                   <Badge variant="secondary" className="text-xs">
-                    {getRoleLabel(user?.role)}
+                    {getRoleLabel((user as any)?.role)}
                   </Badge>
                 </div>
               </div>

@@ -48,7 +48,7 @@ export default function AIProcessing() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {isLoading ? '...' : processingStatus?.ocrQueue || 0}
+                      {isLoading ? '...' : (processingStatus as any)?.ocrQueue || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Documents pending OCR
@@ -63,7 +63,7 @@ export default function AIProcessing() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {isLoading ? '...' : processingStatus?.nerQueue || 0}
+                      {isLoading ? '...' : (processingStatus as any)?.nerQueue || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Documents pending entity extraction
@@ -78,7 +78,7 @@ export default function AIProcessing() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {isLoading ? '...' : processingStatus?.assetDetectionQueue || 0}
+                      {isLoading ? '...' : (processingStatus as any)?.assetDetectionQueue || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Villages pending analysis

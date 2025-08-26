@@ -208,7 +208,7 @@ export default function DocumentUpload() {
                 <SelectValue placeholder="Select a claim to upload documents for" />
               </SelectTrigger>
               <SelectContent>
-                {claims?.data?.map((claim: any) => (
+                {(claims as any)?.data?.map((claim: any) => (
                   <SelectItem key={claim.id} value={claim.id}>
                     {claim.claimId} - {claim.claimantName}
                   </SelectItem>

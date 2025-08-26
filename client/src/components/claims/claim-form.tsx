@@ -171,7 +171,7 @@ export default function ClaimForm({ onSuccess, onCancel }: ClaimFormProps) {
                 <SelectValue placeholder="Select State" />
               </SelectTrigger>
               <SelectContent>
-                {states?.map((state: any) => (
+                {(states as any)?.map((state: any) => (
                   <SelectItem key={state.id} value={state.id}>
                     {state.name}
                   </SelectItem>
@@ -191,7 +191,7 @@ export default function ClaimForm({ onSuccess, onCancel }: ClaimFormProps) {
                 <SelectValue placeholder="Select District" />
               </SelectTrigger>
               <SelectContent>
-                {districts?.map((district: any) => (
+                {(districts as any)?.map((district: any) => (
                   <SelectItem key={district.id} value={district.id}>
                     {district.name}
                   </SelectItem>

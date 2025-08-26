@@ -15,8 +15,8 @@ export default function AIProcessingPanel() {
       name: "OCR Processing",
       description: "Document digitization",
       icon: Scan,
-      processed: processingStatus?.totalProcessed || 142,
-      total: processingStatus?.totalProcessed + processingStatus?.ocrQueue || 167,
+      processed: (processingStatus as any)?.totalProcessed || 142,
+      total: (processingStatus as any)?.totalProcessed + (processingStatus as any)?.ocrQueue || 167,
       bgColor: "bg-primary/10",
       iconColor: "text-primary",
       progressColor: "bg-primary"

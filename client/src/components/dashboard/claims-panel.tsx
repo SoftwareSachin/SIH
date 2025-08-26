@@ -63,8 +63,8 @@ export default function ClaimsPanel() {
               </div>
             </div>
           ))
-        ) : claims?.data && claims.data.length > 0 ? (
-          claims.data.slice(0, 3).map((claim: any) => (
+        ) : (claims as any)?.data && (claims as any).data.length > 0 ? (
+          (claims as any).data.slice(0, 3).map((claim: any) => (
             <div key={claim.id} className="border border-border rounded-lg p-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
