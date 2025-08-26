@@ -3,39 +3,48 @@ import { storage } from "./storage";
 
 // Simple authentication middleware - no sessions required
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // For development, allow access without authentication
-    if (process.env.NODE_ENV === 'development') {
-      // Set a default user for development
-      (req as any).user = {
-        id: 'dev-user-1',
-        email: 'dev@fra-atlas.com',
-        firstName: 'Developer',
-        lastName: 'User',
-        role: 'admin'
-      };
-      return next();
+  // For development, always allow access with a default user
+  if (process.env.NODE_ENV === 'development') {
+    const authHeader = req.headers.authorization;
+    let user = {
+      id: 'dev-user-admin',
+      email: 'admin@fra-atlas.com',
+      firstName: 'Developer',
+      lastName: 'User',
+      role: 'admin'
+    };
+
+    // If they have a token, try to parse user info from it
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        // For development, token format: "email|firstName|lastName"
+        const parts = token.split('|');
+        if (parts.length >= 3) {
+          user = {
+            id: `dev-${Date.now()}`,
+            email: parts[0],
+            firstName: parts[1],
+            lastName: parts[2],
+            role: 'admin'
+          };
+        }
+      } catch (error) {
+        // Use default user if token parsing fails
+      }
     }
+
+    (req as any).user = user;
+    return next();
+  }
+
+  // Production authentication (implement proper JWT validation here)
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: "Authentication required" });
   }
 
-  const token = authHeader.substring(7); // Remove 'Bearer '
-  
-  try {
-    // Simple token validation - in production, use JWT or proper tokens
-    // For development, treat token as email and find user by ID for now
-    let user = await storage.getUser(token);
-    if (user) {
-      (req as any).user = user;
-      return next();
-    }
-  } catch (error) {
-    console.error('Auth error:', error);
-  }
-  
-  return res.status(401).json({ message: "Invalid token" });
+  return res.status(401).json({ message: "Authentication not implemented for production" });
 };
 
 export async function setupSimpleAuth(app: Express) {
@@ -50,14 +59,19 @@ export async function setupSimpleAuth(app: Express) {
 
       // For development, accept any email/password
       if (process.env.NODE_ENV === 'development') {
-        // For development, create a simple user
+        // Extract first name from email (before @)
+        const firstName = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
+        
         const user: any = { 
           id: `dev-${Date.now()}`, 
           email, 
-          firstName: 'Developer', 
+          firstName: firstName || 'Developer', 
           lastName: 'User', 
           role: 'admin' 
         };
+        
+        // Create a simple token with user info
+        const token = `${email}|${user.firstName}|${user.lastName}`;
         
         return res.json({
           success: true,
@@ -68,7 +82,7 @@ export async function setupSimpleAuth(app: Express) {
             lastName: user.lastName,
             role: user.role
           },
-          token: user.id // Use user ID as simple token for development
+          token: token
         });
       }
 
