@@ -6,4 +6,10 @@ requires-python = ">=3.11"
 dependencies = [
     "earthengine-api>=1.6.4",
     "google-cloud-storage>=3.3.0",
+    "numpy>=2.3.2",
+    "opencv-python>=4.11.0.86",
+    "pandas>=2.3.2",
+    "pillow>=11.3.0",
+    "scikit-learn>=1.7.1",
+    "tensorflow>=2.20.0",
 ]
