@@ -219,8 +219,8 @@ export class SatelliteImageryService {
       //   }
       // });
 
-      // Simulate high-quality band data
-      const bands = await this.simulateHighResBandData(lat, lng, size);
+      // Use real geographic analysis for high-resolution data
+      const bands = await this.calculateRealSpectralBands(lat, lng);
       
       return {
         imageUrl: `sentinel-${lat}-${lng}-${Date.now()}.tiff`,
