@@ -34,6 +34,10 @@ class RealSatelliteService:
     
     def _authenticate_usgs(self) -> bool:
         """Authenticate with USGS Machine-to-Machine API"""
+        if not self.usgs_username or not self.usgs_password:
+            print("⚠ USGS credentials not found - using ESA/NASA fallback", file=sys.stderr)
+            return False
+            
         try:
             login_url = f"{self.landsat_api_base}/login"
             login_data = {
@@ -41,17 +45,21 @@ class RealSatelliteService:
                 "password": self.usgs_password
             }
             
-            response = self.session.post(login_url, json=login_data)
+            response = self.session.post(login_url, json=login_data, timeout=10)
             if response.status_code == 200:
                 result = response.json()
                 if result.get('errorCode') is None:
                     self.usgs_token = result.get('data')
+                    print("✓ USGS M2M authentication successful", file=sys.stderr)
                     return True
                 else:
+                    print(f"⚠ USGS authentication failed: {result.get('errorMessage')}", file=sys.stderr)
                     return False
             else:
+                print(f"⚠ USGS API responded with status {response.status_code}", file=sys.stderr)
                 return False
         except Exception as e:
+            print(f"⚠ USGS authentication error: {e}", file=sys.stderr)
             return False
     
     def get_landsat_data(self, lat: float, lng: float, date: str | None = None) -> Dict:
@@ -60,7 +68,8 @@ class RealSatelliteService:
         Returns actual satellite spectral band data
         """
         if not self.usgs_token:
-            raise Exception("USGS authentication required for real Landsat data")
+            print("⚠ USGS not authenticated - trying ESA Sentinel data instead", file=sys.stderr)
+            raise Exception("USGS authentication not available - using ESA Copernicus Sentinel data instead")
         
         try:
             # Use current date if none provided
