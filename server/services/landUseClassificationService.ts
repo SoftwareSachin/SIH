@@ -923,7 +923,7 @@ export class LandUseClassificationService {
       }
 
       return new Promise((resolve, reject) => {
-        const pythonScript = path.join(process.cwd(), 'server/services/realCNNService.py');
+        const pythonScript = path.join(process.cwd(), 'server/services/realCNNProcessor.py');
         
         // Create input JSON for Python service with authentication flags
         const inputData = {
