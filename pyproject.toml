@@ -1,0 +1,9 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "earthengine-api>=1.6.4",
+    "google-cloud-storage>=3.3.0",
+]
