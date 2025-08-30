@@ -678,6 +678,10 @@ ${text.substring(0, 4000)}`;
       // General Indian name patterns
       /\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,2}\b/g,
       
+      // Hindi context-based name extraction
+      /(?:आवेदक\s*का\s*नाम|नाम)[\s:]+([^\n]+)/gi,
+      /(?:पिता\s*का\s*नाम)[\s:]+([^\n]+)/gi,
+      /(?:माता\s*का\s*नाम)[\s:]+([^\n]+)/gi,
       // Devanagari script names
       /\b[\u0900-\u097F]+(?:\s+[\u0900-\u097F]+){1,2}\b/g,
       
