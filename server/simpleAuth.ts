@@ -115,6 +115,11 @@ export async function setupSimpleAuth(app: Express) {
     res.json({ user: (req as any).user });
   });
 
+  // Add user validation route for frontend auth check
+  app.get('/api/auth/user', isAuthenticated, (req, res) => {
+    res.json((req as any).user);
+  });
+
   // Logout endpoint (simple)
   app.post('/api/logout', (req, res) => {
     res.json({ success: true, message: "Logged out" });
