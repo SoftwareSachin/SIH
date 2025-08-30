@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Layers, Download, ZoomIn, ZoomOut, Map, Satellite, Eye, EyeOff, ChevronUp, ChevronDown, Search, MapPin, Home, Building, Trees } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Layers, Download, ZoomIn, ZoomOut, Map, Satellite, Eye, EyeOff, ChevronUp, ChevronDown, Search, MapPin, Home, Building, Trees, Route, Zap, Radio, Ruler, Edit3, Save, FileDown, Camera, Globe, Mountain } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 
 // Fix for default markers in Leaflet
@@ -25,24 +27,109 @@ interface LayerConfig {
   color: string;
   count: number;
   zIndex: number;
+  category?: string;
+  icon?: string;
+}
+
+interface BasemapConfig {
+  id: string;
+  name: string;
+  url: string;
+  attribution: string;
+  maxZoom: number;
+  icon: string;
 }
 
 export default function RealWebGISMap() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const layersRef = useRef<Record<string, L.LayerGroup>>({});
-  const [mapView, setMapView] = useState<'satellite' | 'street'>('satellite');
-  const [layers, setLayers] = useState<LayerConfig[]>([
-    { id: 'claims', name: 'FRA Claims', visible: true, opacity: 80, color: 'bg-blue-500', count: 0, zIndex: 400 },
-    { id: 'villages', name: 'Village Boundaries', visible: true, opacity: 60, color: 'bg-green-500', count: 0, zIndex: 300 },
-    { id: 'forest', name: 'Forest Cover', visible: false, opacity: 70, color: 'bg-emerald-600', count: 0, zIndex: 200 },
-    { id: 'water', name: 'Water Bodies', visible: false, opacity: 70, color: 'bg-blue-400', count: 0, zIndex: 250 },
-    { id: 'assets', name: 'Detected Assets', visible: true, opacity: 90, color: 'bg-purple-500', count: 0, zIndex: 500 },
+  const drawingLayerRef = useRef<L.LayerGroup | null>(null);
+  const measurementLayerRef = useRef<L.LayerGroup | null>(null);
+  
+  // Basemap configurations with multiple providers
+  const [basemaps] = useState<BasemapConfig[]>([
+    {
+      id: 'satellite_esri',
+      name: 'Satellite (Esri)',
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      maxZoom: 18,
+      icon: 'satellite'
+    },
+    {
+      id: 'satellite_google',
+      name: 'Satellite (Google)',
+      url: 'http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
+      attribution: '&copy; Google',
+      maxZoom: 20,
+      icon: 'globe'
+    },
+    {
+      id: 'hybrid_google',
+      name: 'Hybrid (Google)',
+      url: 'http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}',
+      attribution: '&copy; Google',
+      maxZoom: 20,
+      icon: 'layers'
+    },
+    {
+      id: 'terrain_google',
+      name: 'Terrain (Google)',
+      url: 'http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}',
+      attribution: '&copy; Google',
+      maxZoom: 20,
+      icon: 'mountain'
+    },
+    {
+      id: 'openstreetmap',
+      name: 'Street Map (OSM)',
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+      icon: 'map'
+    },
+    {
+      id: 'cartodb_positron',
+      name: 'Light Theme',
+      url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      maxZoom: 20,
+      icon: 'sun'
+    }
   ]);
+  
+  const [currentBasemap, setCurrentBasemap] = useState('satellite_esri');
+  
+  // Enhanced layer system with categories
+  const [layers, setLayers] = useState<LayerConfig[]>([
+    // Core FRA Data
+    { id: 'claims', name: 'FRA Claims', visible: true, opacity: 80, color: 'bg-blue-500', count: 0, zIndex: 400, category: 'FRA Data', icon: 'map-pin' },
+    { id: 'villages', name: 'Village Boundaries', visible: true, opacity: 60, color: 'bg-green-500', count: 0, zIndex: 300, category: 'FRA Data', icon: 'home' },
+    { id: 'assets', name: 'Detected Assets', visible: true, opacity: 90, color: 'bg-purple-500', count: 0, zIndex: 500, category: 'FRA Data', icon: 'building' },
+    
+    // Land Use Layers
+    { id: 'forest', name: 'Forest Cover', visible: false, opacity: 70, color: 'bg-emerald-600', count: 0, zIndex: 200, category: 'Land Use', icon: 'trees' },
+    { id: 'water', name: 'Water Bodies', visible: false, opacity: 70, color: 'bg-blue-400', count: 0, zIndex: 250, category: 'Land Use', icon: 'waves' },
+    { id: 'agriculture', name: 'Agricultural Land', visible: false, opacity: 60, color: 'bg-yellow-500', count: 0, zIndex: 180, category: 'Land Use', icon: 'wheat' },
+    { id: 'urban', name: 'Urban Areas', visible: false, opacity: 65, color: 'bg-gray-500', count: 0, zIndex: 160, category: 'Land Use', icon: 'building-2' },
+    
+    // Infrastructure
+    { id: 'roads', name: 'Roads & Highways', visible: false, opacity: 80, color: 'bg-slate-600', count: 0, zIndex: 350, category: 'Infrastructure', icon: 'route' },
+    { id: 'railways', name: 'Railway Lines', visible: false, opacity: 75, color: 'bg-orange-600', count: 0, zIndex: 340, category: 'Infrastructure', icon: 'train' },
+    { id: 'powerlines', name: 'Power Lines', visible: false, opacity: 70, color: 'bg-yellow-600', count: 0, zIndex: 330, category: 'Infrastructure', icon: 'zap' },
+    { id: 'towers', name: 'Communication Towers', visible: false, opacity: 85, color: 'bg-red-500', count: 0, zIndex: 320, category: 'Infrastructure', icon: 'radio' }
+  ]);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [spatialQueryMode, setSpatialQueryMode] = useState(false);
   const [spatialQueryResults, setSpatialQueryResults] = useState<any[]>([]);
+  const [drawingMode, setDrawingMode] = useState<'none' | 'polygon' | 'line' | 'point' | 'rectangle' | 'circle'>('none');
+  const [measurementMode, setMeasurementMode] = useState<'none' | 'distance' | 'area'>('none');
+  const [coordinateSearch, setCoordinateSearch] = useState('');
+  const [activeAnalysis, setActiveAnalysis] = useState<'none' | 'buffer' | 'proximity'>('none');
+  const [bufferDistance, setBufferDistance] = useState(1000); // meters
 
   // Fetch real data for map layers
   const { data: claims } = useQuery({ queryKey: ['/api/claims'] });
@@ -53,45 +140,34 @@ export default function RealWebGISMap() {
     if (!mapRef.current || mapInstance.current) return;
 
     // Initialize map with India center coordinates
-    const map = L.map(mapRef.current).setView([23.5937, 78.9629], 5);
+    const map = L.map(mapRef.current, {
+      zoomControl: false // We'll add custom controls
+    }).setView([23.5937, 78.9629], 5);
     mapInstance.current = map;
 
-    // Add base layers (real satellite imagery)
-    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      maxZoom: 18,
-    });
-
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
-    });
-
-    // Add default layer
-    satelliteLayer.addTo(map);
+    // Add the default basemap
+    const defaultBasemap = basemaps.find(b => b.id === currentBasemap);
+    if (defaultBasemap) {
+      L.tileLayer(defaultBasemap.url, {
+        attribution: defaultBasemap.attribution,
+        maxZoom: defaultBasemap.maxZoom,
+      }).addTo(map);
+    }
 
     // Initialize layer groups
     layers.forEach(layer => {
       layersRef.current[layer.id] = L.layerGroup().addTo(map);
     });
+    
+    // Initialize drawing and measurement layers
+    drawingLayerRef.current = L.layerGroup().addTo(map);
+    measurementLayerRef.current = L.layerGroup().addTo(map);
 
-    // Add custom controls
-    const customControls = L.control({ position: 'topright' });
-    customControls.onAdd = () => {
-      const div = L.DomUtil.create('div', 'leaflet-control-custom');
-      div.innerHTML = '<div id="custom-controls"></div>';
-      return div;
-    };
-    customControls.addTo(map);
+    // Add scale control
+    L.control.scale({ position: 'bottomleft' }).addTo(map);
 
-    // Handle base layer switching
-    const baseLayers = {
-      'Satellite': satelliteLayer,
-      'Street': streetLayer
-    };
-
-    // Add layer control
-    L.control.layers(baseLayers, {}, { position: 'topleft' }).addTo(map);
+    // Add custom zoom controls
+    L.control.zoom({ position: 'topleft' }).addTo(map);
 
     // Add map click event for spatial queries
     map.on('click', (e) => {
@@ -131,37 +207,36 @@ export default function RealWebGISMap() {
     };
   }, []);
 
-  // Update map view when switching base layers
+  // Update basemap when selection changes
   useEffect(() => {
     if (!mapInstance.current) return;
 
+    // Remove all tile layers
     mapInstance.current.eachLayer((layer) => {
       if (layer instanceof L.TileLayer) {
         mapInstance.current?.removeLayer(layer);
       }
     });
 
-    if (mapView === 'satellite') {
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-        maxZoom: 18,
-      }).addTo(mapInstance.current);
-    } else {
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
+    // Add new basemap
+    const selectedBasemap = basemaps.find(b => b.id === currentBasemap);
+    if (selectedBasemap) {
+      L.tileLayer(selectedBasemap.url, {
+        attribution: selectedBasemap.attribution,
+        maxZoom: selectedBasemap.maxZoom,
       }).addTo(mapInstance.current);
     }
-  }, [mapView]);
+  }, [currentBasemap, basemaps]);
 
   // Load real claims data
   useEffect(() => {
-    if (!mapInstance.current || !claims?.data || !layersRef.current.claims) return;
-
+    if (!mapInstance.current || !claims || !layersRef.current.claims) return;
+    
+    const claimsData = Array.isArray(claims) ? claims : (claims && typeof claims === 'object' && 'data' in claims) ? (claims as any).data || [] : [];
     const claimsLayer = layersRef.current.claims;
     claimsLayer.clearLayers();
 
-    claims.data.forEach((claim: any) => {
+    claimsData.forEach((claim: any) => {
       if (claim.latitude && claim.longitude) {
         const marker = L.marker([parseFloat(claim.latitude), parseFloat(claim.longitude)])
           .bindPopup(`
@@ -178,18 +253,19 @@ export default function RealWebGISMap() {
     });
 
     setLayers(prev => prev.map(layer => 
-      layer.id === 'claims' ? { ...layer, count: claims.data.length } : layer
+      layer.id === 'claims' ? { ...layer, count: claimsData.length } : layer
     ));
   }, [claims]);
 
   // Load real villages data
   useEffect(() => {
     if (!mapInstance.current || !villages || !layersRef.current.villages) return;
-
+    
+    const villagesData = Array.isArray(villages) ? villages : [];
     const villagesLayer = layersRef.current.villages;
     villagesLayer.clearLayers();
 
-    villages.forEach((village: any) => {
+    villagesData.forEach((village: any) => {
       if (village.latitude && village.longitude) {
         const currentLayer = layers.find(l => l.id === 'villages');
         const opacity = currentLayer ? currentLayer.opacity / 100 : 0.3;
@@ -211,7 +287,7 @@ export default function RealWebGISMap() {
     });
 
     setLayers(prev => prev.map(layer => 
-      layer.id === 'villages' ? { ...layer, count: villages.length } : layer
+      layer.id === 'villages' ? { ...layer, count: villagesData.length } : layer
     ));
   }, [villages, layers]);
 
@@ -220,10 +296,11 @@ export default function RealWebGISMap() {
     const handleVillagesUpdate = () => {
       if (!mapInstance.current || !villages || !layersRef.current.villages) return;
       
+      const villagesData = Array.isArray(villages) ? villages : [];
       const villagesLayer = layersRef.current.villages;
       villagesLayer.clearLayers();
       
-      villages.forEach((village: any) => {
+      villagesData.forEach((village: any) => {
         if (village.latitude && village.longitude) {
           const currentLayer = layers.find(l => l.id === 'villages');
           const opacity = currentLayer ? currentLayer.opacity / 100 : 0.3;
@@ -252,11 +329,12 @@ export default function RealWebGISMap() {
   // Load real assets data
   useEffect(() => {
     if (!mapInstance.current || !assets || !layersRef.current.assets) return;
-
+    
+    const assetsData = Array.isArray(assets) ? assets : [];
     const assetsLayer = layersRef.current.assets;
     assetsLayer.clearLayers();
 
-    assets.forEach((asset: any) => {
+    assetsData.forEach((asset: any) => {
       if (asset.coordinates?.coordinates) {
         const [lng, lat] = asset.coordinates.coordinates;
         const color = asset.assetType === 'pond' ? 'blue' : 
@@ -283,7 +361,7 @@ export default function RealWebGISMap() {
     });
 
     setLayers(prev => prev.map(layer => 
-      layer.id === 'assets' ? { ...layer, count: assets.length } : layer
+      layer.id === 'assets' ? { ...layer, count: assetsData.length } : layer
     ));
   }, [assets, layers]);
 
@@ -292,10 +370,11 @@ export default function RealWebGISMap() {
     const handleAssetsUpdate = () => {
       if (!mapInstance.current || !assets || !layersRef.current.assets) return;
       
+      const assetsData = Array.isArray(assets) ? assets : [];
       const assetsLayer = layersRef.current.assets;
       assetsLayer.clearLayers();
       
-      assets.forEach((asset: any) => {
+      assetsData.forEach((asset: any) => {
         if (asset.coordinates?.coordinates) {
           const [lng, lat] = asset.coordinates.coordinates;
           const color = asset.assetType === 'pond' ? 'blue' : 
@@ -333,7 +412,7 @@ export default function RealWebGISMap() {
     }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, villages, claims?.data]);
+  }, [searchQuery, villages, claims]);
 
   const toggleLayer = (layerId: string) => {
     if (!mapInstance.current || !layersRef.current[layerId]) return;
@@ -401,18 +480,20 @@ export default function RealWebGISMap() {
 
     try {
       // Search for villages, claims, and assets
-      const results = [];
+      const results: any[] = [];
       
-      if (villages) {
-        const matchingVillages = villages.filter((v: any) => 
+      const villagesData = Array.isArray(villages) ? villages : [];
+      if (villagesData.length > 0) {
+        const matchingVillages = villagesData.filter((v: any) => 
           v.name?.toLowerCase().includes(query.toLowerCase()) ||
           v.districtName?.toLowerCase().includes(query.toLowerCase())
         );
         results.push(...matchingVillages.map((v: any) => ({ ...v, type: 'village' })));
       }
       
-      if (claims?.data) {
-        const matchingClaims = claims.data.filter((c: any) => 
+      const claimsData = Array.isArray(claims) ? claims : (claims && typeof claims === 'object' && 'data' in claims) ? (claims as any).data || [] : [];
+      if (claimsData.length > 0) {
+        const matchingClaims = claimsData.filter((c: any) => 
           c.claimantName?.toLowerCase().includes(query.toLowerCase()) ||
           c.claimId?.toLowerCase().includes(query.toLowerCase())
         );
@@ -466,8 +547,9 @@ export default function RealWebGISMap() {
 
   const zoomToVillage = () => {
     // Zoom to village level for detailed view
-    if (villages && villages.length > 0) {
-      const firstVillage = villages[0];
+    const villagesData = Array.isArray(villages) ? villages : [];
+    if (villagesData && villagesData.length > 0) {
+      const firstVillage = villagesData[0];
       if (firstVillage.latitude && firstVillage.longitude) {
         flyToLocation(parseFloat(firstVillage.latitude), parseFloat(firstVillage.longitude), 13);
       }
@@ -481,10 +563,11 @@ export default function RealWebGISMap() {
 
   // Enhanced spatial query with buffer zones
   const performSpatialQuery = (lat: number, lng: number, radiusKm: number = 5) => {
-    const results = [];
+    const results: any[] = [];
     
-    if (villages) {
-      villages.forEach((village: any) => {
+    const villagesData = Array.isArray(villages) ? villages : [];
+    if (villagesData.length > 0) {
+      villagesData.forEach((village: any) => {
         if (village.latitude && village.longitude) {
           const distance = calculateDistance(
             lat, lng, 
@@ -498,8 +581,9 @@ export default function RealWebGISMap() {
       });
     }
     
-    if (claims?.data) {
-      claims.data.forEach((claim: any) => {
+    const claimsData = Array.isArray(claims) ? claims : (claims && typeof claims === 'object' && 'data' in claims) ? (claims as any).data || [] : [];
+    if (claimsData.length > 0) {
+      claimsData.forEach((claim: any) => {
         if (claim.latitude && claim.longitude) {
           const distance = calculateDistance(
             lat, lng, 
@@ -513,8 +597,9 @@ export default function RealWebGISMap() {
       });
     }
     
-    if (assets) {
-      assets.forEach((asset: any) => {
+    const assetsData = Array.isArray(assets) ? assets : [];
+    if (assetsData.length > 0) {
+      assetsData.forEach((asset: any) => {
         if (asset.coordinates?.coordinates) {
           const [assetLng, assetLat] = asset.coordinates.coordinates;
           const distance = calculateDistance(lat, lng, assetLat, assetLng);
@@ -541,32 +626,341 @@ export default function RealWebGISMap() {
     return R * c;
   };
 
+  // Calculate polygon area using shoelace formula
+  const calculatePolygonArea = (points: L.LatLng[]) => {
+    if (points.length < 3) return 0;
+    
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+      const j = (i + 1) % points.length;
+      const xi = points[i].lng * Math.PI / 180;
+      const yi = points[i].lat * Math.PI / 180;
+      const xj = points[j].lng * Math.PI / 180;
+      const yj = points[j].lat * Math.PI / 180;
+      
+      area += xi * yj - xj * yi;
+    }
+    
+    const R = 6371000; // Earth's radius in meters
+    return Math.abs(area) * R * R / 2;
+  };
+
+  // Drawing tools functionality
+  const startDrawing = (mode: 'polygon' | 'line' | 'point' | 'rectangle' | 'circle') => {
+    if (!mapInstance.current || !drawingLayerRef.current) return;
+    
+    setDrawingMode(mode);
+    const map = mapInstance.current;
+    
+    if (mode === 'point') {
+      map.on('click', handlePointDraw);
+    } else if (mode === 'polygon') {
+      // Start polygon drawing
+      const points: L.LatLng[] = [];
+      const tempMarkers: L.Marker[] = [];
+      
+      const onMapClick = (e: L.LeafletMouseEvent) => {
+        points.push(e.latlng);
+        const marker = L.marker(e.latlng).addTo(drawingLayerRef.current!);
+        tempMarkers.push(marker);
+        
+        if (points.length >= 3) {
+          // Create polygon when we have at least 3 points
+          const polygon = L.polygon(points, {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.3
+          }).addTo(drawingLayerRef.current!);
+          
+          polygon.bindPopup(`
+            <div>
+              <h4>Drawn Polygon</h4>
+              <p><strong>Area:</strong> ${(calculatePolygonArea(polygon.getLatLngs()[0] as L.LatLng[]) / 10000).toFixed(2)} hectares</p>
+              <p><strong>Perimeter:</strong> ${(calculatePolygonPerimeter(points) * 1000).toFixed(0)} meters</p>
+            </div>
+          `);
+          
+          // Clean up temp markers
+          tempMarkers.forEach(m => drawingLayerRef.current?.removeLayer(m));
+          
+          // Stop drawing
+          map.off('click', onMapClick);
+          map.off('dblclick', finishPolygon);
+          setDrawingMode('none');
+        }
+      };
+      
+      const finishPolygon = () => {
+        if (points.length >= 3) {
+          onMapClick({ latlng: points[0] } as L.LeafletMouseEvent);
+        }
+      };
+      
+      map.on('click', onMapClick);
+      map.on('dblclick', finishPolygon);
+    }
+  };
+
+  const handlePointDraw = (e: L.LeafletMouseEvent) => {
+    if (!drawingLayerRef.current) return;
+    
+    const marker = L.marker(e.latlng, {
+      icon: L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+      })
+    }).addTo(drawingLayerRef.current);
+    
+    marker.bindPopup(`
+      <div>
+        <h4>Marked Location</h4>
+        <p><strong>Coordinates:</strong> ${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}</p>
+        <p><strong>Added:</strong> ${new Date().toLocaleString()}</p>
+      </div>
+    `);
+    
+    mapInstance.current?.off('click', handlePointDraw);
+    setDrawingMode('none');
+  };
+
+  const calculatePolygonPerimeter = (points: L.LatLng[]) => {
+    let perimeter = 0;
+    for (let i = 0; i < points.length; i++) {
+      const current = points[i];
+      const next = points[(i + 1) % points.length];
+      perimeter += calculateDistance(current.lat, current.lng, next.lat, next.lng);
+    }
+    return perimeter;
+  };
+
+  // Measurement tools
+  const startMeasurement = (mode: 'distance' | 'area') => {
+    if (!mapInstance.current || !measurementLayerRef.current) return;
+    
+    setMeasurementMode(mode);
+    const map = mapInstance.current;
+    
+    if (mode === 'distance') {
+      const points: L.LatLng[] = [];
+      let polyline: L.Polyline | null = null;
+      
+      const onMapClick = (e: L.LeafletMouseEvent) => {
+        points.push(e.latlng);
+        
+        if (points.length === 1) {
+          // First point - create polyline
+          polyline = L.polyline(points, { color: 'blue', weight: 3 }).addTo(measurementLayerRef.current!);
+        } else {
+          // Update polyline
+          polyline?.setLatLngs(points);
+          
+          // Calculate total distance
+          let totalDistance = 0;
+          for (let i = 1; i < points.length; i++) {
+            totalDistance += calculateDistance(
+              points[i-1].lat, points[i-1].lng,
+              points[i].lat, points[i].lng
+            );
+          }
+          
+          const popup = L.popup()
+            .setLatLng(e.latlng)
+            .setContent(`
+              <div>
+                <h4>Distance Measurement</h4>
+                <p><strong>Total Distance:</strong> ${(totalDistance * 1000).toFixed(2)} meters</p>
+                <p><strong>Distance:</strong> ${totalDistance.toFixed(3)} km</p>
+              </div>
+            `)
+            .openOn(map);
+        }
+      };
+      
+      const finishMeasurement = () => {
+        map.off('click', onMapClick);
+        map.off('dblclick', finishMeasurement);
+        setMeasurementMode('none');
+      };
+      
+      map.on('click', onMapClick);
+      map.on('dblclick', finishMeasurement);
+    }
+  };
+
+  // Coordinate search functionality
+  const searchByCoordinates = () => {
+    if (!coordinateSearch.trim() || !mapInstance.current) return;
+    
+    try {
+      // Parse coordinates (lat,lng or lng,lat)
+      const coords = coordinateSearch.split(',').map(c => parseFloat(c.trim()));
+      if (coords.length !== 2 || coords.some(isNaN)) {
+        alert('Please enter valid coordinates in format: latitude,longitude');
+        return;
+      }
+      
+      const [lat, lng] = coords;
+      
+      // Validate coordinate ranges
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        alert('Coordinates out of valid range');
+        return;
+      }
+      
+      // Fly to location and add marker
+      flyToLocation(lat, lng, 15);
+      
+      const marker = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+        })
+      }).addTo(drawingLayerRef.current!);
+      
+      marker.bindPopup(`
+        <div>
+          <h4>Search Result</h4>
+          <p><strong>Coordinates:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
+          <p><strong>Searched:</strong> ${new Date().toLocaleString()}</p>
+        </div>
+      `).openPopup();
+      
+    } catch (error) {
+      alert('Invalid coordinate format. Use: latitude,longitude');
+    }
+  };
+
+  // Buffer analysis
+  const performBufferAnalysis = (lat: number, lng: number) => {
+    if (!mapInstance.current) return;
+    
+    // Create buffer circle
+    const bufferCircle = L.circle([lat, lng], {
+      radius: bufferDistance,
+      color: 'orange',
+      fillColor: '#ffa500',
+      fillOpacity: 0.2,
+      weight: 2
+    }).addTo(drawingLayerRef.current!);
+    
+    // Find features within buffer
+    const featuresInBuffer = performSpatialQuery(lat, lng, bufferDistance / 1000);
+    
+    bufferCircle.bindPopup(`
+      <div>
+        <h4>Buffer Analysis</h4>
+        <p><strong>Radius:</strong> ${bufferDistance} meters</p>
+        <p><strong>Features Found:</strong> ${featuresInBuffer.length}</p>
+        <p><strong>Area:</strong> ${(Math.PI * Math.pow(bufferDistance / 1000, 2)).toFixed(2)} km²</p>
+      </div>
+    `).openPopup();
+  };
+
+  // Clear drawing layers
+  const clearDrawings = () => {
+    drawingLayerRef.current?.clearLayers();
+    measurementLayerRef.current?.clearLayers();
+  };
+
   const zoomIn = () => mapInstance.current?.zoomIn();
   const zoomOut = () => mapInstance.current?.zoomOut();
 
-  const exportMap = () => {
+  // Enhanced export functionality
+  const exportMapData = (format: 'json' | 'geojson' | 'kml' | 'image') => {
     if (!mapInstance.current) return;
     
-    // Generate export data
-    const mapState = {
-      center: mapInstance.current.getCenter(),
-      zoom: mapInstance.current.getZoom(),
-      layers: layers.filter(l => l.visible),
-      baseLayer: mapView,
-      exportedAt: new Date().toISOString()
-    };
+    const map = mapInstance.current;
     
-    // Create downloadable JSON
-    const dataStr = JSON.stringify(mapState, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `fra-atlas-map-${new Date().toISOString().split('T')[0]}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
+    if (format === 'json') {
+      // Export map state and layer data
+      const mapState = {
+        center: map.getCenter(),
+        zoom: map.getZoom(),
+        basemap: currentBasemap,
+        layers: layers.filter(l => l.visible).map(l => ({
+          id: l.id,
+          name: l.name,
+          opacity: l.opacity,
+          visible: l.visible
+        })),
+        exportedAt: new Date().toISOString(),
+        bounds: map.getBounds()
+      };
+      
+      downloadFile(
+        JSON.stringify(mapState, null, 2),
+        `fra-atlas-map-${new Date().toISOString().split('T')[0]}.json`,
+        'application/json'
+      );
+      
+    } else if (format === 'geojson') {
+      // Export as GeoJSON
+      const features: any[] = [];
+      
+      // Add claims as features
+      const claimsData = Array.isArray(claims) ? claims : (claims && typeof claims === 'object' && 'data' in claims) ? (claims as any).data || [] : [];
+      claimsData.forEach((claim: any) => {
+        if (claim.latitude && claim.longitude) {
+          features.push({
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [parseFloat(claim.longitude), parseFloat(claim.latitude)]
+            },
+            properties: {
+              claimId: claim.claimId,
+              claimantName: claim.claimantName,
+              claimType: claim.claimType,
+              status: claim.status,
+              area: claim.area
+            }
+          });
+        }
+      });
+      
+      const geojson = {
+        type: 'FeatureCollection',
+        features
+      };
+      
+      downloadFile(
+        JSON.stringify(geojson, null, 2),
+        `fra-claims-${new Date().toISOString().split('T')[0]}.geojson`,
+        'application/geo+json'
+      );
+      
+    } else if (format === 'image') {
+      // For image export, we'd need additional libraries like html2canvas
+      // For now, show information about the map
+      alert('Image export requires additional setup. Current map state saved to JSON.');
+      exportMapData('json');
+    }
   };
+
+  const downloadFile = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Group layers by category
+  const layersByCategory = layers.reduce((acc, layer) => {
+    const category = layer.category || 'Other';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(layer);
+    return acc;
+  }, {} as Record<string, LayerConfig[]>);
+
+  // Legacy export function for backward compatibility
+  const exportMap = () => exportMapData('json');
 
   return (
     <div className="h-full flex">
@@ -600,23 +994,23 @@ export default function RealWebGISMap() {
             </div>
           </div>
           
-          {/* Base Layer Controls */}
+          {/* Quick Basemap Toggle */}
           <div className="bg-card rounded-lg border border-border shadow-lg">
             <div className="flex flex-col">
               <Button
-                variant={mapView === 'satellite' ? 'default' : 'ghost'}
+                variant={currentBasemap.includes('satellite') ? 'default' : 'ghost'}
                 size="sm"
                 className="p-2 border-b border-border rounded-none rounded-t-lg"
-                onClick={() => setMapView('satellite')}
+                onClick={() => setCurrentBasemap('satellite_esri')}
                 data-testid="button-satellite-view"
               >
                 <Satellite className="h-4 w-4" />
               </Button>
               <Button
-                variant={mapView === 'street' ? 'default' : 'ghost'}
+                variant={currentBasemap === 'openstreetmap' ? 'default' : 'ghost'}
                 size="sm"
                 className="p-2 rounded-none rounded-b-lg"
-                onClick={() => setMapView('street')}
+                onClick={() => setCurrentBasemap('openstreetmap')}
                 data-testid="button-street-view"
               >
                 <Map className="h-4 w-4" />
@@ -683,15 +1077,41 @@ export default function RealWebGISMap() {
         </div>
       </div>
 
-      {/* Layers Panel */}
+      {/* Enhanced Control Panel */}
       <div className="w-80 bg-card border-l border-border p-4 overflow-y-auto">
         <div className="flex items-center gap-2 mb-4">
-          <Layers className="h-5 w-5" />
-          <h3 className="font-semibold">Map Layers</h3>
+          <Globe className="h-5 w-5" />
+          <h3 className="font-semibold">WebGIS Controls</h3>
+        </div>
+        
+        {/* Basemap Selector */}
+        <div className="mb-4">
+          <h4 className="text-sm font-medium mb-2">Basemap</h4>
+          <Select value={currentBasemap} onValueChange={setCurrentBasemap}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {basemaps.map(basemap => (
+                <SelectItem key={basemap.id} value={basemap.id}>
+                  <div className="flex items-center space-x-2">
+                    {basemap.icon === 'satellite' && <Satellite className="h-4 w-4" />}
+                    {basemap.icon === 'globe' && <Globe className="h-4 w-4" />}
+                    {basemap.icon === 'layers' && <Layers className="h-4 w-4" />}
+                    {basemap.icon === 'mountain' && <Mountain className="h-4 w-4" />}
+                    {basemap.icon === 'map' && <Map className="h-4 w-4" />}
+                    {basemap.icon === 'sun' && <Camera className="h-4 w-4" />}
+                    <span>{basemap.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
         {/* Search Panel */}
         <div className="mb-6 space-y-3">
+          <h4 className="text-sm font-medium">Search & Navigation</h4>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <input
@@ -733,6 +1153,21 @@ export default function RealWebGISMap() {
               ))}
             </div>
           )}
+          
+          {/* Coordinate Search */}
+          <div className="space-y-2">
+            <div className="flex space-x-1">
+              <Input
+                placeholder="Lat,Lng coordinates"
+                value={coordinateSearch}
+                onChange={(e) => setCoordinateSearch(e.target.value)}
+                className="flex-1 text-xs"
+              />
+              <Button onClick={searchByCoordinates} size="sm">
+                <MapPin className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
           
           {/* Spatial Query Toggle */}
           <div className="flex items-center justify-between">
@@ -789,6 +1224,127 @@ export default function RealWebGISMap() {
               </div>
             </div>
           )}
+        </div>
+        
+        {/* Drawing Tools */}
+        <div className="mb-6 space-y-3">
+          <h4 className="text-sm font-medium">Drawing Tools</h4>
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              variant={drawingMode === 'point' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => startDrawing('point')}
+              className="text-xs"
+            >
+              <MapPin className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={drawingMode === 'polygon' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => startDrawing('polygon')}
+              className="text-xs"
+            >
+              <Edit3 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearDrawings}
+              className="text-xs"
+            >
+              Clear
+            </Button>
+          </div>
+          {drawingMode !== 'none' && (
+            <div className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 p-2 rounded">
+              Drawing Mode: {drawingMode}
+            </div>
+          )}
+        </div>
+        
+        {/* Measurement Tools */}
+        <div className="mb-6 space-y-3">
+          <h4 className="text-sm font-medium">Measurement</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={measurementMode === 'distance' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => startMeasurement('distance')}
+              className="text-xs"
+            >
+              <Ruler className="h-4 w-4 mr-1" />
+              Distance
+            </Button>
+            <Button
+              variant={measurementMode === 'area' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => startMeasurement('area')}
+              className="text-xs"
+            >
+              <Edit3 className="h-4 w-4 mr-1" />
+              Area
+            </Button>
+          </div>
+          {measurementMode !== 'none' && (
+            <div className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+              Measuring: {measurementMode}
+            </div>
+          )}
+        </div>
+        
+        {/* Analysis Tools */}
+        <div className="mb-6 space-y-3">
+          <h4 className="text-sm font-medium">Spatial Analysis</h4>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs">Buffer Distance</span>
+              <span className="text-xs font-medium">{bufferDistance}m</span>
+            </div>
+            <Slider
+              value={[bufferDistance]}
+              onValueChange={([value]) => setBufferDistance(value)}
+              min={100}
+              max={10000}
+              step={100}
+              className="w-full"
+            />
+            <div className="text-xs text-muted-foreground">
+              Use spatial query mode for buffer analysis
+            </div>
+          </div>
+        </div>
+        
+        {/* Export Tools */}
+        <div className="mb-6 space-y-3">
+          <h4 className="text-sm font-medium">Export Data</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportMapData('json')}
+              className="text-xs"
+            >
+              <FileDown className="h-4 w-4 mr-1" />
+              JSON
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportMapData('geojson')}
+              className="text-xs"
+            >
+              <FileDown className="h-4 w-4 mr-1" />
+              GeoJSON
+            </Button>
+          </div>
+        </div>
+        
+        {/* Layer Controls */}
+        <div>
+          <h4 className="text-sm font-medium mb-3 flex items-center">
+            <Layers className="h-4 w-4 mr-2" />
+            Data Layers by Category
+          </h4>
         </div>
         
         <div className="space-y-4">
