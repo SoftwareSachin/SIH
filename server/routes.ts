@@ -9,6 +9,8 @@ import { documentProcessor } from "./services/documentProcessor";
 import { aiProcessor } from "./services/aiProcessor";
 import { dssEngine } from "./services/dssEngine";
 import { batchProcessor } from "./services/batchProcessor";
+import { landUseClassificationService } from "./services/landUseClassificationService";
+import { gisIntegrationService } from "./services/gisIntegrationService";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -706,6 +708,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error exporting claims:", error);
       res.status(500).json({ message: "Failed to export claims" });
+    }
+  });
+
+  // Land-Use Classification Routes
+  
+  // Single point land-use classification
+  app.post('/api/land-use/classify', isAuthenticated, async (req, res) => {
+    try {
+      const { lat, lng, highResolution, apiKey } = req.body;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "Latitude and longitude are required" });
+      }
+
+      const result = await landUseClassificationService.classifyLandUse({
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        highResolution: Boolean(highResolution),
+        apiKey
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error in land-use classification:", error);
+      res.status(500).json({ message: "Failed to classify land use" });
+    }
+  });
+
+  // Batch land-use classification for multiple points
+  app.post('/api/land-use/classify-batch', isAuthenticated, async (req, res) => {
+    try {
+      const { locations, highResolution, apiKey } = req.body;
+      
+      if (!locations || !Array.isArray(locations)) {
+        return res.status(400).json({ message: "Locations array is required" });
+      }
+
+      const results = await landUseClassificationService.batchClassifyLandUse(
+        locations,
+        { highResolution: Boolean(highResolution), apiKey }
+      );
+
+      res.json({ results, count: results.length });
+    } catch (error) {
+      console.error("Error in batch land-use classification:", error);
+      res.status(500).json({ message: "Failed to classify land use for batch" });
+    }
+  });
+
+  // Regional land-use statistics
+  app.post('/api/land-use/region-stats', isAuthenticated, async (req, res) => {
+    try {
+      const { bounds, gridSize } = req.body;
+      
+      if (!bounds || !bounds.north || !bounds.south || !bounds.east || !bounds.west) {
+        return res.status(400).json({ 
+          message: "Bounding box with north, south, east, west coordinates is required" 
+        });
+      }
+
+      const stats = await landUseClassificationService.getRegionStatistics(
+        bounds,
+        gridSize || 5
+      );
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting regional land-use statistics:", error);
+      res.status(500).json({ message: "Failed to get regional statistics" });
+    }
+  });
+
+  // Generate GeoJSON for land-use classification
+  app.post('/api/land-use/geojson', isAuthenticated, async (req, res) => {
+    try {
+      const { bounds, gridResolution, highResolution, apiKey, includeMetadata } = req.body;
+      
+      if (!bounds) {
+        return res.status(400).json({ message: "Bounding box is required" });
+      }
+
+      const geoJSONResult = await gisIntegrationService.generateLandUseGeoJSON(
+        bounds,
+        { 
+          gridResolution: gridResolution || 10,
+          highResolution: Boolean(highResolution),
+          apiKey,
+          includeMetadata: Boolean(includeMetadata)
+        }
+      );
+
+      res.json(geoJSONResult);
+    } catch (error) {
+      console.error("Error generating land-use GeoJSON:", error);
+      res.status(500).json({ message: "Failed to generate GeoJSON" });
+    }
+  });
+
+  // Generate heatmap data for specific land-use class
+  app.post('/api/land-use/heatmap', isAuthenticated, async (req, res) => {
+    try {
+      const { bounds, classType, resolution } = req.body;
+      
+      if (!bounds || !classType) {
+        return res.status(400).json({ 
+          message: "Bounding box and class type are required" 
+        });
+      }
+
+      const validClasses = ['agriculture', 'forest', 'water', 'builtUp'];
+      if (!validClasses.includes(classType)) {
+        return res.status(400).json({ 
+          message: `Invalid class type. Must be one of: ${validClasses.join(', ')}` 
+        });
+      }
+
+      const heatmapData = await gisIntegrationService.generateClassificationHeatmap(
+        bounds,
+        classType,
+        resolution || 20
+      );
+
+      res.json(heatmapData);
+    } catch (error) {
+      console.error("Error generating classification heatmap:", error);
+      res.status(500).json({ message: "Failed to generate heatmap" });
+    }
+  });
+
+  // Export land-use classification data
+  app.post('/api/land-use/export', isAuthenticated, async (req, res) => {
+    try {
+      const { bounds, format, gridResolution } = req.body;
+      
+      if (!bounds || !format) {
+        return res.status(400).json({ message: "Bounding box and format are required" });
+      }
+
+      const validFormats = ['geojson', 'csv', 'kml'];
+      if (!validFormats.includes(format)) {
+        return res.status(400).json({ 
+          message: `Invalid format. Must be one of: ${validFormats.join(', ')}` 
+        });
+      }
+
+      // Generate grid points and classify
+      const gridPoints = [];
+      const resolution = gridResolution || 10;
+      const { north, south, east, west } = bounds;
+      const latStep = (north - south) / resolution;
+      const lngStep = (east - west) / resolution;
+      
+      for (let i = 0; i <= resolution; i++) {
+        for (let j = 0; j <= resolution; j++) {
+          gridPoints.push({
+            lat: south + i * latStep,
+            lng: west + j * lngStep
+          });
+        }
+      }
+
+      const classifications = await landUseClassificationService.batchClassifyLandUse(gridPoints);
+      
+      const exportData = await gisIntegrationService.exportClassificationData(
+        classifications,
+        format
+      );
+
+      res.setHeader('Content-Disposition', `attachment; filename=${exportData.filename}`);
+      res.setHeader('Content-Type', exportData.mimeType);
+      res.send(exportData.data);
+    } catch (error) {
+      console.error("Error exporting land-use data:", error);
+      res.status(500).json({ message: "Failed to export land-use data" });
     }
   });
 

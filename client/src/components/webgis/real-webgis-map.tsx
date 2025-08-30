@@ -123,6 +123,9 @@ export default function RealWebGISMap() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isClassifying, setIsClassifying] = useState(false);
+  const [classificationMode, setClassificationMode] = useState<'single' | 'region' | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<{north: number, south: number, east: number, west: number} | null>(null);
   const [spatialQueryMode, setSpatialQueryMode] = useState(false);
   const [spatialQueryResults, setSpatialQueryResults] = useState<any[]>([]);
   const [drawingMode, setDrawingMode] = useState<'none' | 'polygon' | 'line' | 'point' | 'rectangle' | 'circle'>('none');
@@ -169,8 +172,8 @@ export default function RealWebGISMap() {
     // Add custom zoom controls
     L.control.zoom({ position: 'topleft' }).addTo(map);
 
-    // Add map click event for spatial queries
-    map.on('click', (e) => {
+    // Add map click event for spatial queries and land-use classification
+    map.on('click', async (e) => {
       if (spatialQueryMode) {
         const { lat, lng } = e.latlng;
         const results = performSpatialQuery(lat, lng, 5); // 5km radius
@@ -198,6 +201,9 @@ export default function RealWebGISMap() {
         setTimeout(() => {
           map.removeLayer(queryMarker);
         }, 10000);
+      } else if (classificationMode === 'single') {
+        const { lat, lng } = e.latlng;
+        await performLandUseClassification(lat, lng);
       }
     });
 
@@ -624,6 +630,172 @@ export default function RealWebGISMap() {
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
+  };
+
+  // Real AI/ML Land-Use Classification
+  const performLandUseClassification = async (lat: number, lng: number) => {
+    if (!mapInstance.current) return;
+    
+    setIsClassifying(true);
+    
+    try {
+      const response = await fetch('/api/land-use/classify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lat,
+          lng,
+          highResolution: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Classification failed');
+      }
+
+      const result = await response.json();
+      
+      // Create a marker with classification results
+      const classificationMarker = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+        })
+      }).addTo(mapInstance.current);
+      
+      // Get dominant land-use class
+      const classifications = result.classifications;
+      const dominantClass = Object.keys(classifications).reduce((a, b) => 
+        classifications[a] > classifications[b] ? a : b
+      );
+      
+      const popupContent = `
+        <div style="min-width: 250px;">
+          <h3 style="margin: 0 0 10px 0; color: #2563eb;">AI Land-Use Classification</h3>
+          <p><strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+          <p><strong>Dominant Class:</strong> ${dominantClass.charAt(0).toUpperCase() + dominantClass.slice(1)} (${classifications[dominantClass].toFixed(1)}%)</p>
+          <hr style="margin: 10px 0;">
+          <div style="margin-bottom: 8px;"><strong>🌾 Agriculture:</strong> ${classifications.agriculture.toFixed(1)}%</div>
+          <div style="margin-bottom: 8px;"><strong>🌲 Forest:</strong> ${classifications.forest.toFixed(1)}%</div>
+          <div style="margin-bottom: 8px;"><strong>💧 Water:</strong> ${classifications.water.toFixed(1)}%</div>
+          <div style="margin-bottom: 8px;"><strong>🏢 Built-up:</strong> ${classifications.builtUp.toFixed(1)}%</div>
+          <hr style="margin: 10px 0;">
+          <p><strong>Confidence:</strong> ${result.confidence.toFixed(1)}%</p>
+          <p><strong>Sensor:</strong> ${result.sensor}</p>
+          <p><strong>Resolution:</strong> ${result.resolution}m</p>
+          <p><strong>Date:</strong> ${new Date(result.metadata.imageDate).toLocaleDateString()}</p>
+          <p><strong>Processing Time:</strong> ${result.processingTime}ms</p>
+        </div>
+      `;
+      
+      classificationMarker.bindPopup(popupContent).openPopup();
+      
+      // Show classification on land-use layers
+      updateLandUseLayers(result);
+      
+    } catch (error) {
+      console.error('Land-use classification failed:', error);
+      alert('Failed to classify land use. Please try again.');
+    } finally {
+      setIsClassifying(false);
+    }
+  };
+
+  // Perform region-wide land-use classification
+  const performRegionClassification = async () => {
+    if (!mapInstance.current || !selectedRegion) return;
+    
+    setIsClassifying(true);
+    
+    try {
+      const response = await fetch('/api/land-use/geojson', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bounds: selectedRegion,
+          gridResolution: 15,
+          includeMetadata: true
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Region classification failed');
+      }
+
+      const result = await response.json();
+      
+      // Add GeoJSON layer to map
+      const geoJsonLayer = L.geoJSON(result.geoJSON, {
+        style: (feature) => {
+          const landUseClass = feature?.properties?.landUseClass;
+          let fillColor = '#gray';
+          
+          switch (landUseClass) {
+            case 'agriculture': fillColor = '#fbbf24'; break;
+            case 'forest': fillColor = '#059669'; break;
+            case 'water': fillColor = '#3b82f6'; break;
+            case 'builtUp': fillColor = '#6b7280'; break;
+          }
+          
+          return {
+            fillColor,
+            weight: 1,
+            opacity: 0.8,
+            color: 'white',
+            fillOpacity: 0.6
+          };
+        },
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties;
+          layer.bindPopup(`
+            <div>
+              <h4>Land Use: ${props.landUseClass}</h4>
+              <p><strong>Confidence:</strong> ${props.confidence.toFixed(1)}%</p>
+              <p><strong>Agriculture:</strong> ${props.agriculture.toFixed(1)}%</p>
+              <p><strong>Forest:</strong> ${props.forest.toFixed(1)}%</p>
+              <p><strong>Water:</strong> ${props.water.toFixed(1)}%</p>
+              <p><strong>Built-up:</strong> ${props.builtUp.toFixed(1)}%</p>
+            </div>
+          `);
+        }
+      }).addTo(mapInstance.current);
+      
+      // Store reference to remove later
+      layersRef.current['landUseClassification'] = geoJsonLayer;
+      
+      // Show region statistics
+      alert(`Region Classification Complete!\nTotal Area: ${result.metadata.totalArea.toFixed(2)} km²\nProcessing Time: ${result.metadata.processingTime}ms`);
+      
+    } catch (error) {
+      console.error('Region classification failed:', error);
+      alert('Failed to classify region. Please try again.');
+    } finally {
+      setIsClassifying(false);
+    }
+  };
+
+  // Update land-use layers with classification results
+  const updateLandUseLayers = (result: any) => {
+    const { classifications } = result;
+    
+    // Update layer visibility and create visualization
+    ['agriculture', 'forest', 'water', 'urban'].forEach(classType => {
+      const layerId = classType === 'urban' ? 'urban' : classType;
+      const layer = layersRef.current[layerId];
+      
+      if (layer && classifications[classType === 'urban' ? 'builtUp' : classType] > 30) {
+        // Show layer if classification confidence is high
+        setLayers(prev => prev.map(l => 
+          l.id === layerId ? { ...l, visible: true } : l
+        ));
+      }
+    });
   };
 
   // Calculate polygon area using shoelace formula
@@ -1292,6 +1464,85 @@ export default function RealWebGISMap() {
           )}
         </div>
         
+        {/* AI Land-Use Classification */}
+        <div className="mb-6 space-y-3">
+          <h4 className="text-sm font-medium">🤖 AI Land-Use Classification</h4>
+          
+          {/* Classification Mode Toggle */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium">Single Point Mode</span>
+              <Switch
+                checked={classificationMode === 'single'}
+                onCheckedChange={(checked) => setClassificationMode(checked ? 'single' : null)}
+                disabled={isClassifying}
+              />
+            </div>
+            
+            {classificationMode === 'single' && (
+              <div className="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                Click anywhere on the map to classify land use at that location using real satellite imagery and AI models
+              </div>
+            )}
+          </div>
+
+          {/* Region Classification */}
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (mapInstance.current) {
+                  const bounds = mapInstance.current.getBounds();
+                  setSelectedRegion({
+                    north: bounds.getNorth(),
+                    south: bounds.getSouth(),
+                    east: bounds.getEast(),
+                    west: bounds.getWest()
+                  });
+                }
+              }}
+              disabled={isClassifying}
+              className="w-full text-xs"
+            >
+              <Satellite className="h-4 w-4 mr-1" />
+              Select Current View
+            </Button>
+            
+            {selectedRegion && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={performRegionClassification}
+                disabled={isClassifying}
+                className="w-full text-xs"
+              >
+                {isClassifying ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                    Classifying...
+                  </>
+                ) : (
+                  <>
+                    <Globe className="h-4 w-4 mr-1" />
+                    Classify Region
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+
+          {/* Classification Status */}
+          {isClassifying && (
+            <div className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
+                Processing satellite imagery with AI models...
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Analysis Tools */}
         <div className="mb-6 space-y-3">
           <h4 className="text-sm font-medium">Spatial Analysis</h4>
