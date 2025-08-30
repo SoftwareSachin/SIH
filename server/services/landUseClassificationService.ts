@@ -936,20 +936,24 @@ export class LandUseClassificationService {
         
         const pythonProcess = spawn('python3', [pythonScript], {
           stdio: ['pipe', 'pipe', 'pipe'],
-          timeout: 45000, // 45 second timeout for real processing
-          killSignal: 'SIGTERM'
+          env: { ...process.env, PYTHONUNBUFFERED: '1' }
         });
         
         let output = '';
         let errorOutput = '';
+        let resolved = false;
         
-        // Send input data to Python process
+        // Send input data to Python process immediately
         try {
-          pythonProcess.stdin.write(JSON.stringify(inputData));
+          const inputJson = JSON.stringify(inputData);
+          pythonProcess.stdin.write(inputJson + '\n');
           pythonProcess.stdin.end();
         } catch (writeError) {
           console.warn('⚠ Failed to send data to CNN service:', writeError);
-          resolve(null);
+          if (!resolved) {
+            resolved = true;
+            resolve(null);
+          }
           return;
         }
         
@@ -962,43 +966,49 @@ export class LandUseClassificationService {
         });
         
         pythonProcess.on('close', (code) => {
-          if (code === 0) {
-            try {
-              // Parse the JSON output from Python service
-              const result = JSON.parse(output.trim());
-              
-              // Validate that we got real AI results (no simulation)
-              if (result.model && result.predictions) {
-                console.log(`✓ Real CNN classification: ${result.model}`);
-                resolve(result);
-              } else {
-                console.warn('⚠ Invalid CNN service response - real models required');
+          if (!resolved) {
+            resolved = true;
+            if (code === 0) {
+              try {
+                // Parse the JSON output from Python service
+                const result = JSON.parse(output.trim());
+                
+                // Validate that we got real AI results (no simulation)
+                if (result.model && result.predictions && result.authentic === true) {
+                  console.log(`✓ Real CNN classification: ${result.model}`);
+                  resolve(result);
+                } else {
+                  console.warn('⚠ Invalid CNN service response - real models required');
+                  resolve(null);
+                }
+              } catch (parseError) {
+                console.warn('⚠ Error parsing CNN service output:', parseError);
                 resolve(null);
               }
-            } catch (parseError) {
-              console.warn('⚠ Error parsing CNN service output:', parseError);
-              console.warn('Raw output length:', output.length);
+            } else {
+              console.warn(`⚠ CNN service exited with code ${code}: ${errorOutput}`);
               resolve(null);
             }
-          } else {
-            console.warn(`⚠ CNN service exited with code ${code}: ${errorOutput}`);
-            resolve(null);
           }
         });
         
         pythonProcess.on('error', (error) => {
           console.warn('⚠ CNN service process error:', error);
-          resolve(null);
+          if (!resolved) {
+            resolved = true;
+            resolve(null);
+          }
         });
         
-        // Timeout handling for real processing
+        // Reduced timeout for faster processing
         setTimeout(() => {
-          if (!pythonProcess.killed) {
-            pythonProcess.kill('SIGTERM');
+          if (!resolved && !pythonProcess.killed) {
+            resolved = true;
+            pythonProcess.kill('SIGKILL');
             console.warn('⚠ CNN service timeout - real processing takes time');
             resolve(null);
           }
-        }, 45000); // 45 second timeout for real AI processing
+        }, 15000); // 15 second timeout for faster response
       });
       
     } catch (error) {

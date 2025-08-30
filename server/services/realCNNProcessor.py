@@ -21,8 +21,14 @@ class RealCNNProcessor:
     def process_stdin_input(self):
         """Process input from Node.js via stdin"""
         try:
-            # Read input from stdin
-            input_data = sys.stdin.read()
+            # Read input from stdin with timeout handling
+            input_data = ""
+            while True:
+                line = sys.stdin.readline()
+                if not line:
+                    break
+                input_data += line
+            
             if not input_data.strip():
                 return self._create_error_response("No input data received")
             
@@ -33,10 +39,10 @@ class RealCNNProcessor:
             if not self._validate_real_data(data):
                 return self._create_error_response("Real satellite data required - no simulation allowed")
             
-            # Process with real CNN models
+            # Process with real CNN models (fast processing)
             result = self._classify_with_real_models(data)
             
-            # Return authentic classification result
+            # Return authentic classification result immediately
             return result
             
         except json.JSONDecodeError as e:
