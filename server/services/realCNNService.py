@@ -235,11 +235,11 @@ class RealCNNService:
             
             # Map to class names
             class_names = ['agriculture', 'forest', 'water', 'builtUp']
-            predictions = {name: prob for name, prob in zip(class_names, probabilities)}
+            predictions = {name: float(prob) for name, prob in zip(class_names, probabilities)}
             
             return {
                 'predictions': predictions,
-                'confidence': float(max(probabilities)),
+                'confidence': float(np.max(probabilities)),
                 'model': 'Random Forest (100 trees)',
                 'features_used': 'NDVI, NDWI, NDBI, SAVI, elevation, red, NIR'
             }
