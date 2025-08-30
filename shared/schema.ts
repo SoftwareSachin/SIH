@@ -25,6 +25,62 @@ export const apiKeys = pgTable("api_keys", {
 // User roles enum
 export const userRoleEnum = pgEnum('user_role', ['admin', 'state', 'district', 'field', 'ngo', 'public']);
 
+// Permission enum for RBAC
+export const permissionEnum = pgEnum('permission', [
+  'view_all_claims',
+  'view_state_claims', 
+  'view_district_claims',
+  'approve_claims',
+  'reject_claims',
+  'upload_documents',
+  'verify_documents',
+  'manage_users',
+  'manage_system_settings',
+  'view_public_maps',
+  'export_data',
+  'generate_reports',
+  'access_admin_panel',
+  'access_ai_processing',
+  'access_dss_engine'
+]);
+
+// Roles table with detailed permissions
+export const roles = pgTable("roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: userRoleEnum("name").notNull().unique(),
+  displayName: varchar("display_name").notNull(),
+  description: text("description"),
+  permissions: jsonb("permissions").notNull(), // Array of permission strings
+  canAccessStates: jsonb("can_access_states"), // Array of state IDs
+  canAccessDistricts: jsonb("can_access_districts"), // Array of district IDs
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User Role Assignments table
+export const userRoleAssignments = pgTable("user_role_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  roleId: varchar("role_id").references(() => roles.id).notNull(),
+  assignedBy: varchar("assigned_by").references(() => users.id),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+});
+
+// Sessions table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
 // Users table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -188,6 +244,40 @@ export const auditTrail = pgTable("audit_trail", {
 });
 
 // Relations
+export const usersRelations = relations(users, ({ many, one }) => ({
+  roleAssignments: many(userRoleAssignments),
+  verifiedClaims: many(claims, {
+    relationName: "verifiedClaims",
+  }),
+  verifiedAssets: many(assets, {
+    relationName: "verifiedAssets",
+  }),
+  implementedRecommendations: many(recommendations, {
+    relationName: "implementedRecommendations",
+  }),
+  auditTrails: many(auditTrail),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  userAssignments: many(userRoleAssignments),
+}));
+
+export const userRoleAssignmentsRelations = relations(userRoleAssignments, ({ one }) => ({
+  user: one(users, {
+    fields: [userRoleAssignments.userId],
+    references: [users.id],
+  }),
+  role: one(roles, {
+    fields: [userRoleAssignments.roleId],
+    references: [roles.id],
+  }),
+  assignedByUser: one(users, {
+    fields: [userRoleAssignments.assignedBy],
+    references: [users.id],
+    relationName: "assignedByUser",
+  }),
+}));
+
 export const statesRelations = relations(states, ({ many }) => ({
   districts: many(districts),
 }));
@@ -256,7 +346,10 @@ export const recommendationsRelations = relations(recommendations, ({ one }) => 
 }));
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true, password: true });
+export const insertUserWithPasswordSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRoleSchema = createInsertSchema(roles).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserRoleAssignmentSchema = createInsertSchema(userRoleAssignments).omit({ id: true, assignedAt: true });
 export const insertStateSchema = createInsertSchema(states).omit({ createdAt: true });
 export const insertDistrictSchema = createInsertSchema(districts).omit({ id: true, createdAt: true });
 export const insertVillageSchema = createInsertSchema(villages).omit({ id: true, createdAt: true });
@@ -270,6 +363,8 @@ export const insertAuditTrailSchema = createInsertSchema(auditTrail).omit({ id: 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type Role = typeof roles.$inferSelect;
+export type UserRoleAssignment = typeof userRoleAssignments.$inferSelect;
 export type State = typeof states.$inferSelect;
 export type District = typeof districts.$inferSelect;
 export type Village = typeof villages.$inferSelect;
@@ -289,3 +384,5 @@ export type InsertAsset = typeof assets.$inferInsert;
 export type InsertScheme = typeof schemes.$inferInsert;
 export type InsertRecommendation = typeof recommendations.$inferInsert;
 export type InsertAuditTrail = typeof auditTrail.$inferInsert;
+export type InsertRole = typeof roles.$inferInsert;
+export type InsertUserRoleAssignment = typeof userRoleAssignments.$inferInsert;

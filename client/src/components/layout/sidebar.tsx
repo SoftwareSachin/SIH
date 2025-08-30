@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Shrub, 
   LayoutDashboard, 
@@ -16,22 +17,50 @@ import {
   Menu,
   X,
   TestTube2,
-  Satellite
+  Satellite,
+  Shield,
+  Users
 } from "lucide-react";
 
 export default function Sidebar() {
   const [location] = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { hasRole, hasPermission, user } = useAuth();
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'WebGIS Portal', href: '/webgis', icon: Map },
-    { name: 'Claims Management', href: '/claims', icon: FileText },
-    { name: 'AI Processing', href: '/ai-processing', icon: Brain },
-    { name: 'Asset Detection', href: '/asset-detection', icon: Satellite },
-    { name: 'NER Tester', href: '/test/ner', icon: TestTube2 },
-    { name: 'Decision Support', href: '/decision-support', icon: BarChart3 },
-  ];
+  // Role-based navigation
+  const getNavigation = () => {
+    const baseNav = [
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard, permission: null },
+      { name: 'WebGIS Portal', href: '/webgis', icon: Map, permission: 'view_public_maps' },
+      { name: 'Claims Management', href: '/claims', icon: FileText, permission: 'view_district_claims' },
+    ];
+
+    const conditionalNav = [];
+    
+    if (hasPermission('access_ai_processing')) {
+      conditionalNav.push({ name: 'AI Processing', href: '/ai-processing', icon: Brain, permission: 'access_ai_processing' });
+    }
+    
+    if (hasPermission('access_ai_processing')) {
+      conditionalNav.push({ name: 'Asset Detection', href: '/asset-detection', icon: Satellite, permission: 'access_ai_processing' });
+    }
+    
+    if (hasRole('admin')) {
+      conditionalNav.push({ name: 'NER Tester', href: '/test/ner', icon: TestTube2, permission: null });
+    }
+    
+    if (hasPermission('access_dss_engine')) {
+      conditionalNav.push({ name: 'Decision Support', href: '/decision-support', icon: BarChart3, permission: 'access_dss_engine' });
+    }
+    
+    if (hasRole('admin')) {
+      conditionalNav.push({ name: 'Admin Panel', href: '/admin', icon: Shield, permission: 'access_admin_panel' });
+    }
+
+    return [...baseNav, ...conditionalNav];
+  };
+
+  const navigation = getNavigation();
 
   const states = [
     { name: 'Madhya Pradesh', count: 1247, active: true },
@@ -61,7 +90,14 @@ export default function Sidebar() {
             {!isCollapsed && (
               <div>
                 <h1 className="text-lg font-semibold text-foreground">FRA Atlas</h1>
-                <p className="text-sm text-muted-foreground">Shrub Rights Management</p>
+                <p className="text-sm text-muted-foreground">Forest Rights Management</p>
+                {user && (
+                  <div className="mt-1">
+                    <Badge className="text-xs" data-testid="user-role-badge">
+                      {user.currentRole?.toUpperCase()}
+                    </Badge>
+                  </div>
+                )}
               </div>
             )}
           </div>

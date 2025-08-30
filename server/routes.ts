@@ -1,9 +1,10 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupSimpleAuth, isAuthenticated } from "./simpleAuth";
+import { authenticateToken, requireRole, requirePermission, generateToken, hashPassword, comparePassword, type AuthenticatedRequest } from "./jwtAuth";
+import { insertUserSchema, insertClaimSchema, insertDocumentSchema } from "@shared/schema";
 import { z } from "zod";
-import { insertClaimSchema, insertDocumentSchema } from "@shared/schema";
 import multer from "multer";
 import { documentProcessor } from "./services/documentProcessor";
 import { aiProcessor } from "./services/aiProcessor";
@@ -29,10 +30,148 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Secure OCR processing endpoint - requires authentication
-  app.post('/api/documents/process', isAuthenticated, upload.single('document'), async (req: any, res) => {
+  // Parse JSON requests
+  app.use(express.json());
+  
+  // Authentication routes
+  const registerSchema = insertUserSchema.extend({
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: z.string()
+  }).refine(data => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"]
+  });
+
+  const loginSchema = z.object({
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(1, 'Password is required')
+  });
+
+  // Register endpoint
+  app.post('/api/auth/register', async (req, res) => {
     try {
-      const userId = req.user.id;
+      const validatedData = registerSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(validatedData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'User already exists with this email' });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(validatedData.password);
+      
+      // Create user
+      const newUser = await storage.createUser({
+        email: validatedData.email,
+        password: hashedPassword,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        role: 'public' // Default role
+      });
+
+      // Generate JWT token
+      const token = generateToken(newUser);
+
+      res.status(201).json({
+        message: 'User created successfully',
+        token,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          role: newUser.role
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: 'Validation error', 
+          errors: error.errors 
+        });
+      }
+      console.error('Registration error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Login endpoint
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+      
+      // Get user by email
+      const user = await storage.getUserByEmail(validatedData.email);
+      if (!user || !user.password) {
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
+
+      // Verify password
+      const isValidPassword = await comparePassword(validatedData.password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
+
+      // Generate JWT token
+      const token = generateToken(user);
+
+      res.json({
+        message: 'Login successful',
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: 'Validation error', 
+          errors: error.errors 
+        });
+      }
+      console.error('Login error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get current user endpoint (protected)
+  app.get('/api/auth/user', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+      
+      res.json({
+        id: req.user.id,
+        email: req.user.email,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
+        currentRole: req.user.currentRole,
+        permissions: req.user.permissions,
+        state: req.user.state,
+        district: req.user.district
+      });
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Apply JWT middleware to all other protected API routes
+  app.use('/api', authenticateToken);
+
+  // Secure OCR processing endpoint - requires upload permission
+  app.post('/api/documents/process', 
+    requirePermission('upload_documents'), 
+    upload.single('document'), 
+    async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
       const { claimId } = req.body;
       const { file } = req;
       
@@ -184,10 +323,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Auth middleware
-  await setupSimpleAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -199,7 +337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard stats
-  app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/dashboard/stats', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -217,7 +355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Claims routes
-  app.get('/api/claims', isAuthenticated, async (req: any, res) => {
+  app.get('/api/claims', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -233,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const claims = await storage.getClaims({
         userId,
-        userRole: user.role || undefined,
+        userRole: req.user.currentRole || undefined,
         state: user.state || undefined,
         district: user.district || undefined,
         page,
@@ -249,7 +387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/claims/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/claims/:id', authenticateToken, async (req, res) => {
     try {
       const claim = await storage.getClaimById(req.params.id);
       if (!claim) {
@@ -262,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/claims', isAuthenticated, async (req: any, res) => {
+  app.post('/api/claims', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const claimData = insertClaimSchema.parse(req.body);
@@ -295,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/claims/:id/status', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/claims/:id/status', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -325,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Document upload and processing
-  app.post('/api/documents/upload', isAuthenticated, upload.single('document'), async (req: any, res) => {
+  app.post('/api/documents/upload', authenticateToken, upload.single('document'), async (req: any, res) => {
     try {
       const userId = req.user.id;
       const file = req.file;
@@ -386,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Processing routes
-  app.get('/api/ai/processing-status', isAuthenticated, async (req, res) => {
+  app.get('/api/ai/processing-status', authenticateToken, async (req, res) => {
     try {
       const status = await aiProcessor.getProcessingStatus();
       res.json(status);
@@ -396,7 +534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/reprocess-document/:documentId', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ai/reprocess-document/:documentId', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -438,7 +576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Asset detection
-  app.post('/api/assets/detect/:villageId', isAuthenticated, async (req: any, res) => {
+  app.post('/api/assets/detect/:villageId', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -456,7 +594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Decision Support System
-  app.get('/api/dss/recommendations/:claimId', isAuthenticated, async (req, res) => {
+  app.get('/api/dss/recommendations/:claimId', authenticateToken, async (req, res) => {
     try {
       const recommendations = await dssEngine.generateRecommendations(req.params.claimId);
       res.json(recommendations);
@@ -466,7 +604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dss/village-recommendations/:villageId', isAuthenticated, async (req, res) => {
+  app.get('/api/dss/village-recommendations/:villageId', authenticateToken, async (req, res) => {
     try {
       const recommendations = await dssEngine.generateVillageRecommendations(req.params.villageId);
       res.json(recommendations);
@@ -476,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/dss/implement-recommendation/:recommendationId', isAuthenticated, async (req: any, res) => {
+  app.post('/api/dss/implement-recommendation/:recommendationId', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -563,7 +701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batch processing endpoints
-  app.post('/api/documents/batch', isAuthenticated, upload.array('documents', 50), async (req: any, res) => {
+  app.post('/api/documents/batch', authenticateToken, upload.array('documents', 50), async (req: any, res) => {
     try {
       const userId = req.user.id;
       const files = req.files as Express.Multer.File[];
@@ -633,7 +771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get batch processing status
-  app.get('/api/batch/:batchId', isAuthenticated, async (req, res) => {
+  app.get('/api/batch/:batchId', authenticateToken, async (req, res) => {
     try {
       const { batchId } = req.params;
       const batchStatus = batchProcessor.getBatchStatus(batchId);
@@ -650,7 +788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get processing queue status
-  app.get('/api/ocr/queue', isAuthenticated, async (req: any, res) => {
+  app.get('/api/ocr/queue', authenticateToken, async (req: any, res) => {
     try {
       const user = req.user;
       
@@ -673,7 +811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get OCR processing statistics
-  app.get('/api/ocr/stats', isAuthenticated, async (req, res) => {
+  app.get('/api/ocr/stats', authenticateToken, async (req, res) => {
     try {
       const processingStats = await documentProcessor.getProcessingStats();
       res.json(processingStats);
@@ -684,7 +822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Export routes
-  app.get('/api/export/claims', isAuthenticated, async (req: any, res) => {
+  app.get('/api/export/claims', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -696,7 +834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const format = req.query.format || 'csv';
       const exportData = await storage.exportClaims({
         userId,
-        userRole: user.role || undefined,
+        userRole: req.user.currentRole || undefined,
         state: user.state || undefined,
         district: user.district || undefined,
         format,
@@ -714,7 +852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Land-Use Classification Routes
   
   // Single point land-use classification
-  app.post('/api/land-use/classify', isAuthenticated, async (req, res) => {
+  app.post('/api/land-use/classify', authenticateToken, async (req, res) => {
     try {
       const { lat, lng, highResolution, apiKey } = req.body;
       
@@ -737,7 +875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batch land-use classification for multiple points
-  app.post('/api/land-use/classify-batch', isAuthenticated, async (req, res) => {
+  app.post('/api/land-use/classify-batch', authenticateToken, async (req, res) => {
     try {
       const { locations, highResolution, apiKey } = req.body;
       
@@ -758,7 +896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Regional land-use statistics
-  app.post('/api/land-use/region-stats', isAuthenticated, async (req, res) => {
+  app.post('/api/land-use/region-stats', authenticateToken, async (req, res) => {
     try {
       const { bounds, gridSize } = req.body;
       
@@ -781,7 +919,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate GeoJSON for land-use classification
-  app.post('/api/land-use/geojson', isAuthenticated, async (req, res) => {
+  app.post('/api/land-use/geojson', authenticateToken, async (req, res) => {
     try {
       const { bounds, gridResolution, highResolution, apiKey, includeMetadata } = req.body;
       
@@ -807,7 +945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate heatmap data for specific land-use class
-  app.post('/api/land-use/heatmap', isAuthenticated, async (req, res) => {
+  app.post('/api/land-use/heatmap', authenticateToken, async (req, res) => {
     try {
       const { bounds, classType, resolution } = req.body;
       
@@ -838,7 +976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Export land-use classification data
-  app.post('/api/land-use/export', isAuthenticated, async (req, res) => {
+  app.post('/api/land-use/export', authenticateToken, async (req, res) => {
     try {
       const { bounds, format, gridResolution } = req.body;
       
@@ -886,7 +1024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Asset Detection API endpoints
-  app.post('/api/assets/detect', isAuthenticated, async (req: any, res) => {
+  app.post('/api/assets/detect', authenticateToken, async (req: any, res) => {
     try {
       const { villageId, coordinates } = req.body;
       
@@ -928,7 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Land use classification endpoint
-  app.post('/api/landuse/classify', isAuthenticated, async (req: any, res) => {
+  app.post('/api/landuse/classify', authenticateToken, async (req: any, res) => {
     try {
       const { lat, lng, highResolution = false } = req.body;
       
@@ -956,7 +1094,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batch asset detection for multiple locations
-  app.post('/api/assets/batch-detect', isAuthenticated, async (req: any, res) => {
+  app.post('/api/assets/batch-detect', authenticateToken, async (req: any, res) => {
     try {
       const { locations, highResolution = false } = req.body;
       
@@ -981,6 +1119,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to perform batch asset detection" });
     }
   });
+
+  // RBAC Management Routes (Admin only)
+  
+  // Get all roles
+  app.get('/api/admin/roles', 
+    authenticateToken, 
+    requireRole('admin'), 
+    async (req: any, res) => {
+      try {
+        const roles = await storage.getRoles();
+        res.json(roles);
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+        res.status(500).json({ message: "Failed to fetch roles" });
+      }
+    }
+  );
+
+  // Get all users with their roles (Admin only)
+  app.get('/api/admin/users', 
+    authenticateToken, 
+    requireRole('admin'), 
+    async (req: any, res) => {
+      try {
+        // This would need to be implemented in storage
+        const users = await storage.getAllUsersWithRoles();
+        res.json(users);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ message: "Failed to fetch users" });
+      }
+    }
+  );
+
+  // Assign role to user (Admin only)
+  app.post('/api/admin/users/:userId/roles', 
+    authenticateToken, 
+    requireRole('admin'),
+    async (req: any, res) => {
+      try {
+        const { userId } = req.params;
+        const { roleId, notes, expiresAt } = req.body;
+        const adminUserId = req.user.id;
+
+        const assignment = await storage.assignUserRole({
+          userId,
+          roleId,
+          assignedBy: adminUserId,
+          expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+          notes,
+          isActive: true
+        });
+
+        res.json({ success: true, assignment });
+      } catch (error) {
+        console.error('Error assigning role:', error);
+        res.status(500).json({ message: "Failed to assign role" });
+      }
+    }
+  );
+
+  // Remove role from user (Admin only)
+  app.delete('/api/admin/users/:userId/roles/:roleId', 
+    authenticateToken, 
+    requireRole('admin'),
+    async (req: any, res) => {
+      try {
+        const { userId, roleId } = req.params;
+        await storage.removeUserRole(userId, roleId);
+        res.json({ success: true });
+      } catch (error) {
+        console.error('Error removing role:', error);
+        res.status(500).json({ message: "Failed to remove role" });
+      }
+    }
+  );
+
+  // Get user's role assignments
+  app.get('/api/users/:userId/roles', 
+    authenticateToken, 
+    async (req: any, res) => {
+      try {
+        const { userId } = req.params;
+        const requestingUserId = req.user.id;
+        
+        // Users can only view their own roles, unless they're admin
+        if (requestingUserId !== userId && req.user.currentRole !== 'admin') {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        const assignments = await storage.getUserRoleAssignments(userId);
+        res.json(assignments);
+      } catch (error) {
+        console.error('Error fetching user roles:', error);
+        res.status(500).json({ message: "Failed to fetch user roles" });
+      }
+    }
+  );
 
   const httpServer = createServer(app);
   return httpServer;

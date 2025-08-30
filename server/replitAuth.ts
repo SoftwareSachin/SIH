@@ -57,13 +57,28 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  await storage.upsertUser({
+  const user = await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    role: 'public', // Default role
   });
+
+  // Check if user needs a default role assignment
+  const existingAssignments = await storage.getUserRoleAssignments(user.id);
+  if (existingAssignments.length === 0) {
+    const publicRole = await storage.getRoleByName('public');
+    if (publicRole) {
+      await storage.assignUserRole({
+        userId: user.id,
+        roleId: publicRole.id,
+        isActive: true,
+        notes: 'Default role assigned on first login'
+      });
+    }
+  }
 }
 
 export async function setupAuth(app: Express) {
@@ -128,10 +143,7 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // Development mode bypass for testing asset detection
-  if (process.env.NODE_ENV === 'development') {
-    return next();
-  }
+  // Note: Development bypass removed for proper RBAC testing
 
   const user = req.user as any;
 

@@ -9,6 +9,8 @@ import {
   schemes,
   recommendations,
   auditTrail,
+  roles,
+  userRoleAssignments,
   type User,
   type UpsertUser,
   type State,
@@ -20,6 +22,8 @@ import {
   type Scheme,
   type Recommendation,
   type AuditTrail,
+  type Role,
+  type UserRoleAssignment,
   type InsertState,
   type InsertDistrict,
   type InsertVillage,
@@ -29,14 +33,28 @@ import {
   type InsertScheme,
   type InsertRecommendation,
   type InsertAuditTrail,
+  type InsertRole,
+  type InsertUserRoleAssignment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, ilike, isNull } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations (mandatory for Replit Auth)
+  // User operations
   getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: Omit<UpsertUser, 'id'>): Promise<User>;
+  getUserWithRoles(id: string): Promise<(User & { roleAssignments: (UserRoleAssignment & { role: Role })[] }) | undefined>;
+  
+  // Role operations
+  getRoles(): Promise<Role[]>;
+  getRoleByName(name: string): Promise<Role | undefined>;
+  createRole(role: InsertRole): Promise<Role>;
+  updateRole(id: string, updates: Partial<InsertRole>): Promise<Role>;
+  assignUserRole(assignment: InsertUserRoleAssignment): Promise<UserRoleAssignment>;
+  removeUserRole(userId: string, roleId: string): Promise<void>;
+  getUserRoleAssignments(userId: string): Promise<(UserRoleAssignment & { role: Role })[]>;
+  getAllUsersWithRoles(): Promise<(User & { roleAssignments: (UserRoleAssignment & { role: Role })[] })[]>;
 
   // Dashboard stats
   getDashboardStats(state?: string, district?: string, role?: string): Promise<{
@@ -112,17 +130,15 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: Omit<UpsertUser, 'id'>): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
       .returning();
     return user;
   }
@@ -516,6 +532,127 @@ export class DatabaseStorage implements IStorage {
       .where(eq(recommendations.id, id))
       .returning();
     return updatedRec;
+  }
+
+  // Role operations
+  async getRoles(): Promise<Role[]> {
+    return db.select().from(roles).where(eq(roles.isActive, true)).orderBy(roles.name);
+  }
+
+  async getRoleByName(name: string): Promise<Role | undefined> {
+    const [role] = await db.select().from(roles).where(eq(roles.name, name as any));
+    return role;
+  }
+
+  async createRole(role: InsertRole): Promise<Role> {
+    const [newRole] = await db.insert(roles).values(role).returning();
+    return newRole;
+  }
+
+  async updateRole(id: string, updates: Partial<InsertRole>): Promise<Role> {
+    const [updatedRole] = await db
+      .update(roles)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(roles.id, id))
+      .returning();
+    return updatedRole;
+  }
+
+  async getUserWithRoles(id: string): Promise<(User & { roleAssignments: (UserRoleAssignment & { role: Role })[] }) | undefined> {
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+
+    const roleAssignments = await db
+      .select({
+        id: userRoleAssignments.id,
+        userId: userRoleAssignments.userId,
+        roleId: userRoleAssignments.roleId,
+        assignedBy: userRoleAssignments.assignedBy,
+        assignedAt: userRoleAssignments.assignedAt,
+        expiresAt: userRoleAssignments.expiresAt,
+        isActive: userRoleAssignments.isActive,
+        notes: userRoleAssignments.notes,
+        role: {
+          id: roles.id,
+          name: roles.name,
+          displayName: roles.displayName,
+          description: roles.description,
+          permissions: roles.permissions,
+          canAccessStates: roles.canAccessStates,
+          canAccessDistricts: roles.canAccessDistricts,
+          isActive: roles.isActive,
+          createdAt: roles.createdAt,
+          updatedAt: roles.updatedAt,
+        }
+      })
+      .from(userRoleAssignments)
+      .leftJoin(roles, eq(userRoleAssignments.roleId, roles.id))
+      .where(eq(userRoleAssignments.userId, id));
+
+    return {
+      ...user,
+      roleAssignments: roleAssignments as (UserRoleAssignment & { role: Role })[]
+    };
+  }
+
+  async assignUserRole(assignment: InsertUserRoleAssignment): Promise<UserRoleAssignment> {
+    const [newAssignment] = await db.insert(userRoleAssignments).values(assignment).returning();
+    return newAssignment;
+  }
+
+  async removeUserRole(userId: string, roleId: string): Promise<void> {
+    await db
+      .update(userRoleAssignments)
+      .set({ isActive: false })
+      .where(and(
+        eq(userRoleAssignments.userId, userId),
+        eq(userRoleAssignments.roleId, roleId)
+      ));
+  }
+
+  async getUserRoleAssignments(userId: string): Promise<(UserRoleAssignment & { role: Role })[]> {
+    const assignments = await db
+      .select({
+        id: userRoleAssignments.id,
+        userId: userRoleAssignments.userId,
+        roleId: userRoleAssignments.roleId,
+        assignedBy: userRoleAssignments.assignedBy,
+        assignedAt: userRoleAssignments.assignedAt,
+        expiresAt: userRoleAssignments.expiresAt,
+        isActive: userRoleAssignments.isActive,
+        notes: userRoleAssignments.notes,
+        role: {
+          id: roles.id,
+          name: roles.name,
+          displayName: roles.displayName,
+          description: roles.description,
+          permissions: roles.permissions,
+          canAccessStates: roles.canAccessStates,
+          canAccessDistricts: roles.canAccessDistricts,
+          isActive: roles.isActive,
+          createdAt: roles.createdAt,
+          updatedAt: roles.updatedAt,
+        }
+      })
+      .from(userRoleAssignments)
+      .leftJoin(roles, eq(userRoleAssignments.roleId, roles.id))
+      .where(and(
+        eq(userRoleAssignments.userId, userId),
+        eq(userRoleAssignments.isActive, true)
+      ));
+
+    return assignments as (UserRoleAssignment & { role: Role })[];
+  }
+
+  async getAllUsersWithRoles(): Promise<(User & { roleAssignments: (UserRoleAssignment & { role: Role })[] })[]> {
+    const allUsers = await db.select().from(users);
+    const usersWithRoles = await Promise.all(
+      allUsers.map(async (user) => {
+        const roleAssignments = await this.getUserRoleAssignments(user.id);
+        return { ...user, roleAssignments };
+      })
+    );
+    return usersWithRoles;
   }
 
   // Audit trail

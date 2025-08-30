@@ -3,37 +3,68 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
 import Landing from "@/pages/landing";
-import Login from "@/pages/login";
+import AuthPage from "@/pages/auth-page";
 import Claims from "@/pages/claims";
 import WebGIS from "@/pages/webgis";
 import AIProcessing from "@/pages/ai-processing";
 import AssetDetection from "@/pages/asset-detection";
 import DecisionSupport from "@/pages/decision-support";
+import AdminPage from "@/pages/admin";
 import { NERTester } from "@/components/test/ner-tester";
 import NotFound from "@/pages/not-found";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, hasRole, hasPermission } = useAuth();
 
   return (
     <Switch>
       {isLoading || !isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
-          <Route path="/login" component={Login} />
+          <Route path="/auth" component={AuthPage} />
         </>
       ) : (
         <>
           <Route path="/" component={Dashboard} />
-          <Route path="/claims" component={Claims} />
-          <Route path="/webgis" component={WebGIS} />
-          <Route path="/ai-processing" component={AIProcessing} />
-          <Route path="/asset-detection" component={AssetDetection} />
-          <Route path="/test/ner" component={NERTester} />
-          <Route path="/decision-support" component={DecisionSupport} />
+          <Route path="/claims">
+            <ProtectedRoute requiredPermission="view_district_claims">
+              <Claims />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/webgis">
+            <ProtectedRoute requiredPermission="view_public_maps">
+              <WebGIS />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/ai-processing">
+            <ProtectedRoute requiredPermission="access_ai_processing">
+              <AIProcessing />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/asset-detection">
+            <ProtectedRoute requiredPermission="access_ai_processing">
+              <AssetDetection />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/test/ner">
+            <ProtectedRoute requiredRole="admin">
+              <NERTester />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/decision-support">
+            <ProtectedRoute requiredPermission="access_dss_engine">
+              <DecisionSupport />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin">
+            <ProtectedRoute requiredRole="admin">
+              <AdminPage />
+            </ProtectedRoute>
+          </Route>
         </>
       )}
       <Route component={NotFound} />
@@ -44,10 +75,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

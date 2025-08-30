@@ -14,11 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Bell, User, LogOut, Settings } from "lucide-react";
 
 export default function TopBar() {
-  const { user } = useAuth();
+  const { user, logout, hasRole } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = () => {
-    window.location.href = "/api/logout";
+    logout();
   };
 
   const getInitials = (firstName?: string, lastName?: string) => {
@@ -31,7 +31,8 @@ export default function TopBar() {
       case 'state': return 'State Officer';
       case 'district': return 'District Officer';
       case 'field': return 'Field Officer';
-      case 'ngo': return 'NGO Representative';
+      case 'ngo': return 'NGO Partner';
+      case 'public': return 'Public User';
       default: return 'User';
     }
   };
@@ -80,22 +81,27 @@ export default function TopBar() {
                 </Avatar>
                 <div className="text-left hidden sm:block">
                   <div className="text-sm font-medium">
-                    {(user as any)?.firstName} {(user as any)?.lastName}
+                    {user?.firstName} {user?.lastName}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {getRoleLabel((user as any)?.role)}
+                    {getRoleLabel(user?.currentRole)}
                   </div>
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <div className="px-2 py-1.5">
-                <p className="text-sm font-medium">{(user as any)?.firstName} {(user as any)?.lastName}</p>
-                <p className="text-xs text-muted-foreground">{(user as any)?.email}</p>
+                <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
                 <div className="mt-1">
                   <Badge variant="secondary" className="text-xs">
-                    {getRoleLabel((user as any)?.role)}
+                    {getRoleLabel(user?.currentRole)}
                   </Badge>
+                  {user?.state && (
+                    <Badge variant="outline" className="text-xs ml-1">
+                      {user.state}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <DropdownMenuSeparator />
