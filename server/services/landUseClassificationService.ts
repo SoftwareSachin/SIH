@@ -916,59 +916,95 @@ export class LandUseClassificationService {
    * Call real Python CNN service with EuroSAT and Random Forest models
    */
   private async callRealCNNService(bandsData: any, spectralIndices: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const pythonScript = path.join(process.cwd(), 'server/services/realCNNService.py');
-      
-      // Create input JSON for Python service
-      const inputData = {
-        bands: bandsData,
-        spectral_indices: spectralIndices,
-        timestamp: new Date().toISOString()
-      };
-      
-      const pythonProcess = spawn('python3', [pythonScript], {
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-      
-      let output = '';
-      let errorOutput = '';
-      
-      // Send input data to Python process
-      pythonProcess.stdin.write(JSON.stringify(inputData));
-      pythonProcess.stdin.end();
-      
-      pythonProcess.stdout.on('data', (data) => {
-        output += data.toString();
-      });
-      
-      pythonProcess.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-      
-      pythonProcess.on('close', (code) => {
-        if (code === 0) {
-          try {
-            // Parse the JSON output from Python service
-            const result = JSON.parse(output.trim());
-            console.log(`✓ Real CNN classification: ${result.model}`);
-            resolve(result);
-          } catch (parseError) {
-            console.warn('⚠ Error parsing CNN service output:', parseError);
+    try {
+      // Only proceed if we have valid satellite data (no simulation allowed)
+      if (!bandsData || !spectralIndices) {
+        throw new Error("Real satellite data required - no simulation allowed");
+      }
+
+      return new Promise((resolve, reject) => {
+        const pythonScript = path.join(process.cwd(), 'server/services/realCNNService.py');
+        
+        // Create input JSON for Python service with authentication flags
+        const inputData = {
+          bands: bandsData,
+          spectral_indices: spectralIndices,
+          timestamp: new Date().toISOString(),
+          require_real_data: true,
+          no_simulation: true
+        };
+        
+        const pythonProcess = spawn('python3', [pythonScript], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: 45000, // 45 second timeout for real processing
+          killSignal: 'SIGTERM'
+        });
+        
+        let output = '';
+        let errorOutput = '';
+        
+        // Send input data to Python process
+        try {
+          pythonProcess.stdin.write(JSON.stringify(inputData));
+          pythonProcess.stdin.end();
+        } catch (writeError) {
+          console.warn('⚠ Failed to send data to CNN service:', writeError);
+          resolve(null);
+          return;
+        }
+        
+        pythonProcess.stdout.on('data', (data) => {
+          output += data.toString();
+        });
+        
+        pythonProcess.stderr.on('data', (data) => {
+          errorOutput += data.toString();
+        });
+        
+        pythonProcess.on('close', (code) => {
+          if (code === 0) {
+            try {
+              // Parse the JSON output from Python service
+              const result = JSON.parse(output.trim());
+              
+              // Validate that we got real AI results (no simulation)
+              if (result.model && result.predictions) {
+                console.log(`✓ Real CNN classification: ${result.model}`);
+                resolve(result);
+              } else {
+                console.warn('⚠ Invalid CNN service response - real models required');
+                resolve(null);
+              }
+            } catch (parseError) {
+              console.warn('⚠ Error parsing CNN service output:', parseError);
+              console.warn('Raw output length:', output.length);
+              resolve(null);
+            }
+          } else {
+            console.warn(`⚠ CNN service exited with code ${code}: ${errorOutput}`);
             resolve(null);
           }
-        } else {
-          console.warn(`⚠ CNN service exited with code ${code}: ${errorOutput}`);
+        });
+        
+        pythonProcess.on('error', (error) => {
+          console.warn('⚠ CNN service process error:', error);
           resolve(null);
-        }
+        });
+        
+        // Timeout handling for real processing
+        setTimeout(() => {
+          if (!pythonProcess.killed) {
+            pythonProcess.kill('SIGTERM');
+            console.warn('⚠ CNN service timeout - real processing takes time');
+            resolve(null);
+          }
+        }, 45000); // 45 second timeout for real AI processing
       });
       
-      // Set timeout
-      setTimeout(() => {
-        pythonProcess.kill();
-        console.warn('⚠ CNN service timeout');
-        resolve(null);
-      }, 15000); // 15 second timeout
-    });
+    } catch (error) {
+      console.error('Real CNN service error:', error);
+      return null;
+    }
   }
 }
 
