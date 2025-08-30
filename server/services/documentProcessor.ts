@@ -149,7 +149,7 @@ class DocumentProcessor {
           confidence
         );
         
-        // Store OCR results with entities and claim records if documentId provided
+        // Store OCR results with entities if documentId provided
         if (documentId) {
           await this.storeOCRResults(
             documentId, 
@@ -161,8 +161,7 @@ class DocumentProcessor {
             currentProcessingTime,
             imageQuality,
             preprocessingApplied,
-            extractedEntities,
-            structuredClaimRecords
+            extractedEntities
           );
         }
         
@@ -477,7 +476,7 @@ class DocumentProcessor {
     }
   }
 
-  private async storeOCRResults(documentId: string, text: string, confidence: number, hocr: string, tsv: string, language: string, processingTime: number, imageQuality: string, preprocessingApplied: string[], extractedEntities?: any, structuredClaimRecords?: any[]): Promise<void> {
+  private async storeOCRResults(documentId: string, text: string, confidence: number, hocr: string, tsv: string, language: string, processingTime: number, imageQuality: string, preprocessingApplied: string[], extractedEntities?: any): Promise<void> {
     try {
       // Parse languages used
       const languagesArray = language.split('+').filter(lang => lang.length > 0);
@@ -493,11 +492,8 @@ class DocumentProcessor {
         imageQuality,
         preprocessingApplied,
         processedAt: new Date(),
-        // Store OCR metadata as proper object (not stringified)
         // Store extracted entities for NER results
         extractedEntities: extractedEntities || {},
-        // Store structured claim records ready for GIS integration
-        claimRecords: structuredClaimRecords || [],
         ocrData: { 
           hocr, 
           tsv, 
