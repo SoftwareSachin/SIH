@@ -272,13 +272,18 @@ export class LandUseClassificationService {
       const classData = landCoverData[classIndex];
       
       for (let i = 0; i < samplesPerClass; i++) {
-        const sample = classData.ranges.map(range => 
-          range[0] + Math.random() * (range[1] - range[0])
-        );
+        // Generate deterministic sample based on class and iteration
+        const sample = classData.ranges.map((range, rangeIdx) => {
+          const normalizedPos = (i + rangeIdx) / (samplesPerClass + classData.ranges.length);
+          return range[0] + normalizedPos * (range[1] - range[0]);
+        });
         
-        // Add realistic noise with class-specific variations
-        const noiseLevel = classData.name === 'water' ? 0.05 : 0.08; // Water is more consistent
-        const noisySample = sample.map(val => val + (Math.random() - 0.5) * noiseLevel);
+        // Add deterministic variation based on class characteristics
+        const noiseLevel = classData.name === 'water' ? 0.02 : 0.04; // Reduced noise
+        const noisySample = sample.map((val, idx) => {
+          const detNoise = Math.sin((i + idx + classIndex) * 0.1) * noiseLevel;
+          return val + detNoise;
+        });
         
         // Ensure values stay within realistic bounds
         const clampedSample = noisySample.map((val, idx) => {
@@ -303,7 +308,7 @@ export class LandUseClassificationService {
     const labels: number[][] = [];
     
     for (let i = 0; i < n; i++) {
-      const randomIndex = Math.floor(Math.random() * n);
+      const randomIndex = (i * 31 + 17) % n; // Deterministic pseudo-random selection
       features.push([...data.features[randomIndex]]);
       labels.push([...data.labels[randomIndex]]);
     }
