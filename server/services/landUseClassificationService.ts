@@ -80,8 +80,8 @@ export class LandUseClassificationService {
       // Initialize real CNN service
       await this.initializeRealCNNService();
       
-      // Create basic TensorFlow model for fallback
-      this.model = this.createCNNModel();
+      // Note: Only using real CNN models - no fallback simulation
+      // this.model = this.createCNNModel(); // Disabled to prevent simulation
       
       this.modelLoaded = true;
       console.log('Land-use classification model initialized successfully');
@@ -487,16 +487,8 @@ export class LandUseClassificationService {
         };
       } else {
         console.log('⚠ Fallback to local classification models');
-        // Fallback to local models
-        if (!this.modelLoaded || !this.model) {
-          throw new Error('Classification model not available');
-        }
-        
-        const inputTensor = this.prepareCNNInput(imageData.bands);
-        const cnnPrediction = await this.runCNNPrediction(inputTensor);
-        const rfPrediction = this.runRandomForestPrediction(spectralIndices);
-        finalPrediction = this.ensemblePredictions(cnnPrediction, rfPrediction);
-        inputTensor.dispose();
+        // No fallback - only authentic models allowed
+        throw new Error('Real CNN service failed - no simulation fallback allowed. Please ensure authentic satellite data and model access.');
       }
 
       // Calculate average spectral indices for metadata

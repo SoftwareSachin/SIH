@@ -327,13 +327,13 @@ export class GISIntegrationService {
 
   private getAdministrativeUnit(coordinates: { lat: number; lng: number }, adminLayer: GISLayer): string {
     // In a real implementation, this would perform spatial intersection
-    // For now, return a simulated administrative unit
-    return `District_${Math.floor(Math.abs(coordinates.lat + coordinates.lng))}`; 
+    // Real administrative boundary lookup required
+    throw new Error('Authentic administrative boundary data required from Survey of India - no simulation allowed'); 
   }
 
   private checkProtectedArea(coordinates: { lat: number; lng: number }, protectedLayer: GISLayer): boolean {
     // In a real implementation, this would check spatial intersection with protected areas
-    return Math.random() > 0.8; // 20% chance of being in a protected area
+    throw new Error('Real protected area boundary data required from Forest Survey of India - no simulation allowed');
   }
 
   private adjustForLandUsePolicies(classifications: any, adminUnit?: string): any {

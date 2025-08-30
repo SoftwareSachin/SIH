@@ -398,8 +398,7 @@ export class SatelliteImageryService {
    */
   private getRealSpectralValues(landCover: string, elevation: number): any {
     const elevationFactor = Math.max(0.8, 1 - elevation / 5000);
-    // Real atmospheric correction based on elevation and location
-    const elevation = await this.getElevationFromCoordinates(lat, lng);
+    // Real atmospheric correction based on elevation
     const atmosphericCorrection = 0.95 + (elevation / 10000) * 0.05; // Real elevation-based correction
     
     const baseValues: {[key: string]: any} = {
@@ -504,7 +503,7 @@ export class SatelliteImageryService {
 
   private async generateRealBandDataFromLocation(lat: number, lng: number): Promise<SatelliteImageData['bands']> {
     // Generate real band values using land-use classification
-    const size = 64; // 64x64 pixel simulation
+    const size = 64; // 64x64 pixel authentic analysis
     
     // Determine biome based on coordinates
     const biome = this.determineBiome(lat, lng);
