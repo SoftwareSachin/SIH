@@ -1,0 +1,49 @@
+> rest-express@1.0.0 dev
+No Gemini API key found - using standard OCR only
+2025-08-30 20:44:47.584833: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+Satellite Imagery Service initialized
+Initializing real land-use classification model...
+Initializing real CNN service with EuroSAT weights...
+Initializing real Random Forest classifier...
+Initializing real CNN service with EuroSAT weights...
+✓ Real CNN classification: EuroSAT CNN + Random Forest Ensemble
+✓ Real CNN service initialized successfully
+Land-use classification model initialized successfully
+✓ Real CNN classification: EuroSAT CNN + Random Forest Ensemble
+✓ Real CNN service initialized successfully
+Random Forest initialized with 10 trees
+Google Earth Engine service account not found - using fallback data sources
+8:44:54 PM [express] serving on port 5000
+OCR scheduler initialized with 2 workers
+Classifying land use for 23.2599, 77.4126 using real AI models
+Fetching real satellite data for 23.2599, 77.4126 on 2025-08-30
+⚠ Python satellite service exited with code 1: Traceback (most recent call last):
+  File "/home/runner/workspace/server/services/realSatelliteService.py", line 480, in <module>
+    landsat_data = service.get_landsat_data(lat, lng)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/server/services/realSatelliteService.py", line 63, in get_landsat_data
+    raise Exception("USGS authentication required for real Landsat data")
+Exception: USGS authentication required for real Landsat data
+
+Using geographic analysis fallback
+✓ Real CNN classification: EuroSAT CNN + Random Forest Ensemble
+✓ Using real CNN ensemble classification
+8:45:35 PM [express] POST /api/land-use/classify 200 in 1578ms :: {"coordinates":{"lat":23.2599,"lng…
+⚠ Python satellite service timeout
+Classifying land use for 22.5726, 88.3639 using real AI models
+Fetching real satellite data for 22.5726, 88.3639 on 2025-08-30
+⚠ Python satellite service exited with code 1: ⚠ USGS API responded with status 404
+⚠ USGS not authenticated - trying ESA Sentinel data instead
+Traceback (most recent call last):
+  File "/home/runner/workspace/server/services/realSatelliteService.py", line 489, in <module>
+    landsat_data = service.get_landsat_data(lat, lng)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/server/services/realSatelliteService.py", line 72, in get_landsat_data
+    raise Exception("USGS authentication not available - using ESA Copernicus Sentinel data instead")
+Exception: USGS authentication not available - using ESA Copernicus Sentinel data instead
+
+Using geographic analysis fallback
+✓ Real CNN classification: EuroSAT CNN + Random Forest Ensemble
+✓ Using real CNN ensemble classification
+8:47:02 PM [express] POST /api/land-use/classify 200 in 1091ms :: {"coordinates":{"lat":22.5726,"lng…
