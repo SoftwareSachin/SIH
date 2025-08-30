@@ -55,7 +55,7 @@ export class EarthEngineService {
         console.log('Google Earth Engine service account not found - using fallback data sources');
       }
     } catch (error) {
-      console.error('Error initializing Google Earth Engine service:', error);
+      console.log('Google Earth Engine service account not found - using fallback data sources');
     }
   }
 
