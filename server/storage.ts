@@ -50,6 +50,7 @@ export interface IStorage {
   getStates(): Promise<State[]>;
   getDistrictsByState(stateId: string): Promise<District[]>;
   getVillagesByDistrict(districtId: string): Promise<Village[]>;
+  getAllVillages(): Promise<Village[]>;
   getVillageById(villageId: string): Promise<Village | undefined>;
 
   // Claims operations
@@ -93,6 +94,7 @@ export interface IStorage {
 
   // Asset operations
   createAsset(asset: InsertAsset): Promise<Asset>;
+  getAllAssets(): Promise<Asset[]>;
   getAssetDetectionQueue(): Promise<Asset[]>;
 
   // Recommendation operations
@@ -244,6 +246,10 @@ export class DatabaseStorage implements IStorage {
 
   async getVillagesByDistrict(districtId: string): Promise<Village[]> {
     return db.select().from(villages).where(eq(villages.districtId, districtId)).orderBy(villages.name);
+  }
+
+  async getAllVillages(): Promise<Village[]> {
+    return db.select().from(villages).orderBy(villages.name);
   }
 
   async getVillageById(villageId: string): Promise<Village | undefined> {
@@ -484,6 +490,10 @@ export class DatabaseStorage implements IStorage {
   async createAsset(asset: InsertAsset): Promise<Asset> {
     const [newAsset] = await db.insert(assets).values(asset).returning();
     return newAsset;
+  }
+
+  async getAllAssets(): Promise<Asset[]> {
+    return db.select().from(assets).orderBy(desc(assets.detectedAt));
   }
 
   async getAssetDetectionQueue(): Promise<Asset[]> {

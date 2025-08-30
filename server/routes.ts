@@ -424,6 +424,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assets routes
+  app.get('/api/assets', async (req, res) => {
+    try {
+      const assets = await storage.getAllAssets();
+      res.json(assets);
+    } catch (error) {
+      console.error("Error fetching assets:", error);
+      res.status(500).json({ message: "Failed to fetch assets" });
+    }
+  });
+
   // Asset detection
   app.post('/api/assets/detect/:villageId', isAuthenticated, async (req: any, res) => {
     try {
@@ -509,6 +520,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching districts:", error);
       res.status(500).json({ message: "Failed to fetch districts" });
+    }
+  });
+
+  app.get('/api/geo/villages/all', async (req, res) => {
+    try {
+      const villages = await storage.getAllVillages();
+      res.json(villages);
+    } catch (error) {
+      console.error("Error fetching all villages:", error);
+      res.status(500).json({ message: "Failed to fetch villages" });
     }
   });
 
