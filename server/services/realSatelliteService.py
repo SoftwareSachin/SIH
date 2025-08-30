@@ -54,7 +54,7 @@ class RealSatelliteService:
         except Exception as e:
             return False
     
-    def get_landsat_data(self, lat: float, lng: float, date: str = None) -> Dict:
+    def get_landsat_data(self, lat: float, lng: float, date: str | None = None) -> Dict:
         """
         Fetch real Landsat 8/9 data from USGS M2M API
         Returns actual satellite spectral band data
@@ -115,7 +115,7 @@ class RealSatelliteService:
             
             if not scenes:
                 print(f"⚠ No Landsat scenes found for {lat}, {lng} on {date}")
-                return self._generate_fallback_data(lat, lng, date)
+                raise Exception(f"No authentic Landsat data available for coordinates {lat}, {lng} on {date}. Real satellite data required.")
             
             # Get the best scene (least cloud cover)
             best_scene = min(scenes, key=lambda x: x.get('cloudCover', 100))
@@ -165,9 +165,9 @@ class RealSatelliteService:
             
         except Exception as e:
             print(f"⚠ Landsat API error: {e}")
-            return self._generate_fallback_data(lat, lng, date)
+            raise Exception(f"Failed to fetch real Landsat data: {e}. Please provide valid USGS M2M credentials.")
     
-    def get_modis_land_cover(self, lat: float, lng: float, year: int = None) -> Dict:
+    def get_modis_land_cover(self, lat: float, lng: float, year: int | None = None) -> Dict:
         """
         Fetch real MODIS MCD12Q1 land cover data from NASA AppEEARS API
         Returns authentic land cover classification from satellite data
@@ -234,12 +234,12 @@ class RealSatelliteService:
                     # For now, return based on coordinate analysis
                     return self._analyze_modis_land_cover(lat, lng, year)
             
-            # Fallback to coordinate-based analysis
-            return self._analyze_modis_land_cover(lat, lng, year)
+            # Require real MODIS data
+            raise Exception(f"MODIS task submission failed. Real NASA EarthData authentication required.")
             
         except Exception as e:
             print(f"⚠ MODIS API error: {e}")
-            return self._analyze_modis_land_cover(lat, lng, year)
+            raise Exception(f"Failed to fetch real MODIS data: {e}. Please provide valid NASA EarthData token.")
     
     def _process_landsat_file(self, url: str, lat: float, lng: float, scene_metadata: Dict) -> Dict:
         """Process real Landsat file download"""
