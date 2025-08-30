@@ -885,6 +885,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Asset Detection API endpoints
+  app.post('/api/assets/detect', isAuthenticated, async (req: any, res) => {
+    try {
+      const { villageId, coordinates } = req.body;
+      
+      if (!villageId && !coordinates) {
+        return res.status(400).json({ message: "Village ID or coordinates are required" });
+      }
+      
+      let detectedAssets;
+      if (villageId) {
+        detectedAssets = await aiProcessor.detectAssetsForVillage(villageId);
+      } else {
+        // Direct coordinate-based detection
+        const { lat, lng } = coordinates;
+        if (!lat || !lng) {
+          return res.status(400).json({ message: "Latitude and longitude are required" });
+        }
+        
+        // Create temporary detection for coordinates
+        const tempAssets = [];
+        const waterBodies = await aiProcessor.detectWaterBodies(lat, lng);
+        const farmlands = await aiProcessor.detectFarmlands(lat, lng);
+        const homesteads = await aiProcessor.detectHomesteads(lat, lng);
+        const infrastructure = await aiProcessor.detectInfrastructure(lat, lng);
+        
+        tempAssets.push(...waterBodies, ...farmlands, ...homesteads, ...infrastructure);
+        detectedAssets = tempAssets;
+      }
+      
+      res.json({ 
+        success: true, 
+        assets: detectedAssets,
+        count: detectedAssets.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Asset detection error:', error);
+      res.status(500).json({ message: "Failed to detect assets" });
+    }
+  });
+
+  // Land use classification endpoint
+  app.post('/api/landuse/classify', isAuthenticated, async (req: any, res) => {
+    try {
+      const { lat, lng, highResolution = false } = req.body;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "Latitude and longitude are required" });
+      }
+      
+      const apiKey = highResolution ? process.env.SENTINEL_HUB_API_KEY : undefined;
+      const result = await landUseClassificationService.classifyLandUse({
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        highResolution,
+        apiKey
+      });
+      
+      res.json({ 
+        success: true, 
+        classification: result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Land use classification error:', error);
+      res.status(500).json({ message: "Failed to classify land use" });
+    }
+  });
+
+  // Batch asset detection for multiple locations
+  app.post('/api/assets/batch-detect', isAuthenticated, async (req: any, res) => {
+    try {
+      const { locations, highResolution = false } = req.body;
+      
+      if (!locations || !Array.isArray(locations)) {
+        return res.status(400).json({ message: "Locations array is required" });
+      }
+      
+      const apiKey = highResolution ? process.env.SENTINEL_HUB_API_KEY : undefined;
+      const results = await landUseClassificationService.batchClassifyLandUse(
+        locations.map(loc => ({ lat: parseFloat(loc.lat), lng: parseFloat(loc.lng) })),
+        { highResolution, apiKey }
+      );
+      
+      res.json({ 
+        success: true, 
+        results,
+        count: results.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Batch asset detection error:', error);
+      res.status(500).json({ message: "Failed to perform batch asset detection" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

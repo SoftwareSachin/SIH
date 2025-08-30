@@ -17,6 +17,7 @@ interface AssetDetectionResult {
 }
 
 class AIProcessor {
+  
   async getProcessingStatus(): Promise<ProcessingStatus> {
     try {
       // Get counts from database
@@ -118,27 +119,40 @@ class AIProcessor {
     }
   }
 
-  private async detectWaterBodies(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
+  async detectWaterBodies(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
     const waterBodies: AssetDetectionResult[] = [];
     
-    // Real water body detection using NDWI spectral analysis
-    // Uses authentic satellite spectral indices
-    const searchRadius = 0.01; // ~1km
+    // Enhanced water body detection using high-resolution satellite data
+    const searchRadius = 0.01; // ~1km search radius
     
-    // Use real satellite data classification to identify water bodies
-    const result = await landUseClassificationService.classifyLandUse({ lat: centerLat, lng: centerLng });
+    // Use high-resolution Sentinel-2 data if available
+    const apiKey = process.env.SENTINEL_HUB_API_KEY;
+    const result = await landUseClassificationService.classifyLandUse({ 
+      lat: centerLat, 
+      lng: centerLng,
+      highResolution: !!apiKey,
+      apiKey 
+    });
+    
     const waterPercentage = result.classifications.water;
+    const ndwi = result.metadata.spectralIndices.avgNDWI;
     
-    if (waterPercentage > 0.15) { // 15% water threshold
-      // Calculate real area from satellite pixel analysis
-      const pixelArea = 30 * 30; // Landsat pixel size in meters
-      const totalPixels = 64 * 64; // Standard classification grid
+    // Enhanced water detection using multiple criteria
+    if (waterPercentage > 0.1 && ndwi > 0.3) { // Refined thresholds for ponds and water bodies
+      // Calculate real area based on sensor resolution
+      const pixelArea = result.resolution * result.resolution; // Use actual sensor resolution
+      const totalPixels = 64 * 64;
       const waterPixels = Math.floor(totalPixels * waterPercentage);
       const realWaterArea = waterPixels * pixelArea;
       
+      // Classify water body type based on area and NDWI
+      let waterType = 'pond';
+      if (realWaterArea > 10000) waterType = 'lake'; // >1 hectare
+      else if (realWaterArea > 1000) waterType = 'large_pond'; // >0.1 hectare
+      
       waterBodies.push({
-        type: 'water_body',
-        confidence: result.confidence * 100,
+        type: waterType,
+        confidence: Math.min(95, result.confidence * 100 + ndwi * 20),
         coordinates: {
           type: 'Point',
           coordinates: [centerLng, centerLat]
@@ -150,35 +164,50 @@ class AIProcessor {
     return waterBodies;
   }
 
-  private async detectFarmlands(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
+  async detectFarmlands(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
     const farmlands: AssetDetectionResult[] = [];
     
-    // Real agricultural land detection using NDVI analysis
-    const searchRadius = 0.02; // ~2km
+    // Enhanced agricultural land detection using multi-spectral analysis
+    const apiKey = process.env.SENTINEL_HUB_API_KEY;
+    const result = await landUseClassificationService.classifyLandUse({ 
+      lat: centerLat, 
+      lng: centerLng,
+      highResolution: !!apiKey,
+      apiKey 
+    });
     
-    // Use real satellite classification for agriculture detection
-    const result = await landUseClassificationService.classifyLandUse({ lat: centerLat, lng: centerLng });
     const agriPercentage = result.classifications.agriculture;
     const ndvi = result.metadata.spectralIndices.avgNDVI;
+    const savi = result.metadata.spectralIndices.avgSAVI;
     
-    if (agriPercentage > 0.1 && ndvi > 0.3) { // Real agriculture thresholds
-      // Calculate real agricultural area from satellite analysis
-      const pixelArea = 30 * 30; // Landsat pixel size
+    // Enhanced agriculture detection with seasonal considerations
+    if (agriPercentage > 0.05 && ndvi > 0.25) { // Lowered thresholds for small farms
+      const pixelArea = result.resolution * result.resolution;
       const totalPixels = 64 * 64;
       const agriPixels = Math.floor(totalPixels * agriPercentage);
       const realAgriArea = agriPixels * pixelArea;
       
+      // Classify farm type based on NDVI and area
+      let farmType = 'small_farm';
+      if (realAgriArea > 20000) farmType = 'large_farm'; // >2 hectares
+      else if (realAgriArea > 5000) farmType = 'medium_farm'; // >0.5 hectare
+      
+      // Determine crop health and type indicators
+      let cropHealth = 'moderate';
+      if (ndvi > 0.6 && savi > 0.4) cropHealth = 'healthy';
+      else if (ndvi < 0.4) cropHealth = 'stressed';
+      
       farmlands.push({
-        type: 'agricultural_land',
-        confidence: result.confidence * 100,
+        type: `${farmType}_${cropHealth}`,
+        confidence: Math.min(95, result.confidence * 100 + ndvi * 30),
         coordinates: {
           type: 'Polygon',
           coordinates: [[
-            [centerLng - 0.001, centerLat - 0.001],
-            [centerLng + 0.001, centerLat - 0.001],
-            [centerLng + 0.001, centerLat + 0.001],
-            [centerLng - 0.001, centerLat + 0.001],
-            [centerLng - 0.001, centerLat - 0.001]
+            [centerLng - 0.002, centerLat - 0.002],
+            [centerLng + 0.002, centerLat - 0.002],
+            [centerLng + 0.002, centerLat + 0.002],
+            [centerLng - 0.002, centerLat + 0.002],
+            [centerLng - 0.002, centerLat - 0.002]
           ]]
         },
         area: realAgriArea
@@ -188,24 +217,42 @@ class AIProcessor {
     return farmlands;
   }
 
-  private async detectHomesteads(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
+  async detectHomesteads(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
     const homesteads: AssetDetectionResult[] = [];
     
-    // Real built-up area detection using satellite classification
-    const result = await landUseClassificationService.classifyLandUse({ lat: centerLat, lng: centerLng });
+    // Enhanced homestead detection using high-resolution analysis
+    const apiKey = process.env.SENTINEL_HUB_API_KEY;
+    const result = await landUseClassificationService.classifyLandUse({ 
+      lat: centerLat, 
+      lng: centerLng,
+      highResolution: !!apiKey,
+      apiKey 
+    });
+    
     const builtUpPercentage = result.classifications.builtUp;
     const ndbi = result.metadata.spectralIndices.avgNDBI;
+    const ndvi = result.metadata.spectralIndices.avgNDVI;
     
-    if (builtUpPercentage > 0.05 && ndbi > 0.1) { // Real built-up thresholds
-      // Calculate real built-up area from satellite analysis
-      const pixelArea = 30 * 30; // Landsat pixel size
+    // Enhanced detection for rural homesteads and compounds
+    if (builtUpPercentage > 0.02 && ndbi > 0.05) { // Lower thresholds for rural areas
+      const pixelArea = result.resolution * result.resolution;
       const totalPixels = 64 * 64;
       const builtPixels = Math.floor(totalPixels * builtUpPercentage);
       const realBuiltArea = builtPixels * pixelArea;
       
+      // Classify homestead type based on area and surrounding vegetation
+      let homesteadType = 'rural_homestead';
+      if (realBuiltArea > 2000) homesteadType = 'compound'; // >0.2 hectare
+      else if (realBuiltArea > 500) homesteadType = 'large_homestead'; // >0.05 hectare
+      
+      // Check for mixed residential-agricultural use
+      if (ndvi > 0.3 && builtUpPercentage < 0.15) {
+        homesteadType += '_with_agriculture';
+      }
+      
       homesteads.push({
-        type: 'built_up_area',
-        confidence: result.confidence * 100,
+        type: homesteadType,
+        confidence: Math.min(95, result.confidence * 100 + ndbi * 40),
         coordinates: {
           type: 'Point',
           coordinates: [centerLng, centerLat]
@@ -217,25 +264,48 @@ class AIProcessor {
     return homesteads;
   }
 
-  private async detectInfrastructure(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
+  async detectInfrastructure(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
     const infrastructure: AssetDetectionResult[] = [];
     
-    // Real infrastructure detection using satellite and population density analysis
-    const result = await landUseClassificationService.classifyLandUse({ lat: centerLat, lng: centerLng });
-    const builtUpPercentage = result.classifications.builtUp;
+    // Enhanced social infrastructure detection using pattern analysis
+    const apiKey = process.env.SENTINEL_HUB_API_KEY;
+    const result = await landUseClassificationService.classifyLandUse({ 
+      lat: centerLat, 
+      lng: centerLng,
+      highResolution: !!apiKey,
+      apiKey 
+    });
     
-    // Infrastructure detection based on real built-up density patterns
-    if (builtUpPercentage > 0.2) { // 20% built-up indicates infrastructure potential
-      const infrastructureConfidence = Math.min(95, builtUpPercentage * 100 * 1.2);
+    const builtUpPercentage = result.classifications.builtUp;
+    const ndbi = result.metadata.spectralIndices.avgNDBI;
+    const ndvi = result.metadata.spectralIndices.avgNDVI;
+    
+    // Detect different types of social infrastructure
+    if (builtUpPercentage > 0.08) { // 8% built-up for rural infrastructure
+      const pixelArea = result.resolution * result.resolution;
+      const infrastructureArea = Math.floor(builtUpPercentage * 64 * 64 * pixelArea);
+      
+      // Classify infrastructure type based on size and context
+      let infraType = 'community_facility';
+      if (infrastructureArea > 5000) {
+        infraType = 'school_or_health_center'; // Larger facilities
+      } else if (infrastructureArea > 1000) {
+        infraType = 'community_hall'; // Medium facilities
+      }
+      
+      // Check for institutional patterns (large buildings with open spaces)
+      if (builtUpPercentage > 0.15 && ndvi > 0.2) {
+        infraType = 'institutional_complex';
+      }
       
       infrastructure.push({
-        type: 'infrastructure_cluster',
-        confidence: infrastructureConfidence,
+        type: infraType,
+        confidence: Math.min(95, result.confidence * 100 + ndbi * 25),
         coordinates: {
           type: 'Point',
           coordinates: [centerLng, centerLat]
         },
-        area: Math.floor(builtUpPercentage * 64 * 64 * 30 * 30) // Real area calculation
+        area: infrastructureArea
       });
     }
     
