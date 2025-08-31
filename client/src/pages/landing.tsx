@@ -477,7 +477,10 @@ export default function Landing() {
                   <span className="text-xs text-gray-400">System Operational</span>
                 </div>
                 <span className="text-xs text-gray-500">
-                  Last Updated: August 2024
+                  © 2025 Government of India
+                </span>
+                <span className="text-xs text-gray-500">
+                  Last Updated: August 2025
                 </span>
               </div>
             </div>
