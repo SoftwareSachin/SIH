@@ -373,7 +373,7 @@ export default function Landing() {
             <Button 
               variant="outline" 
               size="lg" 
-              className="border-gray-400 text-gray-300 hover:bg-slate-700 hover:text-white px-10 py-4 text-lg font-semibold rounded-lg"
+              className="border-gray-300 text-gray-200 hover:bg-slate-700 hover:text-white hover:border-gray-200 px-10 py-4 text-lg font-semibold rounded-lg"
             >
               System Information
             </Button>
