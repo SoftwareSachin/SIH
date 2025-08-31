@@ -5,6 +5,10 @@ import { Shrub, Map, BarChart3, Brain, Users, CheckCircle, TreePine, Shield, Fil
 import governmentMeetingImage from "@assets/generated_images/Government_forest_management_meeting_5f35e229.png";
 import forestAerialImage from "@assets/generated_images/Forest_conservation_aerial_view_8aa1e263.png";
 import fieldOfficerImage from "@assets/generated_images/Field_officer_forest_documentation_e28df0c4.png";
+import madhyaPradeshMap from "@assets/image_1756619529128.png";
+import tripuraMap from "@assets/image_1756619548972.png";
+import odishaMap from "@assets/image_1756619567129.png";
+import telanganaMap from "@assets/image_1756619579419.png";
 
 export default function Landing() {
   return (
@@ -185,9 +189,16 @@ export default function Landing() {
           </div>
           
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="text-center border shadow-md">
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-gray-900 mb-2">Madhya Pradesh</div>
+            <Card className="border shadow-md overflow-hidden">
+              <div className="aspect-square">
+                <img 
+                  src={madhyaPradeshMap} 
+                  alt="Madhya Pradesh administrative map" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <CardContent className="pt-6 text-center">
+                <div className="text-xl font-bold text-gray-900 mb-2">Madhya Pradesh</div>
                 <div className="text-sm text-gray-600 mb-4">Primary Implementation</div>
                 <Badge className="bg-green-100 text-green-800">
                   <CheckCircle className="w-3 h-3 mr-1" />
@@ -196,9 +207,16 @@ export default function Landing() {
               </CardContent>
             </Card>
             
-            <Card className="text-center border shadow-md">
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-gray-900 mb-2">Tripura</div>
+            <Card className="border shadow-md overflow-hidden">
+              <div className="aspect-square">
+                <img 
+                  src={tripuraMap} 
+                  alt="Tripura administrative map" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <CardContent className="pt-6 text-center">
+                <div className="text-xl font-bold text-gray-900 mb-2">Tripura</div>
                 <div className="text-sm text-gray-600 mb-4">Northeast Region</div>
                 <Badge className="bg-green-100 text-green-800">
                   <CheckCircle className="w-3 h-3 mr-1" />
@@ -207,9 +225,16 @@ export default function Landing() {
               </CardContent>
             </Card>
             
-            <Card className="text-center border shadow-md">
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-gray-900 mb-2">Odisha</div>
+            <Card className="border shadow-md overflow-hidden">
+              <div className="aspect-square">
+                <img 
+                  src={odishaMap} 
+                  alt="Odisha administrative map" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <CardContent className="pt-6 text-center">
+                <div className="text-xl font-bold text-gray-900 mb-2">Odisha</div>
                 <div className="text-sm text-gray-600 mb-4">Eastern Region</div>
                 <Badge className="bg-green-100 text-green-800">
                   <CheckCircle className="w-3 h-3 mr-1" />
@@ -218,9 +243,16 @@ export default function Landing() {
               </CardContent>
             </Card>
             
-            <Card className="text-center border shadow-md">
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-gray-900 mb-2">Telangana</div>
+            <Card className="border shadow-md overflow-hidden">
+              <div className="aspect-square">
+                <img 
+                  src={telanganaMap} 
+                  alt="Telangana administrative map" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <CardContent className="pt-6 text-center">
+                <div className="text-xl font-bold text-gray-900 mb-2">Telangana</div>
                 <div className="text-sm text-gray-600 mb-4">Southern Region</div>
                 <Badge className="bg-green-100 text-green-800">
                   <CheckCircle className="w-3 h-3 mr-1" />
