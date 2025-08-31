@@ -59,17 +59,6 @@ export default function Landing() {
                   </Button>
                 </div>
                 
-                {/* Trust Indicators */}
-                <div className="mt-12 flex items-center gap-8 text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-green-600" />
-                    <span className="text-sm font-medium">Government Certified</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-green-600" />
-                    <span className="text-sm font-medium">Secure & Compliant</span>
-                  </div>
-                </div>
               </div>
               
               <div className="relative">
