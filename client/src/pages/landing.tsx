@@ -109,8 +109,8 @@ export default function Landing() {
             <Card className="border shadow-lg hover:shadow-xl transition-shadow duration-300">
               <CardHeader>
                 <div className="flex items-center gap-4">
-                  <div className="bg-green-600 p-3 rounded-lg shadow-md">
-                    <Map className="h-8 w-8 text-white" />
+                  <div className="bg-gray-100 p-3 rounded-lg">
+                    <Map className="h-8 w-8 text-gray-700" />
                   </div>
                   <div>
                     <CardTitle className="text-xl font-bold text-gray-900">WebGIS Portal</CardTitle>
@@ -129,8 +129,8 @@ export default function Landing() {
             <Card className="border shadow-lg hover:shadow-xl transition-shadow duration-300">
               <CardHeader>
                 <div className="flex items-center gap-4">
-                  <div className="bg-blue-600 p-3 rounded-lg shadow-md">
-                    <Brain className="h-8 w-8 text-white" />
+                  <div className="bg-gray-100 p-3 rounded-lg">
+                    <Brain className="h-8 w-8 text-gray-700" />
                   </div>
                   <div>
                     <CardTitle className="text-xl font-bold text-gray-900">AI Processing</CardTitle>
@@ -149,8 +149,8 @@ export default function Landing() {
             <Card className="border shadow-lg hover:shadow-xl transition-shadow duration-300">
               <CardHeader>
                 <div className="flex items-center gap-4">
-                  <div className="bg-purple-600 p-3 rounded-lg shadow-md">
-                    <BarChart3 className="h-8 w-8 text-white" />
+                  <div className="bg-gray-100 p-3 rounded-lg">
+                    <BarChart3 className="h-8 w-8 text-gray-700" />
                   </div>
                   <div>
                     <CardTitle className="text-xl font-bold text-gray-900">Decision Support</CardTitle>
@@ -272,43 +272,43 @@ export default function Landing() {
                 title: "Ministry of Tribal Affairs",
                 description: "National policy oversight, strategic analytics, cross-state coordination, and high-level decision support.",
                 icon: <Shield className="h-7 w-7" />,
-                color: "bg-blue-600"
+                color: "bg-gray-100 text-gray-700"
               },
               {
                 title: "District Tribal Welfare",
                 description: "Ground-level implementation, claim verification, community engagement, and beneficiary support.",
                 icon: <Users className="h-7 w-7" />,
-                color: "bg-green-600"
+                color: "bg-gray-100 text-gray-700"
               },
               {
                 title: "Forest & Revenue Departments",
                 description: "Land records integration, boundary verification, compliance monitoring, and departmental coordination.",
                 icon: <TreePine className="h-7 w-7" />,
-                color: "bg-emerald-600"
+                color: "bg-gray-100 text-gray-700"
               },
               {
                 title: "Planning Authorities",
                 description: "Development scheme integration, budget allocation, impact assessment, and strategic planning.",
                 icon: <BarChart3 className="h-7 w-7" />,
-                color: "bg-purple-600"
+                color: "bg-gray-100 text-gray-700"
               },
               {
                 title: "NGOs & Civil Society",
                 description: "Community advocacy, awareness campaigns, implementation monitoring, and grassroots support.",
                 icon: <Users className="h-7 w-7" />,
-                color: "bg-orange-600"
+                color: "bg-gray-100 text-gray-700"
               },
               {
                 title: "Field Officers",
                 description: "Mobile data collection, verification workflows, status tracking, and field-level documentation.",
                 icon: <FileText className="h-7 w-7" />,
-                color: "bg-teal-600"
+                color: "bg-gray-100 text-gray-700"
               }
             ].map((user, index) => (
               <Card key={index} className="border shadow-lg hover:shadow-xl transition-shadow duration-300">
                 <CardHeader>
                   <div className="flex items-start gap-4">
-                    <div className={`${user.color} p-3 rounded-lg shadow-md text-white`}>
+                    <div className={`${user.color} p-3 rounded-lg`}>
                       {user.icon}
                     </div>
                     <div className="flex-1">
