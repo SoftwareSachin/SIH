@@ -22,6 +22,9 @@ import fieldOfficersImage from "@assets/generated_images/Field_officers_data_col
 import webgisWorkstationImage from "@assets/generated_images/WebGIS_geospatial_analysis_workstation_72df1d4f.png";
 import aiProcessingImage from "@assets/generated_images/AI_document_processing_system_9316c4d4.png";
 import decisionSupportImage from "@assets/generated_images/Decision_support_analytics_dashboard_b15f56b5.png";
+import forestLandscapeImage from "@assets/generated_images/Forest_landscape_with_tribal_villages_51760b8e.png";
+import governmentDigitalImage from "@assets/generated_images/Government_digital_governance_center_c1be9c77.png";
+import forestRightsCollageImage from "@assets/generated_images/Forest_rights_management_collage_67549422.png";
 
 export default function Landing() {
   return (
@@ -478,106 +481,152 @@ export default function Landing() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-gray-300">
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+      <footer className="relative bg-slate-900 text-gray-300 overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={forestLandscapeImage} 
+            alt="Forest landscape with tribal villages"
+            className="w-full h-full object-cover opacity-10"
+          />
+          <div className="absolute inset-0 bg-slate-900/90"></div>
+        </div>
+        
+        <div className="relative z-10 mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
             {/* Brand Section */}
             <div className="col-span-1 lg:col-span-5">
               <div className="flex items-center gap-3 mb-6">
-                <div className="bg-slate-700 p-3 rounded-lg">
-                  <TreePine className="h-7 w-7 text-gray-300" />
+                <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-3 rounded-xl shadow-lg">
+                  <TreePine className="h-7 w-7 text-white" />
                 </div>
                 <span className="text-2xl font-bold text-white">FRA Atlas</span>
               </div>
-              <p className="text-gray-400 text-base leading-relaxed mb-8 max-w-lg">
+              
+              {/* Government Digital Center Image */}
+              <div className="mb-6 rounded-xl overflow-hidden shadow-lg">
+                <img 
+                  src={governmentDigitalImage} 
+                  alt="Government digital governance center"
+                  className="w-full h-32 object-cover"
+                />
+              </div>
+              
+              <p className="text-gray-300 text-base leading-relaxed mb-8 max-w-lg">
                 Comprehensive digital platform for Forest Rights Act implementation, providing 
                 advanced tools for transparent forest governance and tribal community empowerment 
                 across multiple states in India.
               </p>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="bg-slate-700 p-1.5 rounded">
-                    <Shield className="h-4 w-4 text-gray-300" />
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 text-sm bg-slate-800/50 p-3 rounded-lg">
+                  <div className="bg-green-600 p-2 rounded-lg">
+                    <Shield className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-gray-300">Forest Rights Act 2006 Compliant</span>
+                  <span className="text-gray-200 font-medium">Forest Rights Act 2006 Compliant</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="bg-slate-700 p-1.5 rounded">
-                    <Satellite className="h-4 w-4 text-gray-300" />
+                <div className="flex items-center gap-3 text-sm bg-slate-800/50 p-3 rounded-lg">
+                  <div className="bg-blue-600 p-2 rounded-lg">
+                    <Satellite className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-gray-300">Satellite-Enabled Geospatial Analysis</span>
+                  <span className="text-gray-200 font-medium">Satellite-Enabled Geospatial Analysis</span>
                 </div>
               </div>
             </div>
             
             {/* Platform Features */}
             <div className="col-span-1 lg:col-span-3">
-              <h3 className="text-white font-semibold mb-6 text-lg">Platform Modules</h3>
-              <ul className="space-y-3">
-                <li className="flex items-center gap-3">
-                  <div className="bg-slate-700 p-1 rounded">
-                    <Map className="h-3 w-3 text-gray-400" />
+              <h3 className="text-white font-bold mb-6 text-lg flex items-center gap-2">
+                <div className="w-1 h-6 bg-green-500 rounded"></div>
+                Platform Modules
+              </h3>
+              <ul className="space-y-4">
+                <li className="flex items-center gap-3 p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
+                  <div className="bg-emerald-600 p-2 rounded-lg">
+                    <Map className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-gray-400 text-sm">WebGIS Portal</span>
+                  <span className="text-gray-200 text-sm font-medium">WebGIS Portal</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <div className="bg-slate-700 p-1 rounded">
-                    <Brain className="h-3 w-3 text-gray-400" />
+                <li className="flex items-center gap-3 p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
+                  <div className="bg-green-600 p-2 rounded-lg">
+                    <Brain className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-gray-400 text-sm">AI Document Processing</span>
+                  <span className="text-gray-200 text-sm font-medium">AI Document Processing</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <div className="bg-slate-700 p-1 rounded">
-                    <BarChart3 className="h-3 w-3 text-gray-400" />
+                <li className="flex items-center gap-3 p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
+                  <div className="bg-teal-600 p-2 rounded-lg">
+                    <BarChart3 className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-gray-400 text-sm">Decision Support System</span>
+                  <span className="text-gray-200 text-sm font-medium">Decision Support System</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <div className="bg-slate-700 p-1 rounded">
-                    <FileText className="h-3 w-3 text-gray-400" />
+                <li className="flex items-center gap-3 p-3 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
+                  <div className="bg-blue-600 p-2 rounded-lg">
+                    <FileText className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-gray-400 text-sm">Claims Management</span>
+                  <span className="text-gray-200 text-sm font-medium">Claims Management</span>
                 </li>
               </ul>
             </div>
             
             {/* System Information */}
             <div className="col-span-1 lg:col-span-4">
-              <h3 className="text-white font-semibold mb-6 text-lg">System Information</h3>
+              <h3 className="text-white font-bold mb-6 text-lg flex items-center gap-2">
+                <div className="w-1 h-6 bg-blue-500 rounded"></div>
+                System Information
+              </h3>
+              
+              {/* Forest Rights Management Collage */}
+              <div className="mb-6 rounded-xl overflow-hidden shadow-lg">
+                <img 
+                  src={forestRightsCollageImage} 
+                  alt="Forest rights management comprehensive overview"
+                  className="w-full h-32 object-cover"
+                />
+              </div>
+              
               <ul className="space-y-3">
-                <li className="text-gray-400 text-sm">Technical Documentation</li>
-                <li className="text-gray-400 text-sm">User Access Guidelines</li>
-                <li className="text-gray-400 text-sm">Data Privacy Policy</li>
-                <li className="text-gray-400 text-sm">Security Standards</li>
-                <li className="text-gray-400 text-sm">Implementation Coverage</li>
-                <li className="text-gray-400 text-sm">Compliance Framework</li>
+                <li className="text-gray-300 text-sm hover:text-white transition-colors cursor-pointer p-2 hover:bg-slate-800/30 rounded">Technical Documentation</li>
+                <li className="text-gray-300 text-sm hover:text-white transition-colors cursor-pointer p-2 hover:bg-slate-800/30 rounded">User Access Guidelines</li>
+                <li className="text-gray-300 text-sm hover:text-white transition-colors cursor-pointer p-2 hover:bg-slate-800/30 rounded">Data Privacy Policy</li>
+                <li className="text-gray-300 text-sm hover:text-white transition-colors cursor-pointer p-2 hover:bg-slate-800/30 rounded">Security Standards</li>
+                <li className="text-gray-300 text-sm hover:text-white transition-colors cursor-pointer p-2 hover:bg-slate-800/30 rounded">Implementation Coverage</li>
+                <li className="text-gray-300 text-sm hover:text-white transition-colors cursor-pointer p-2 hover:bg-slate-800/30 rounded">Compliance Framework</li>
               </ul>
             </div>
           </div>
           
-          {/* Bottom Section */}
-          <div className="border-t border-slate-700 mt-16 pt-8">
-            <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
-              <div className="flex items-center gap-6">
-                <p className="text-sm text-gray-400">
-                  Forest Rights Act Digital Management Platform
-                </p>
-                <div className="hidden lg:block w-px h-4 bg-slate-700"></div>
-                <p className="text-sm text-gray-500">
-                  Government of India Initiative
-                </p>
-              </div>
-              <div className="flex items-center gap-8">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-xs text-gray-400">System Operational</span>
+          {/* Enhanced Bottom Section */}
+          <div className="border-t border-slate-700/50 mt-16 pt-8 bg-slate-800/20 rounded-xl p-6">
+            <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+              <div className="flex flex-col lg:flex-row items-center gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="bg-gradient-to-r from-green-600 to-blue-600 p-2 rounded-lg">
+                    <Award className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      Forest Rights Act Digital Management Platform
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Government of India Initiative
+                    </p>
+                  </div>
                 </div>
-                <span className="text-xs text-gray-500">
-                  © 2025 Government of India
-                </span>
-                <span className="text-xs text-gray-500">
-                  Last Updated: August 2025
-                </span>
+              </div>
+              
+              <div className="flex items-center gap-8">
+                <div className="flex items-center gap-2 bg-green-900/30 px-3 py-2 rounded-lg">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-300 font-medium">System Operational</span>
+                </div>
+                <div className="text-center">
+                  <span className="text-xs text-gray-400 block">
+                    © 2025 Government of India
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Last Updated: August 2025
+                  </span>
+                </div>
               </div>
             </div>
           </div>
