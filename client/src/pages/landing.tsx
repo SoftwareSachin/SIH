@@ -13,6 +13,12 @@ import governmentMeetingImage2 from "@assets/generated_images/Government_forest_
 import tribalVillageImage from "@assets/generated_images/Tribal_village_forest_community_6a9d4cf0.png";
 import forestOfficerDigitalImage from "@assets/generated_images/Forest_officer_digital_documentation_58d31e36.png";
 import satelliteForestImage from "@assets/generated_images/Satellite_forest_mapping_view_060d3bfa.png";
+import ministryTribalAffairsImage from "@assets/generated_images/Ministry_tribal_affairs_office_9ca7af8a.png";
+import districtTribalWelfareImage from "@assets/generated_images/District_tribal_welfare_meeting_c10c304e.png";
+import forestRevenueImage from "@assets/generated_images/Forest_revenue_department_office_f2ccf6ad.png";
+import planningAuthoritiesImage from "@assets/generated_images/Planning_authorities_development_meeting_9438b4ad.png";
+import ngoCommunitiesImage from "@assets/generated_images/NGO_community_awareness_campaign_a50a3fed.png";
+import fieldOfficersImage from "@assets/generated_images/Field_officers_data_collection_c12e1cfc.png";
 
 export default function Landing() {
   return (
@@ -332,45 +338,66 @@ export default function Landing() {
                 title: "Ministry of Tribal Affairs",
                 description: "National policy oversight, strategic analytics, cross-state coordination, and high-level decision support.",
                 icon: <Shield className="h-7 w-7" />,
+                image: ministryTribalAffairsImage,
+                alt: "Ministry of Tribal Affairs officials reviewing forest rights policies",
                 color: "bg-emerald-50 text-emerald-700 border-emerald-100"
               },
               {
                 title: "District Tribal Welfare",
                 description: "Ground-level implementation, claim verification, community engagement, and beneficiary support.",
                 icon: <Users className="h-7 w-7" />,
+                image: districtTribalWelfareImage,
+                alt: "District officials meeting with tribal community representatives",
                 color: "bg-green-50 text-green-700 border-green-100"
               },
               {
                 title: "Forest & Revenue Departments",
                 description: "Land records integration, boundary verification, compliance monitoring, and departmental coordination.",
                 icon: <TreePine className="h-7 w-7" />,
+                image: forestRevenueImage,
+                alt: "Forest and revenue department officials working with land records",
                 color: "bg-teal-50 text-teal-700 border-teal-100"
               },
               {
                 title: "Planning Authorities",
                 description: "Development scheme integration, budget allocation, impact assessment, and strategic planning.",
                 icon: <BarChart3 className="h-7 w-7" />,
+                image: planningAuthoritiesImage,
+                alt: "Planning commission officials working on development schemes",
                 color: "bg-emerald-50 text-emerald-700 border-emerald-100"
               },
               {
                 title: "NGOs & Civil Society",
                 description: "Community advocacy, awareness campaigns, implementation monitoring, and grassroots support.",
                 icon: <Users className="h-7 w-7" />,
+                image: ngoCommunitiesImage,
+                alt: "NGO workers conducting community awareness campaigns",
                 color: "bg-green-50 text-green-700 border-green-100"
               },
               {
                 title: "Field Officers",
                 description: "Mobile data collection, verification workflows, status tracking, and field-level documentation.",
                 icon: <FileText className="h-7 w-7" />,
+                image: fieldOfficersImage,
+                alt: "Field officers using digital tools for data collection",
                 color: "bg-teal-50 text-teal-700 border-teal-100"
               }
             ].map((user, index) => (
-              <Card key={index} className="border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-emerald-200 bg-white">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start gap-4">
-                    <div className={`${user.color} p-3 rounded-xl border`}>
+              <Card key={index} className="border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-emerald-200 bg-white overflow-hidden">
+                <div className="aspect-video relative">
+                  <img 
+                    src={user.image} 
+                    alt={user.alt}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-4 left-4">
+                    <div className={`${user.color} p-2 rounded-lg border backdrop-blur-sm bg-white/90`}>
                       {user.icon}
                     </div>
+                  </div>
+                </div>
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-bold text-gray-900 mb-2">{user.title}</CardTitle>
                       <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">Authorized Access</Badge>
