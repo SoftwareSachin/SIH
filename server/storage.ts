@@ -631,7 +631,7 @@ export class DatabaseStorage implements IStorage {
         eq(userRoleAssignments.roleId, roleId),
         eq(userRoleAssignments.isActive, true)
       ));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Update user geography (state/district assignment)
