@@ -12,6 +12,7 @@ import WebGIS from "@/pages/webgis";
 import AIProcessing from "@/pages/ai-processing";
 import AssetDetection from "@/pages/asset-detection";
 import DecisionSupport from "@/pages/decision-support";
+import DSSPage from "@/pages/dss-page";
 import AdminPage from "@/pages/admin";
 import { NERTester } from "@/components/test/ner-tester";
 import NotFound from "@/pages/not-found";
@@ -59,6 +60,11 @@ function Router() {
           <Route path="/decision-support">
             <ProtectedRoute requiredPermission="access_dss_engine">
               <DecisionSupport />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/dss">
+            <ProtectedRoute requiredPermission="view_public_maps">
+              <DSSPage />
             </ProtectedRoute>
           </Route>
           <Route path="/admin">

@@ -1465,6 +1465,271 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // ===== DECISION SUPPORT SYSTEM (DSS) ENDPOINTS =====
+  
+  // Get scheme recommendations for a user/claimant
+  app.get('/api/dss/recommendations/:userId', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { userId } = req.params;
+      const { claimId } = req.query;
+      
+      // Get user profile and claim data for eligibility matching
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      let claimData = null;
+      if (claimId) {
+        claimData = await storage.getClaimById(claimId as string);
+      }
+      
+      // Get all active schemes
+      const schemes = await storage.getAllActiveSchemes();
+      
+      // Run eligibility engine to generate recommendations
+      const recommendations = await generateSchemeRecommendations(user, claimData, schemes);
+      
+      // Save recommendations to database
+      for (const rec of recommendations) {
+        await storage.createSchemeRecommendation({
+          userId,
+          claimId: claimId as string || null,
+          schemeId: rec.scheme.id,
+          eligibilityScore: rec.eligibilityScore,
+          matchingCriteria: rec.matchingCriteria,
+          recommendationReason: rec.reason,
+          applicationGuidance: rec.guidance,
+          estimatedBenefit: rec.estimatedBenefit,
+        });
+      }
+      
+      res.json({
+        recommendations: recommendations.map(r => ({
+          ...r,
+          scheme: {
+            id: r.scheme.id,
+            name: r.scheme.name,
+            shortName: r.scheme.shortName,
+            description: r.scheme.description,
+            category: r.scheme.category,
+            benefitAmount: r.scheme.benefitAmount,
+            applicationWebsite: r.scheme.applicationWebsite,
+            helplineNumber: r.scheme.helplineNumber,
+          }
+        }))
+      });
+    } catch (error) {
+      console.error('Error generating scheme recommendations:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+  
+  // Get all available schemes
+  app.get('/api/dss/schemes', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const schemes = await storage.getAllActiveSchemes();
+      res.json({ schemes });
+    } catch (error) {
+      console.error('Error fetching schemes:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+  
+  // Get scheme details by ID
+  app.get('/api/dss/schemes/:schemeId', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { schemeId } = req.params;
+      const scheme = await storage.getSchemeById(schemeId);
+      
+      if (!scheme) {
+        return res.status(404).json({ message: 'Scheme not found' });
+      }
+      
+      res.json({ scheme });
+    } catch (error) {
+      console.error('Error fetching scheme details:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+  
+  // Update recommendation status (applied, approved, rejected)
+  app.patch('/api/dss/recommendations/:recommendationId/status', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { recommendationId } = req.params;
+      const { status, appliedDate } = req.body;
+      
+      const validStatuses = ['recommended', 'applied', 'approved', 'rejected'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+      }
+      
+      const updatedRec = await storage.updateSchemeRecommendationStatus(recommendationId, {
+        status,
+        appliedDate: appliedDate ? new Date(appliedDate) : null,
+      });
+      
+      res.json({ recommendation: updatedRec });
+    } catch (error) {
+      console.error('Error updating recommendation status:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+  
+  // Get user's recommendation history
+  app.get('/api/dss/users/:userId/recommendations', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { userId } = req.params;
+      const { status, limit = 20, offset = 0 } = req.query;
+      
+      const recommendations = await storage.getUserSchemeRecommendations(userId, {
+        status: status as string,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+      });
+      
+      res.json({ recommendations });
+    } catch (error) {
+      console.error('Error fetching user recommendations:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Rule-based eligibility matching engine
+async function generateSchemeRecommendations(user: any, claimData: any, schemes: any[]) {
+  const recommendations = [];
+  
+  for (const scheme of schemes) {
+    const eligibilityResult = evaluateEligibility(user, claimData, scheme);
+    
+    if (eligibilityResult.isEligible && eligibilityResult.score > 0) {
+      recommendations.push({
+        scheme,
+        eligibilityScore: eligibilityResult.score,
+        matchingCriteria: eligibilityResult.matchingCriteria,
+        reason: eligibilityResult.reason,
+        guidance: generateApplicationGuidance(scheme, user),
+        estimatedBenefit: calculateEstimatedBenefit(scheme, user, claimData),
+      });
+    }
+  }
+  
+  // Sort by eligibility score (highest first)
+  return recommendations.sort((a, b) => b.eligibilityScore - a.eligibilityScore);
+}
+
+// Core eligibility evaluation logic
+function evaluateEligibility(user: any, claimData: any, scheme: any) {
+  const rules = scheme.eligibilityRules;
+  const mandatory = rules.mandatory || [];
+  const scoring = rules.scoring || [];
+  
+  let score = 0;
+  let isEligible = true;
+  const matchingCriteria = [];
+  const reasons = [];
+  
+  // Check mandatory criteria
+  for (const rule of mandatory) {
+    const matches = evaluateRule(rule, user, claimData);
+    if (!matches) {
+      isEligible = false;
+      break;
+    }
+    matchingCriteria.push(rule.field);
+  }
+  
+  // If mandatory criteria met, calculate scoring
+  if (isEligible) {
+    for (const rule of scoring) {
+      const matches = evaluateRule(rule, user, claimData);
+      if (matches) {
+        score += rule.weight || 1;
+        matchingCriteria.push(rule.field);
+      }
+    }
+    
+    // Generate reason based on matching criteria
+    reasons.push(`Eligible based on: ${matchingCriteria.join(', ')}`);
+  }
+  
+  return {
+    isEligible,
+    score,
+    matchingCriteria,
+    reason: reasons.join('; ')
+  };
+}
+
+// Evaluate individual eligibility rules
+function evaluateRule(rule: any, user: any, claimData: any) {
+  const { field, operator, value } = rule;
+  
+  // Get the actual value to compare
+  let actualValue = getUserFieldValue(field, user, claimData);
+  
+  switch (operator) {
+    case 'equals':
+      return actualValue === value;
+    case 'greater_than':
+      return parseFloat(actualValue) > parseFloat(value);
+    case 'less_than':
+      return parseFloat(actualValue) < parseFloat(value);
+    case 'contains':
+      return String(actualValue).toLowerCase().includes(value.toLowerCase());
+    case 'in_list':
+      const valueList = value.split(',').map((v: string) => v.trim());
+      return valueList.includes(actualValue);
+    default:
+      return false;
+  }
+}
+
+// Map field names to user/claim data
+function getUserFieldValue(field: string, user: any, claimData: any) {
+  // Predefined mappings for scheme eligibility
+  const fieldMappings: { [key: string]: any } = {
+    category: claimData?.claimType || user?.role === 'public' ? 'ST' : 'OTFD',
+    landOwnership: claimData ? 'yes' : 'no',
+    hasAadhaar: 'yes', // Assume users have Aadhaar
+    hasBankAccount: 'yes', // Assume users have bank accounts
+    residenceType: 'rural', // FRA claimants are typically rural
+    hasWaterConnection: 'no', // Assume rural areas lack tap water
+    forestDependence: claimData ? 'yes' : 'no',
+    mfpCollector: claimData?.claimType === 'Community Rights' ? 'yes' : 'no',
+    age: 25, // Default age
+    bplCard: 'yes', // Assume FRA claimants are BPL
+    villageType: 'tribal_majority',
+    tribalPopulation: 75,
+    landArea: claimData?.area || 2.5,
+  };
+  
+  return fieldMappings[field] || null;
+}
+
+// Generate application guidance based on scheme and user profile
+function generateApplicationGuidance(scheme: any, user: any) {
+  const baseGuidance = `To apply for ${scheme.name}:
+1. Visit ${scheme.applicationWebsite || 'the nearest government office'}
+2. Carry required documents: ${scheme.requiredDocuments?.join(', ') || 'basic identity and residence proof'}
+3. Contact helpline ${scheme.helplineNumber || 'for assistance'} if needed
+4. ${scheme.applicationProcess || 'Follow the standard application process'}`;
+  
+  return baseGuidance;
+}
+
+// Calculate estimated benefit amount for the user
+function calculateEstimatedBenefit(scheme: any, user: any, claimData: any) {
+  if (scheme.benefitAmount) {
+    // For schemes like PM-KISAN, calculate based on land area
+    if (scheme.code === 'PMKISAN2019' && claimData?.area) {
+      return `₹${Math.min(6000, claimData.area * 2000)}/year`;
+    }
+    return scheme.benefitAmount;
+  }
+  return 'As per scheme guidelines';
 }

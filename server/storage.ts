@@ -7,6 +7,8 @@ import {
   documents,
   assets,
   schemes,
+  schemeRecommendations,
+  eligibilityRules,
   recommendations,
   auditTrail,
   roles,
@@ -121,6 +123,13 @@ export interface IStorage {
 
   // Audit trail
   createAuditTrail(trail: InsertAuditTrail): Promise<AuditTrail>;
+
+  // DSS Operations
+  getAllActiveSchemes(): Promise<any[]>;
+  getSchemeById(id: string): Promise<any | undefined>;
+  createSchemeRecommendation(recommendation: any): Promise<any>;
+  updateSchemeRecommendationStatus(id: string, updates: any): Promise<any>;
+  getUserSchemeRecommendations(userId: string, options: any): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -713,6 +722,74 @@ export class DatabaseStorage implements IStorage {
   async createAuditTrail(trail: InsertAuditTrail): Promise<AuditTrail> {
     const [newTrail] = await db.insert(auditTrail).values(trail).returning();
     return newTrail;
+  }
+
+  // DSS Operations
+  async getAllActiveSchemes(): Promise<any[]> {
+    return db.select().from(schemes).where(eq(schemes.isActive, true)).orderBy(desc(schemes.priority));
+  }
+
+  async getSchemeById(id: string): Promise<any | undefined> {
+    const [scheme] = await db.select().from(schemes).where(eq(schemes.id, id));
+    return scheme;
+  }
+
+  async createSchemeRecommendation(recommendation: any): Promise<any> {
+    const [newRec] = await db.insert(schemeRecommendations).values(recommendation).returning();
+    return newRec;
+  }
+
+  async updateSchemeRecommendationStatus(id: string, updates: any): Promise<any> {
+    const [updatedRec] = await db
+      .update(schemeRecommendations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schemeRecommendations.id, id))
+      .returning();
+    return updatedRec;
+  }
+
+  async getUserSchemeRecommendations(userId: string, options: any): Promise<any[]> {
+    let query = db
+      .select({
+        id: schemeRecommendations.id,
+        eligibilityScore: schemeRecommendations.eligibilityScore,
+        recommendationReason: schemeRecommendations.recommendationReason,
+        applicationGuidance: schemeRecommendations.applicationGuidance,
+        estimatedBenefit: schemeRecommendations.estimatedBenefit,
+        status: schemeRecommendations.status,
+        generatedAt: schemeRecommendations.generatedAt,
+        scheme: {
+          id: schemes.id,
+          name: schemes.name,
+          shortName: schemes.shortName,
+          description: schemes.description,
+          category: schemes.category,
+          benefitAmount: schemes.benefitAmount,
+          applicationWebsite: schemes.applicationWebsite,
+          helplineNumber: schemes.helplineNumber,
+        }
+      })
+      .from(schemeRecommendations)
+      .leftJoin(schemes, eq(schemeRecommendations.schemeId, schemes.id))
+      .where(eq(schemeRecommendations.userId, userId))
+      .orderBy(desc(schemeRecommendations.generatedAt));
+
+    if (options.status) {
+      query = query.where(and(
+        eq(schemeRecommendations.userId, userId),
+        eq(schemeRecommendations.status, options.status)
+      ));
+    }
+
+    if (options.limit) {
+      query = query.limit(options.limit);
+    }
+
+    if (options.offset) {
+      query = query.offset(options.offset);
+    }
+
+    return query;
   }
 }
 
