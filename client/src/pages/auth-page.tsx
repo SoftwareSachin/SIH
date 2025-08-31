@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, TreePine, Shield, Users, FileText, Map, BarChart3 } from "lucide-react";
+import { Loader2, TreePine, ShieldCheck, UsersRound, Satellite, Brain, Globe, Lock, Sparkles, Network, MapPin, Cpu } from "lucide-react";
 import { useLocation } from "wouter";
 import forestSunriseImage from "@assets/generated_images/Forest_sunrise_panoramic_background_2afc9c55.png";
 import secureAccessImage from "@assets/generated_images/Secure_forest_access_authentication_9aa9e8b9.png";
@@ -109,8 +109,8 @@ export default function AuthPage() {
               </div>
               <h1 className="text-4xl font-bold text-white mb-2">FRA Atlas</h1>
               <p className="text-gray-300 text-lg">Forest Rights Act Management System</p>
-              <Badge variant="outline" className="mt-3 px-4 py-1 text-green-300 border-green-300 bg-green-950/30">
-                <Shield className="w-4 h-4 mr-2" />
+              <Badge variant="outline" className="mt-3 px-4 py-2 text-green-300 border-green-300 bg-green-950/30 hover:bg-green-900/40 transition-colors duration-300 shadow-lg">
+                <ShieldCheck className="w-4 h-4 mr-2" />
                 Secure Access Portal
               </Badge>
             </div>
@@ -345,44 +345,56 @@ export default function AuthPage() {
               />
             </div>
             
-            <h2 className="text-3xl font-bold mb-6">Digitizing Forest Rights for India</h2>
-            <p className="text-lg leading-relaxed mb-8 text-green-100">
+            <h2 className="text-4xl font-bold mb-6 bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent">Digitizing Forest Rights for India</h2>
+            <p className="text-xl leading-relaxed mb-8 text-green-100 font-medium">
               AI-powered platform for managing Forest Rights Act claims across India. 
               Streamline documentation, verification, and decision support for sustainable forest management.
             </p>
             
             {/* Feature Grid */}
             <div className="grid grid-cols-2 gap-6">
-              <div className="text-center">
-                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg mb-3">
-                  <Shield className="h-8 w-8 mx-auto text-white" />
+              <div className="text-center group">
+                <div className="bg-gradient-to-br from-emerald-500/30 to-green-600/30 backdrop-blur-sm p-5 rounded-xl mb-3 shadow-lg border border-white/10 group-hover:from-emerald-400/40 group-hover:to-green-500/40 transition-all duration-300 group-hover:scale-105">
+                  <div className="relative">
+                    <ShieldCheck className="h-9 w-9 mx-auto text-emerald-300 group-hover:text-emerald-200 transition-colors duration-300" />
+                    <Lock className="h-4 w-4 absolute -top-1 -right-1 text-green-300 group-hover:text-green-200 transition-colors duration-300" />
+                  </div>
                 </div>
-                <h3 className="font-semibold text-white mb-1">Secure Access</h3>
-                <p className="text-sm text-green-100">Role-based permissions</p>
+                <h3 className="font-bold text-white mb-1 group-hover:text-emerald-200 transition-colors duration-300">Secure Access</h3>
+                <p className="text-sm text-green-100 group-hover:text-green-50 transition-colors duration-300">Role-based permissions</p>
               </div>
               
-              <div className="text-center">
-                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg mb-3">
-                  <BarChart3 className="h-8 w-8 mx-auto text-white" />
+              <div className="text-center group">
+                <div className="bg-gradient-to-br from-blue-500/30 to-purple-600/30 backdrop-blur-sm p-5 rounded-xl mb-3 shadow-lg border border-white/10 group-hover:from-blue-400/40 group-hover:to-purple-500/40 transition-all duration-300 group-hover:scale-105">
+                  <div className="relative">
+                    <Brain className="h-9 w-9 mx-auto text-blue-300 group-hover:text-blue-200 transition-colors duration-300" />
+                    <Sparkles className="h-4 w-4 absolute -top-1 -right-1 text-purple-300 group-hover:text-purple-200 transition-colors duration-300" />
+                  </div>
                 </div>
-                <h3 className="font-semibold text-white mb-1">AI Processing</h3>
-                <p className="text-sm text-green-100">Intelligent document analysis</p>
+                <h3 className="font-bold text-white mb-1 group-hover:text-blue-200 transition-colors duration-300">AI Processing</h3>
+                <p className="text-sm text-green-100 group-hover:text-green-50 transition-colors duration-300">Intelligent document analysis</p>
               </div>
               
-              <div className="text-center">
-                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg mb-3">
-                  <Map className="h-8 w-8 mx-auto text-white" />
+              <div className="text-center group">
+                <div className="bg-gradient-to-br from-teal-500/30 to-cyan-600/30 backdrop-blur-sm p-5 rounded-xl mb-3 shadow-lg border border-white/10 group-hover:from-teal-400/40 group-hover:to-cyan-500/40 transition-all duration-300 group-hover:scale-105">
+                  <div className="relative">
+                    <Globe className="h-9 w-9 mx-auto text-teal-300 group-hover:text-teal-200 transition-colors duration-300" />
+                    <Satellite className="h-4 w-4 absolute -top-1 -right-1 text-cyan-300 group-hover:text-cyan-200 transition-colors duration-300" />
+                  </div>
                 </div>
-                <h3 className="font-semibold text-white mb-1">WebGIS Maps</h3>
-                <p className="text-sm text-green-100">Interactive spatial data</p>
+                <h3 className="font-bold text-white mb-1 group-hover:text-teal-200 transition-colors duration-300">WebGIS Maps</h3>
+                <p className="text-sm text-green-100 group-hover:text-green-50 transition-colors duration-300">Interactive spatial data</p>
               </div>
               
-              <div className="text-center">
-                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg mb-3">
-                  <Users className="h-8 w-8 mx-auto text-white" />
+              <div className="text-center group">
+                <div className="bg-gradient-to-br from-orange-500/30 to-red-600/30 backdrop-blur-sm p-5 rounded-xl mb-3 shadow-lg border border-white/10 group-hover:from-orange-400/40 group-hover:to-red-500/40 transition-all duration-300 group-hover:scale-105">
+                  <div className="relative">
+                    <UsersRound className="h-9 w-9 mx-auto text-orange-300 group-hover:text-orange-200 transition-colors duration-300" />
+                    <Network className="h-4 w-4 absolute -top-1 -right-1 text-red-300 group-hover:text-red-200 transition-colors duration-300" />
+                  </div>
                 </div>
-                <h3 className="font-semibold text-white mb-1">Multi-stakeholder</h3>
-                <p className="text-sm text-green-100">Collaborative platform</p>
+                <h3 className="font-bold text-white mb-1 group-hover:text-orange-200 transition-colors duration-300">Multi-stakeholder</h3>
+                <p className="text-sm text-green-100 group-hover:text-green-50 transition-colors duration-300">Collaborative platform</p>
               </div>
             </div>
           </div>
