@@ -22,14 +22,15 @@ function Router() {
 
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
-        <>
-          <Route path="/" component={Landing} />
-          <Route path="/auth" component={AuthPage} />
-        </>
+      {isLoading ? (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-lg">Loading...</div>
+        </div>
       ) : (
         <>
-          <Route path="/" component={Dashboard} />
+          <Route path="/" component={isAuthenticated ? Dashboard : Landing} />
+          <Route path="/landing" component={Landing} />
+          <Route path="/auth" component={AuthPage} />
           <Route path="/claims">
             <ProtectedRoute requiredPermission="view_district_claims">
               <Claims />
