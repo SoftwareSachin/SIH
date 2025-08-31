@@ -9,6 +9,10 @@ import madhyaPradeshMap from "@assets/image_1756619529128.png";
 import tripuraMap from "@assets/image_1756619548972.png";
 import odishaMap from "@assets/image_1756619567129.png";
 import telanganaMap from "@assets/image_1756619579419.png";
+import governmentMeetingImage2 from "@assets/generated_images/Government_forest_rights_meeting_dd699004.png";
+import tribalVillageImage from "@assets/generated_images/Tribal_village_forest_community_6a9d4cf0.png";
+import forestOfficerDigitalImage from "@assets/generated_images/Forest_officer_digital_documentation_58d31e36.png";
+import satelliteForestImage from "@assets/generated_images/Satellite_forest_mapping_view_060d3bfa.png";
 
 export default function Landing() {
   return (
@@ -63,8 +67,8 @@ export default function Landing() {
               
               <div className="relative">
                 <img 
-                  src={governmentMeetingImage} 
-                  alt="Government officials discussing forest management policies" 
+                  src={governmentMeetingImage2} 
+                  alt="Government officials reviewing forest rights documentation" 
                   className="rounded-xl shadow-xl w-full h-auto"
                 />
               </div>
@@ -89,13 +93,43 @@ export default function Landing() {
             </p>
           </div>
           
-          {/* Forest Conservation Image */}
+          {/* Technology & Community Context */}
           <div className="mt-16 mb-16">
-            <img 
-              src={forestAerialImage} 
-              alt="Aerial view of forest conservation area with tribal village" 
-              className="rounded-xl shadow-xl w-full h-64 object-cover"
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+              <div>
+                <img 
+                  src={satelliteForestImage} 
+                  alt="Satellite mapping view of forest boundaries" 
+                  className="rounded-xl shadow-xl w-full h-48 object-cover"
+                />
+                <div className="mt-4 text-center">
+                  <h4 className="font-semibold text-gray-900">Satellite Analysis</h4>
+                  <p className="text-sm text-gray-600">Geospatial mapping and boundary detection</p>
+                </div>
+              </div>
+              <div>
+                <img 
+                  src={tribalVillageImage} 
+                  alt="Tribal village community in forest setting" 
+                  className="rounded-xl shadow-xl w-full h-48 object-cover"
+                />
+                <div className="mt-4 text-center">
+                  <h4 className="font-semibold text-gray-900">Community Focus</h4>
+                  <p className="text-sm text-gray-600">Tribal villages and forest communities</p>
+                </div>
+              </div>
+              <div>
+                <img 
+                  src={forestAerialImage} 
+                  alt="Aerial view of forest conservation area" 
+                  className="rounded-xl shadow-xl w-full h-48 object-cover"
+                />
+                <div className="mt-4 text-center">
+                  <h4 className="font-semibold text-gray-900">Forest Conservation</h4>
+                  <p className="text-sm text-gray-600">Environmental protection and management</p>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
@@ -269,11 +303,16 @@ export default function Landing() {
                 claim verification, and forest rights documentation in remote areas.
               </p>
             </div>
-            <div>
+            <div className="grid grid-cols-1 gap-6">
               <img 
                 src={fieldOfficerImage} 
                 alt="Field officer documenting forest rights with digital technology" 
-                className="rounded-xl shadow-xl w-full h-auto"
+                className="rounded-xl shadow-xl w-full h-48 object-cover"
+              />
+              <img 
+                src={forestOfficerDigitalImage} 
+                alt="Forest officer using digital tools for documentation" 
+                className="rounded-xl shadow-xl w-full h-48 object-cover"
               />
             </div>
           </div>
