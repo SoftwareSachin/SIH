@@ -348,10 +348,12 @@ export default function Landing() {
       </div>
 
       {/* Call to Action Section */}
-      <div className="py-20 bg-gray-900 text-white">
+      <div className="py-20 bg-slate-800 text-white">
         <div className="mx-auto max-w-4xl px-6 lg:px-8 text-center">
           <div className="mb-8">
-            <TreePine className="h-16 w-16 mx-auto mb-6 text-green-400" />
+            <div className="bg-slate-700 p-4 rounded-xl inline-block">
+              <TreePine className="h-12 w-12 text-gray-300" />
+            </div>
           </div>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-6">
             Access FRA Atlas Platform
@@ -371,7 +373,7 @@ export default function Landing() {
             <Button 
               variant="outline" 
               size="lg" 
-              className="border-gray-400 text-gray-300 hover:bg-gray-800 hover:text-white px-10 py-4 text-lg font-semibold rounded-lg"
+              className="border-gray-400 text-gray-300 hover:bg-slate-700 hover:text-white px-10 py-4 text-lg font-semibold rounded-lg"
             >
               System Information
             </Button>
@@ -380,55 +382,103 @@ export default function Landing() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-300 border-t border-gray-800">
-        <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-green-600 p-2 rounded-lg">
-                  <TreePine className="h-6 w-6 text-white" />
+      <footer className="bg-slate-900 text-gray-300">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            {/* Brand Section */}
+            <div className="col-span-1 lg:col-span-5">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-slate-700 p-3 rounded-lg">
+                  <TreePine className="h-7 w-7 text-gray-300" />
                 </div>
                 <span className="text-2xl font-bold text-white">FRA Atlas</span>
               </div>
-              <p className="text-gray-400 mb-6 max-w-md">
-                Digital forest rights management platform supporting implementation 
-                of the Forest Rights Act 2006 across multiple states.
+              <p className="text-gray-400 text-base leading-relaxed mb-8 max-w-lg">
+                Comprehensive digital platform for Forest Rights Act implementation, providing 
+                advanced tools for transparent forest governance and tribal community empowerment 
+                across multiple states in India.
               </p>
-              <div className="flex items-center gap-2 text-sm">
-                <Shield className="h-4 w-4 text-green-400" />
-                <span>Forest Rights Act 2006 Compliant</span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="bg-slate-700 p-1.5 rounded">
+                    <Shield className="h-4 w-4 text-gray-300" />
+                  </div>
+                  <span className="text-gray-300">Forest Rights Act 2006 Compliant</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="bg-slate-700 p-1.5 rounded">
+                    <Satellite className="h-4 w-4 text-gray-300" />
+                  </div>
+                  <span className="text-gray-300">Satellite-Enabled Geospatial Analysis</span>
+                </div>
               </div>
             </div>
             
-            <div>
-              <h3 className="text-white font-semibold mb-4">Platform</h3>
-              <ul className="space-y-2 text-sm">
-                <li className="text-gray-400">WebGIS Portal</li>
-                <li className="text-gray-400">AI Processing</li>
-                <li className="text-gray-400">Decision Support</li>
-                <li className="text-gray-400">Analytics Dashboard</li>
+            {/* Platform Features */}
+            <div className="col-span-1 lg:col-span-3">
+              <h3 className="text-white font-semibold mb-6 text-lg">Platform Modules</h3>
+              <ul className="space-y-3">
+                <li className="flex items-center gap-3">
+                  <div className="bg-slate-700 p-1 rounded">
+                    <Map className="h-3 w-3 text-gray-400" />
+                  </div>
+                  <span className="text-gray-400 text-sm">WebGIS Portal</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <div className="bg-slate-700 p-1 rounded">
+                    <Brain className="h-3 w-3 text-gray-400" />
+                  </div>
+                  <span className="text-gray-400 text-sm">AI Document Processing</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <div className="bg-slate-700 p-1 rounded">
+                    <BarChart3 className="h-3 w-3 text-gray-400" />
+                  </div>
+                  <span className="text-gray-400 text-sm">Decision Support System</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <div className="bg-slate-700 p-1 rounded">
+                    <FileText className="h-3 w-3 text-gray-400" />
+                  </div>
+                  <span className="text-gray-400 text-sm">Claims Management</span>
+                </li>
               </ul>
             </div>
             
-            <div>
-              <h3 className="text-white font-semibold mb-4">Information</h3>
-              <ul className="space-y-2 text-sm">
-                <li className="text-gray-400">System Documentation</li>
-                <li className="text-gray-400">User Guidelines</li>
-                <li className="text-gray-400">Technical Specifications</li>
-                <li className="text-gray-400">Compliance Information</li>
+            {/* System Information */}
+            <div className="col-span-1 lg:col-span-4">
+              <h3 className="text-white font-semibold mb-6 text-lg">System Information</h3>
+              <ul className="space-y-3">
+                <li className="text-gray-400 text-sm">Technical Documentation</li>
+                <li className="text-gray-400 text-sm">User Access Guidelines</li>
+                <li className="text-gray-400 text-sm">Data Privacy Policy</li>
+                <li className="text-gray-400 text-sm">Security Standards</li>
+                <li className="text-gray-400 text-sm">Implementation Coverage</li>
+                <li className="text-gray-400 text-sm">Compliance Framework</li>
               </ul>
             </div>
           </div>
           
-          <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-400">
-              Forest Rights Act Atlas - Digital Management Platform
-            </p>
-            <div className="flex items-center gap-6 mt-4 md:mt-0">
-              <div className="flex items-center gap-2">
-                <Satellite className="h-4 w-4 text-green-400" />
-                <span className="text-sm text-gray-400">Geospatial Technology</span>
+          {/* Bottom Section */}
+          <div className="border-t border-slate-700 mt-16 pt-8">
+            <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-6">
+                <p className="text-sm text-gray-400">
+                  Forest Rights Act Digital Management Platform
+                </p>
+                <div className="hidden lg:block w-px h-4 bg-slate-700"></div>
+                <p className="text-sm text-gray-500">
+                  Government of India Initiative
+                </p>
+              </div>
+              <div className="flex items-center gap-8">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-xs text-gray-400">System Operational</span>
+                </div>
+                <span className="text-xs text-gray-500">
+                  Last Updated: August 2024
+                </span>
               </div>
             </div>
           </div>
