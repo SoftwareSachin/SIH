@@ -19,6 +19,9 @@ import forestRevenueImage from "@assets/generated_images/Forest_revenue_departme
 import planningAuthoritiesImage from "@assets/generated_images/Planning_authorities_development_meeting_9438b4ad.png";
 import ngoCommunitiesImage from "@assets/generated_images/NGO_community_awareness_campaign_a50a3fed.png";
 import fieldOfficersImage from "@assets/generated_images/Field_officers_data_collection_c12e1cfc.png";
+import webgisWorkstationImage from "@assets/generated_images/WebGIS_geospatial_analysis_workstation_72df1d4f.png";
+import aiProcessingImage from "@assets/generated_images/AI_document_processing_system_9316c4d4.png";
+import decisionSupportImage from "@assets/generated_images/Decision_support_analytics_dashboard_b15f56b5.png";
 
 export default function Landing() {
   return (
@@ -139,12 +142,21 @@ export default function Landing() {
           </div>
           
           <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
-            <Card className="border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-emerald-200 bg-white">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-4">
-                  <div className="bg-emerald-50 text-emerald-700 border-emerald-100 p-3 rounded-xl border">
-                    <Map className="h-8 w-8" />
+            <Card className="border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-emerald-200 bg-white overflow-hidden">
+              <div className="aspect-video relative">
+                <img 
+                  src={webgisWorkstationImage} 
+                  alt="Professional GIS workstation with satellite imagery analysis"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-4 left-4">
+                  <div className="bg-emerald-50 text-emerald-700 border-emerald-100 p-2 rounded-lg border backdrop-blur-sm bg-white/90">
+                    <Map className="h-6 w-6" />
                   </div>
+                </div>
+              </div>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-xl font-bold text-gray-900">WebGIS Portal</CardTitle>
                     <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 mt-1">Geospatial Analysis</Badge>
@@ -159,12 +171,21 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-green-200 bg-white">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-4">
-                  <div className="bg-green-50 text-green-700 border-green-100 p-3 rounded-xl border">
-                    <Brain className="h-8 w-8" />
+            <Card className="border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-green-200 bg-white overflow-hidden">
+              <div className="aspect-video relative">
+                <img 
+                  src={aiProcessingImage} 
+                  alt="AI document processing system with OCR analysis"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-4 left-4">
+                  <div className="bg-green-50 text-green-700 border-green-100 p-2 rounded-lg border backdrop-blur-sm bg-white/90">
+                    <Brain className="h-6 w-6" />
                   </div>
+                </div>
+              </div>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-xl font-bold text-gray-900">AI Processing</CardTitle>
                     <Badge className="bg-green-100 text-green-700 border-green-200 mt-1">Machine Learning</Badge>
@@ -179,12 +200,21 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-teal-200 bg-white">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-4">
-                  <div className="bg-teal-50 text-teal-700 border-teal-100 p-3 rounded-xl border">
-                    <BarChart3 className="h-8 w-8" />
+            <Card className="border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-teal-200 bg-white overflow-hidden">
+              <div className="aspect-video relative">
+                <img 
+                  src={decisionSupportImage} 
+                  alt="Analytics dashboard with data visualizations for decision support"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-4 left-4">
+                  <div className="bg-teal-50 text-teal-700 border-teal-100 p-2 rounded-lg border backdrop-blur-sm bg-white/90">
+                    <BarChart3 className="h-6 w-6" />
                   </div>
+                </div>
+              </div>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-xl font-bold text-gray-900">Decision Support</CardTitle>
                     <Badge className="bg-teal-100 text-teal-700 border-teal-200 mt-1">Analytics</Badge>
