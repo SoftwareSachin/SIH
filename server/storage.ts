@@ -610,6 +610,60 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
+  // Get role by ID
+  async getRole(id: string): Promise<Role | undefined> {
+    const [role] = await db.select().from(roles).where(eq(roles.id, id));
+    return role;
+  }
+
+  // Get all roles (including inactive)
+  async getAllRoles(): Promise<Role[]> {
+    return db.select().from(roles).orderBy(roles.name);
+  }
+
+  // Deactivate user role assignment
+  async deactivateUserRole(userId: string, roleId: string): Promise<boolean> {
+    const result = await db
+      .update(userRoleAssignments)
+      .set({ isActive: false })
+      .where(and(
+        eq(userRoleAssignments.userId, userId),
+        eq(userRoleAssignments.roleId, roleId),
+        eq(userRoleAssignments.isActive, true)
+      ));
+    return result.rowCount > 0;
+  }
+
+  // Update user geography (state/district assignment)
+  async updateUserGeography(userId: string, geography: { state?: string; district?: string }): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        state: geography.state, 
+        district: geography.district,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  // Get user statistics by role
+  async getUserStatsByRole(): Promise<{ [role: string]: number }> {
+    const stats = await db
+      .select({
+        role: users.role,
+        count: count()
+      })
+      .from(users)
+      .groupBy(users.role);
+    
+    const result: { [role: string]: number } = {};
+    stats.forEach(stat => {
+      result[stat.role || 'public'] = stat.count;
+    });
+    
+    return result;
+  }
+
   async getUserRoleAssignments(userId: string): Promise<(UserRoleAssignment & { role: Role })[]> {
     const assignments = await db
       .select({

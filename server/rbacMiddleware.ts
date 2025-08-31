@@ -36,14 +36,27 @@ export const loadUserContext: RequestHandler = async (req: AuthenticatedRequest,
   try {
     // For development, allow bypass
     if (process.env.NODE_ENV === 'development' && req.headers['x-dev-bypass'] === 'true') {
-      // Allow development access with admin permissions for testing
-      req.userRole = 'admin';
-      req.userPermissions = [
-        'view_all_claims', 'approve_claims', 'reject_claims', 'upload_documents',
-        'verify_documents', 'manage_users', 'manage_system_settings', 'view_public_maps',
-        'export_data', 'generate_reports', 'access_admin_panel', 'access_ai_processing', 'access_dss_engine'
-      ];
-      return next();
+      // Find an admin user from the database for development testing
+      const adminUser = await storage.getUserByEmail('admin@fraatlas.gov');
+      
+      if (adminUser) {
+        // Set authenticated user context using the real admin user
+        req.user = {
+          claims: {
+            sub: adminUser.id,
+            email: adminUser.email,
+            first_name: adminUser.firstName || undefined,
+            last_name: adminUser.lastName || undefined
+          }
+        };
+        req.userRole = 'admin';
+        req.userPermissions = [
+          'view_all_claims', 'approve_claims', 'reject_claims', 'upload_documents',
+          'verify_documents', 'manage_users', 'manage_system_settings', 'view_public_maps',
+          'export_data', 'generate_reports', 'access_admin_panel', 'access_ai_processing', 'access_dss_engine'
+        ];
+        return next();
+      }
     }
 
     if (!req.isAuthenticated() || !req.user?.claims?.sub) {

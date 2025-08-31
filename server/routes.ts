@@ -165,6 +165,253 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply JWT middleware to all other protected API routes
   app.use('/api', authenticateToken);
 
+  // ==================== USER MANAGEMENT ENDPOINTS ====================
+  
+  // Get all users (Admin only)
+  app.get('/api/admin/users', requireRole('admin'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const users = await storage.getAllUsersWithRoles();
+      
+      res.json({
+        success: true,
+        users: users.map((user: any) => ({
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          state: user.state,
+          district: user.district,
+          createdAt: user.createdAt,
+          roles: user.roleAssignments.filter((assignment: any) => assignment.isActive).map((assignment: any) => ({
+            id: assignment.role.id,
+            name: assignment.role.name,
+            displayName: assignment.role.displayName,
+            assignedAt: assignment.assignedAt,
+            expiresAt: assignment.expiresAt
+          }))
+        }))
+      });
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch users' });
+    }
+  });
+
+  // Get user by ID with roles (Admin only)
+  app.get('/api/admin/users/:id', requireRole('admin'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const user = await storage.getUserWithRoles(req.params.id);
+      
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          state: user.state,
+          district: user.district,
+          createdAt: user.createdAt,
+          roles: user.roleAssignments.filter((assignment: any) => assignment.isActive).map((assignment: any) => ({
+            id: assignment.role.id,
+            name: assignment.role.name,
+            displayName: assignment.role.displayName,
+            permissions: assignment.role.permissions,
+            assignedAt: assignment.assignedAt,
+            expiresAt: assignment.expiresAt,
+            assignedBy: assignment.assignedBy
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch user' });
+    }
+  });
+
+  // Assign role to user (Admin only)
+  app.post('/api/admin/users/:id/roles', requireRole('admin'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { roleId, expiresAt, notes } = req.body;
+      const userId = req.params.id;
+      const adminId = req.user!.id;
+
+      if (!roleId) {
+        return res.status(400).json({ success: false, message: 'Role ID is required' });
+      }
+
+      // Check if user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      // Check if role exists
+      const role = await storage.getRole(roleId);
+      if (!role) {
+        return res.status(404).json({ success: false, message: 'Role not found' });
+      }
+
+      // Check if user already has this role
+      const existingAssignments = await storage.getUserRoleAssignments(userId);
+      const hasRole = existingAssignments.some((assignment: any) => 
+        assignment.roleId === roleId && assignment.isActive
+      );
+
+      if (hasRole) {
+        return res.status(400).json({ success: false, message: 'User already has this role' });
+      }
+
+      // Assign role
+      const assignment = await storage.assignUserRole({
+        userId,
+        roleId,
+        assignedBy: adminId,
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        isActive: true,
+        notes
+      });
+
+      // Log audit trail
+      await storage.createAuditTrail({
+        entityType: 'user_role_assignments',
+        entityId: assignment.id,
+        action: 'assign_role',
+        userId: adminId,
+        newValues: { userId, roleId, role: role.name },
+        notes: `Admin assigned ${role.displayName} role to user`
+      });
+
+      res.json({
+        success: true,
+        message: `Role ${role.displayName} assigned successfully`,
+        assignment: {
+          id: assignment.id,
+          roleId: assignment.roleId,
+          assignedAt: assignment.assignedAt,
+          expiresAt: assignment.expiresAt
+        }
+      });
+    } catch (error) {
+      console.error('Error assigning role:', error);
+      res.status(500).json({ success: false, message: 'Failed to assign role' });
+    }
+  });
+
+  // Remove role from user (Admin only)
+  app.delete('/api/admin/users/:id/roles/:roleId', requireRole('admin'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id: userId, roleId } = req.params;
+      const adminId = req.user!.id;
+
+      // Deactivate role assignment
+      const updated = await storage.deactivateUserRole(userId, roleId);
+      
+      if (!updated) {
+        return res.status(404).json({ success: false, message: 'Role assignment not found' });
+      }
+
+      // Log audit trail
+      await storage.createAuditTrail({
+        entityType: 'user_role_assignments',
+        entityId: roleId,
+        action: 'remove_role',
+        userId: adminId,
+        oldValues: { userId, roleId, active: true },
+        newValues: { userId, roleId, active: false },
+        notes: 'Admin removed role from user'
+      });
+
+      res.json({
+        success: true,
+        message: 'Role removed successfully'
+      });
+    } catch (error) {
+      console.error('Error removing role:', error);
+      res.status(500).json({ success: false, message: 'Failed to remove role' });
+    }
+  });
+
+  // Get all available roles (Admin only)
+  app.get('/api/admin/roles', requireRole('admin'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const roles = await storage.getAllRoles();
+      
+      res.json({
+        success: true,
+        roles: roles.map((role: any) => ({
+          id: role.id,
+          name: role.name,
+          displayName: role.displayName,
+          description: role.description,
+          permissions: role.permissions,
+          isActive: role.isActive,
+          createdAt: role.createdAt
+        }))
+      });
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch roles' });
+    }
+  });
+
+  // Update user's geographic assignment (Admin only)
+  app.put('/api/admin/users/:id/geography', requireRole('admin'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const { state, district } = req.body;
+      const userId = req.params.id;
+      const adminId = req.user!.id;
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      // Update user's geographic assignment
+      await storage.updateUserGeography(userId, { state, district });
+
+      // Log audit trail
+      await storage.createAuditTrail({
+        entityType: 'users',
+        entityId: userId,
+        action: 'update_geography',
+        userId: adminId,
+        oldValues: { state: user.state, district: user.district },
+        newValues: { state, district },
+        notes: 'Admin updated user geographic assignment'
+      });
+
+      res.json({
+        success: true,
+        message: 'Geographic assignment updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating user geography:', error);
+      res.status(500).json({ success: false, message: 'Failed to update geographic assignment' });
+    }
+  });
+
+  // Get user statistics by role (Admin and State users)
+  app.get('/api/admin/users/stats', requireRole('admin', 'state'), async (req: AuthenticatedRequest, res) => {
+    try {
+      const stats = await storage.getUserStatsByRole();
+      
+      res.json({
+        success: true,
+        stats: stats
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch user statistics' });
+    }
+  });
+
+  // ==================== END USER MANAGEMENT ====================
+
   // Secure OCR processing endpoint - requires upload permission
   app.post('/api/documents/process', 
     requirePermission('upload_documents'), 

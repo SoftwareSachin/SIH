@@ -50,27 +50,20 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
   try {
     // For development, allow bypass
     if (process.env.NODE_ENV === 'development' && req.headers['x-dev-bypass'] === 'true') {
-      // Create a mock admin user for development testing
-      req.user = {
-        id: 'dev-admin',
-        email: 'dev@admin.com',
-        password: null,
-        firstName: 'Dev',
-        lastName: 'Admin',
-        profileImageUrl: null,
-        role: 'admin',
-        state: null,
-        district: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        currentRole: 'admin',
-        permissions: [
-          'view_all_claims', 'approve_claims', 'reject_claims', 'upload_documents',
-          'verify_documents', 'manage_users', 'manage_system_settings', 'view_public_maps',
-          'export_data', 'generate_reports', 'access_admin_panel', 'access_ai_processing', 'access_dss_engine'
-        ]
-      };
-      return next();
+      // Use real admin user for development testing
+      const adminUser = await storage.getUserByEmail('admin@fraatlas.gov');
+      if (adminUser) {
+        req.user = {
+          ...adminUser,
+          currentRole: 'admin',
+          permissions: [
+            'view_all_claims', 'approve_claims', 'reject_claims', 'upload_documents',
+            'verify_documents', 'manage_users', 'manage_system_settings', 'view_public_maps',
+            'export_data', 'generate_reports', 'access_admin_panel', 'access_ai_processing', 'access_dss_engine'
+          ]
+        };
+        return next();
+      }
     }
 
     const authHeader = req.headers.authorization;
