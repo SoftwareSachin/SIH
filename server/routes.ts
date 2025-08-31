@@ -889,6 +889,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Additional DSS endpoints for comprehensive scheme management
+  app.get('/api/dss/schemes', authenticateToken, async (req, res) => {
+    try {
+      // Return all available schemes with their details
+      const schemes = await dssEngine.getAllSchemes();
+      res.json(schemes);
+    } catch (error) {
+      console.error("Error fetching schemes:", error);
+      res.status(500).json({ message: "Failed to fetch schemes" });
+    }
+  });
+
+  app.get('/api/dss/schemes/:schemeId', authenticateToken, async (req, res) => {
+    try {
+      const scheme = await dssEngine.getSchemeDetails(req.params.schemeId);
+      if (!scheme) {
+        return res.status(404).json({ message: "Scheme not found" });
+      }
+      res.json(scheme);
+    } catch (error) {
+      console.error("Error fetching scheme details:", error);
+      res.status(500).json({ message: "Failed to fetch scheme details" });
+    }
+  });
+
+  app.get('/api/dss/eligibility-matrix/:villageId', authenticateToken, async (req, res) => {
+    try {
+      const matrix = await dssEngine.getSchemeEligibilityMatrix(req.params.villageId);
+      res.json(matrix);
+    } catch (error) {
+      console.error("Error generating eligibility matrix:", error);
+      res.status(500).json({ message: "Failed to generate eligibility matrix" });
+    }
+  });
+
+  app.post('/api/dss/search-schemes', authenticateToken, async (req, res) => {
+    try {
+      const { category, ministry, targetBeneficiaries, searchTerm } = req.body;
+      const schemes = await dssEngine.searchSchemes({
+        category,
+        ministry,
+        targetBeneficiaries,
+        searchTerm
+      });
+      res.json(schemes);
+    } catch (error) {
+      console.error("Error searching schemes:", error);
+      res.status(500).json({ message: "Failed to search schemes" });
+    }
+  });
+
   // Geographic data
   app.get('/api/geo/states', async (req, res) => {
     try {
