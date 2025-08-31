@@ -2,6 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shrub, Map, BarChart3, Brain, Users, CheckCircle, TreePine, Shield, FileText, Satellite, Award, ArrowRight } from "lucide-react";
+import governmentMeetingImage from "@assets/generated_images/Government_forest_management_meeting_5f35e229.png";
+import forestAerialImage from "@assets/generated_images/Forest_conservation_aerial_view_8aa1e263.png";
+import fieldOfficerImage from "@assets/generated_images/Field_officer_forest_documentation_e28df0c4.png";
 
 export default function Landing() {
   return (
@@ -10,67 +13,67 @@ export default function Landing() {
       <div className="bg-white">
         <div className="px-6 lg:px-8">
           <div className="mx-auto max-w-7xl py-24 sm:py-32">
-            <div className="text-center">
-              <div className="flex justify-center mb-8">
-                <div className="bg-green-600 p-6 rounded-xl shadow-lg">
-                  <TreePine className="h-16 w-16 text-white" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="text-left">
+                <div className="mb-6">
+                  <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-gray-100 text-gray-800 border-gray-200">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Forest Rights Act 2006 Compliance
+                  </Badge>
+                </div>
+                
+                <h1 className="text-5xl font-bold tracking-tight text-gray-900 mb-6">
+                  FRA Atlas
+                </h1>
+                
+                <h2 className="text-xl font-semibold text-gray-700 mb-6">
+                  Digital Forest Rights Management Platform
+                </h2>
+                
+                <p className="text-lg leading-8 text-gray-600 mb-8">
+                  Advanced forest rights management system with WebGIS integration, 
+                  intelligent document processing, and comprehensive decision support for transparent governance.
+                </p>
+                
+                <div className="flex items-center gap-x-6">
+                  <Button 
+                    size="lg" 
+                    onClick={() => window.location.href = '/auth'}
+                    data-testid="button-login"
+                    className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg font-semibold rounded-lg shadow-lg transition-all duration-200"
+                  >
+                    Access Platform
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    data-testid="button-learn-more"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-4 text-lg font-semibold rounded-lg"
+                  >
+                    Learn More
+                  </Button>
+                </div>
+                
+                {/* Trust Indicators */}
+                <div className="mt-12 flex items-center gap-8 text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-green-600" />
+                    <span className="text-sm font-medium">Government Certified</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-green-600" />
+                    <span className="text-sm font-medium">Secure & Compliant</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="mb-6">
-                <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-gray-100 text-gray-800 border-gray-200">
-                  <Shield className="w-4 h-4 mr-2" />
-                  Forest Rights Act 2006 Compliance
-                </Badge>
-              </div>
-              
-              <h1 className="text-5xl font-bold tracking-tight text-gray-900 sm:text-6xl mb-6">
-                FRA Atlas
-              </h1>
-              
-              <h2 className="text-xl font-semibold text-gray-700 mb-6 sm:text-2xl">
-                Digital Forest Rights Management Platform
-              </h2>
-              
-              <p className="mt-6 text-lg leading-8 text-gray-600 max-w-3xl mx-auto">
-                Advanced forest rights management system with WebGIS integration, 
-                intelligent document processing, and comprehensive decision support for transparent governance.
-              </p>
-              
-              <div className="mt-12 flex items-center justify-center gap-x-6">
-                <Button 
-                  size="lg" 
-                  onClick={() => window.location.href = '/auth'}
-                  data-testid="button-login"
-                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  Access Platform
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  data-testid="button-learn-more"
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-4 text-lg font-semibold rounded-lg"
-                >
-                  Learn More
-                </Button>
-              </div>
-              
-              {/* Trust Indicators */}
-              <div className="mt-16 flex items-center justify-center gap-8 text-gray-500">
-                <div className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-green-600" />
-                  <span className="text-sm font-medium">Government Certified</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-green-600" />
-                  <span className="text-sm font-medium">Secure & Compliant</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Satellite className="h-5 w-5 text-green-600" />
-                  <span className="text-sm font-medium">Satellite Integrated</span>
-                </div>
+              <div className="relative">
+                <img 
+                  src={governmentMeetingImage} 
+                  alt="Government officials discussing forest management policies" 
+                  className="rounded-xl shadow-xl w-full h-auto"
+                />
               </div>
             </div>
           </div>
@@ -91,6 +94,15 @@ export default function Landing() {
               Advanced forest governance through technology, ensuring transparent 
               and efficient implementation of the Forest Rights Act.
             </p>
+          </div>
+          
+          {/* Forest Conservation Image */}
+          <div className="mt-16 mb-16">
+            <img 
+              src={forestAerialImage} 
+              alt="Aerial view of forest conservation area with tribal village" 
+              className="rounded-xl shadow-xl w-full h-64 object-cover"
+            />
           </div>
           
           <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
@@ -221,16 +233,35 @@ export default function Landing() {
       </div>
 
       {/* Target Users Section */}
-      <div className="py-24 bg-gray-50">
+      <div className="py-24 bg-white">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16">
+            <div>
+              <Badge variant="outline" className="mb-6 px-4 py-2 text-gray-700 border-gray-300">
+                Field Operations
+              </Badge>
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 mb-6">
+                Technology-Enabled Field Work
+              </h2>
+              <p className="text-lg leading-8 text-gray-600">
+                Field officers use advanced digital tools for real-time data collection, 
+                claim verification, and forest rights documentation in remote areas.
+              </p>
+            </div>
+            <div>
+              <img 
+                src={fieldOfficerImage} 
+                alt="Field officer documenting forest rights with digital technology" 
+                className="rounded-xl shadow-xl w-full h-auto"
+              />
+            </div>
+          </div>
+          
           <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-6 px-4 py-2 text-gray-700 border-gray-300">
-              User Access
-            </Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl mb-6">
+            <h3 className="text-2xl font-bold tracking-tight text-gray-900 mb-6">
               Multi-Level Stakeholder Access
-            </h2>
-            <p className="text-lg leading-8 text-gray-600 max-w-2xl mx-auto">
+            </h3>
+            <p className="text-base leading-7 text-gray-600 max-w-2xl mx-auto">
               Role-based access control for different stakeholders involved in forest rights management.
             </p>
           </div>
