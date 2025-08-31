@@ -446,39 +446,6 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Call to Action Section */}
-      <div className="py-20 bg-slate-800 text-white">
-        <div className="mx-auto max-w-4xl px-6 lg:px-8 text-center">
-          <div className="mb-8">
-            <div className="bg-slate-700 p-4 rounded-xl inline-block">
-              <TreePine className="h-12 w-12 text-gray-300" />
-            </div>
-          </div>
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-6">
-            Access FRA Atlas Platform
-          </h2>
-          <p className="text-lg text-gray-300 mb-10 max-w-2xl mx-auto">
-            Secure access to the Forest Rights Act management platform for authorized stakeholders.
-          </p>
-          <div className="flex items-center justify-center gap-6">
-            <Button 
-              size="lg" 
-              onClick={() => window.location.href = '/auth'}
-              className="bg-green-600 hover:bg-green-700 text-white px-10 py-4 text-lg font-semibold rounded-lg shadow-lg transition-all duration-200"
-            >
-              Access Platform
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="border-gray-300 text-gray-800 bg-white hover:bg-gray-100 hover:text-gray-900 px-10 py-4 text-lg font-semibold rounded-lg"
-            >
-              System Information
-            </Button>
-          </div>
-        </div>
-      </div>
 
       {/* Footer */}
       <footer className="relative bg-slate-900 text-gray-300 overflow-hidden">
