@@ -1,0 +1,31 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "village_name": "Bhopal Patti",
+        "district": "Balaghat",
+        "state": "Madhya Pradesh",
+        "population": 1250
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.1828, 21.8047]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "village_name": "Raipur Kalan",
+        "district": "Durg",
+        "state": "Chhattisgarh",
+        "population": 890
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [81.6296, 21.2497]
+      }
+    }
+  ]
+}

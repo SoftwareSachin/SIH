@@ -1780,6 +1780,374 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== ADDITIONAL REST API ENDPOINTS ====================
+
+  // Bulk import/export endpoints
+  app.post('/api/bulk/import/claims', authenticateToken, requirePermission('upload_documents'), upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file provided' });
+      }
+
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      let claims = [];
+      const filePath = req.file.path;
+
+      if (req.file.mimetype === 'text/csv') {
+        const fs = await import('fs');
+        const csvContent = fs.readFileSync(filePath, 'utf-8');
+        const lines = csvContent.split('\n');
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i].trim()) {
+            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+            const claim: any = {};
+            
+            headers.forEach((header, index) => {
+              if (header === 'claimantName') claim.claimantName = values[index];
+              else if (header === 'claimType') claim.claimType = values[index];
+              else if (header === 'area') claim.area = parseFloat(values[index]) || 0;
+              else if (header === 'villageId') claim.villageId = values[index];
+              else if (header === 'status') claim.status = values[index] || 'pending';
+            });
+
+            if (claim.claimantName) {
+              claims.push(claim);
+            }
+          }
+        }
+      } else if (req.file.mimetype === 'application/json') {
+        const fs = await import('fs');
+        const jsonContent = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(jsonContent);
+        claims = Array.isArray(data) ? data : [data];
+      }
+
+      const results = [];
+      const errors = [];
+
+      for (const claimData of claims) {
+        try {
+          const stateCode = user.state?.substring(0, 2).toUpperCase() || 'XX';
+          const timestamp = Date.now() + results.length;
+          const claimId = `FRA-${stateCode}-${timestamp.toString().slice(-6)}`;
+
+          const claim = await storage.createClaim({
+            ...claimData,
+            claimId,
+          });
+
+          results.push(claim);
+
+          await storage.createAuditTrail({
+            entityType: 'claims',
+            entityId: claim.id,
+            action: 'bulk_import',
+            userId: req.user.id,
+            newValues: claim,
+            notes: `Claim imported from ${req.file.mimetype} file`,
+          });
+        } catch (error) {
+          errors.push({
+            data: claimData,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      }
+
+      // Clean up uploaded file
+      const fs = await import('fs');
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      res.json({
+        success: true,
+        message: `Bulk import completed. ${results.length} claims imported successfully.`,
+        data: {
+          imported: results.length,
+          errors: errors.length,
+          errorDetails: errors
+        }
+      });
+    } catch (error) {
+      console.error('Error in bulk import:', error);
+      res.status(500).json({ success: false, message: 'Bulk import failed' });
+    }
+  });
+
+  // Export claims in multiple formats
+  app.get('/api/bulk/export/claims', authenticateToken, requirePermission('export_data'), async (req: any, res) => {
+    try {
+      const format = (req.query.format as string) || 'json';
+      const status = req.query.status as string;
+      const claimType = req.query.claimType as string;
+
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      const claims = await storage.getClaims({
+        userId: req.user.id,
+        userRole: req.user.currentRole,
+        state: user.state || undefined,
+        district: user.district || undefined,
+        limit: 10000, // Export all
+        status,
+        claimType,
+      });
+
+      if (format === 'csv') {
+        const csvData = await storage.exportClaims({
+          userId: req.user.id,
+          userRole: req.user.currentRole,
+          state: user.state || undefined,
+          district: user.district || undefined,
+          format: 'csv'
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="claims_export.csv"');
+        return res.send(csvData);
+      } else if (format === 'geojson') {
+        const features = claims.data
+          .filter(claim => claim.coordinates)
+          .map(claim => ({
+            type: "Feature",
+            properties: {
+              id: claim.id,
+              claimId: claim.claimId,
+              claimantName: claim.claimantName,
+              claimType: claim.claimType,
+              area: claim.area,
+              status: claim.status,
+              aiConfidence: claim.aiConfidence,
+              village: claim.village?.name
+            },
+            geometry: claim.coordinates
+          }));
+
+        const geoJSON = {
+          type: "FeatureCollection",
+          features
+        };
+
+        res.setHeader('Content-Type', 'application/geo+json');
+        res.setHeader('Content-Disposition', 'attachment; filename="claims_export.geojson"');
+        return res.json(geoJSON);
+      } else {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename="claims_export.json"');
+        return res.json({
+          success: true,
+          exportDate: new Date().toISOString(),
+          totalRecords: claims.data.length,
+          data: claims.data
+        });
+      }
+    } catch (error) {
+      console.error('Error in bulk export:', error);
+      res.status(500).json({ success: false, message: 'Bulk export failed' });
+    }
+  });
+
+  // GIS Data retrieval endpoints
+  app.get('/api/gis/villages', authenticateToken, async (req: any, res) => {
+    try {
+      const districtId = req.query.districtId as string;
+      const format = req.query.format as string || 'json';
+
+      let villages = [];
+      
+      if (districtId) {
+        villages = await storage.getVillagesByDistrict(districtId);
+      } else {
+        villages = await storage.getAllVillages();
+      }
+
+      if (format === 'geojson') {
+        const features = villages
+          .filter(village => village.boundary)
+          .map(village => ({
+            type: "Feature",
+            properties: {
+              id: village.id,
+              name: village.name,
+              code: village.code,
+              districtId: village.districtId,
+              population: village.population,
+              tribalPopulation: village.tribalPopulation,
+              latitude: village.latitude,
+              longitude: village.longitude
+            },
+            geometry: village.boundary
+          }));
+
+        res.setHeader('Content-Type', 'application/geo+json');
+        return res.json({
+          type: "FeatureCollection",
+          features
+        });
+      }
+
+      res.json({
+        success: true,
+        data: villages
+      });
+    } catch (error) {
+      console.error('Error fetching village GIS data:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch village GIS data' });
+    }
+  });
+
+  // Get claims with spatial data
+  app.get('/api/gis/claims/spatial', authenticateToken, async (req: any, res) => {
+    try {
+      const villageId = req.query.villageId as string;
+      const format = req.query.format as string || 'geojson';
+
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      let claims = [];
+      
+      if (villageId) {
+        claims = await storage.getClaimsByVillage(villageId);
+      } else {
+        const claimsResult = await storage.getClaims({
+          userId: req.user.id,
+          userRole: req.user.currentRole,
+          state: user.state || undefined,
+          district: user.district || undefined,
+          limit: 1000
+        });
+        claims = claimsResult.data;
+      }
+
+      const spatialClaims = claims.filter(claim => claim.coordinates);
+
+      if (format === 'geojson') {
+        const features = spatialClaims.map(claim => ({
+          type: "Feature",
+          properties: {
+            id: claim.id,
+            claimId: claim.claimId,
+            claimantName: claim.claimantName,
+            claimType: claim.claimType,
+            area: claim.area,
+            status: claim.status,
+            aiConfidence: claim.aiConfidence,
+            createdAt: claim.createdAt,
+            village: claim.village?.name
+          },
+          geometry: claim.coordinates
+        }));
+
+        res.setHeader('Content-Type', 'application/geo+json');
+        return res.json({
+          type: "FeatureCollection",
+          features
+        });
+      }
+
+      res.json({
+        success: true,
+        data: spatialClaims,
+        count: spatialClaims.length
+      });
+    } catch (error) {
+      console.error('Error fetching spatial claims data:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch spatial claims data' });
+    }
+  });
+
+  // Get detected assets spatial data
+  app.get('/api/gis/assets', authenticateToken, async (req: any, res) => {
+    try {
+      const villageId = req.query.villageId as string;
+      const assetType = req.query.assetType as string;
+      const format = req.query.format as string || 'geojson';
+
+      const assets = await storage.getAllAssets();
+      
+      let filteredAssets = assets;
+      if (villageId) {
+        filteredAssets = assets.filter(asset => asset.villageId === villageId);
+      }
+      if (assetType) {
+        filteredAssets = filteredAssets.filter(asset => asset.assetType === assetType);
+      }
+
+      if (format === 'geojson') {
+        const features = filteredAssets.map(asset => ({
+          type: "Feature",
+          properties: {
+            id: asset.id,
+            villageId: asset.villageId,
+            assetType: asset.assetType,
+            area: asset.area,
+            confidence: asset.confidence,
+            detectedAt: asset.detectedAt,
+            verifiedAt: asset.verifiedAt,
+            verifiedBy: asset.verifiedBy
+          },
+          geometry: asset.coordinates
+        }));
+
+        res.setHeader('Content-Type', 'application/geo+json');
+        return res.json({
+          type: "FeatureCollection",
+          features
+        });
+      }
+
+      res.json({
+        success: true,
+        data: filteredAssets,
+        count: filteredAssets.length
+      });
+    } catch (error) {
+      console.error('Error fetching assets GIS data:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch assets GIS data' });
+    }
+  });
+
+  // API Health check endpoint (public)
+  app.get('/api/health', async (req, res) => {
+    try {
+      const stats = await storage.getDashboardStats();
+      
+      res.json({
+        success: true,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        services: {
+          database: 'connected',
+          ocr: 'ready',
+          dss: 'ready'
+        },
+        stats: {
+          totalClaims: stats.totalClaims,
+          processingQueue: stats.aiProcessing
+        }
+      });
+    } catch (error) {
+      res.status(503).json({
+        success: false,
+        status: 'unhealthy',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

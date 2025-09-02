@@ -1,0 +1,1 @@
+Sample FRA Document - Claim ID: TEST-001, Claimant: Test User, Village: Test Village, Area: 2.5 hectares

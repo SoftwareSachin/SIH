@@ -1,0 +1,5 @@
+claimant_name,village_name,district,state,latitude,longitude,claim_type,land_area,survey_number,status
+Ramesh Kumar,Patelpura,Bastar,Madhya Pradesh,19.0760,82.2677,IFR,2.5,123/1,pending
+Sita Devi,Kondagaon,Kondagaon,Chhattisgarh,20.2961,81.6615,CFR,5.0,456/2,verified
+Mohan Singh,Jagdalpur,Bastar,Chhattisgarh,19.0860,82.0320,IFR,1.8,789/3,rejected
+Geeta Sharma,Narayanpur,Narayanpur,Chhattisgarh,20.0983,81.5456,CR,3.2,101/4,pending

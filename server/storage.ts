@@ -765,6 +765,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserSchemeRecommendations(userId: string, options: any): Promise<any[]> {
+    const conditions = [eq(schemeRecommendations.userId, userId)];
+    
+    if (options.status) {
+      conditions.push(eq(schemeRecommendations.status, options.status));
+    }
+
     let query = db
       .select({
         id: schemeRecommendations.id,
@@ -787,15 +793,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(schemeRecommendations)
       .leftJoin(schemes, eq(schemeRecommendations.schemeId, schemes.id))
-      .where(eq(schemeRecommendations.userId, userId))
+      .where(and(...conditions))
       .orderBy(desc(schemeRecommendations.generatedAt));
-
-    if (options.status) {
-      query = query.where(and(
-        eq(schemeRecommendations.userId, userId),
-        eq(schemeRecommendations.status, options.status)
-      ));
-    }
 
     if (options.limit) {
       query = query.limit(options.limit);
