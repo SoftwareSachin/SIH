@@ -1,0 +1,195 @@
+1) Admin (System Administrator)
+
+Primary purpose: Full system control, user management, config, data & model governance.
+
+Actions allowed
+
+Create / edit / deactivate users and assign roles.
+
+Configure RBAC rules, system settings, basemaps, API clients.
+
+Upload / delete baseline datasets (villages, master schemes).
+
+Manage model versions (OCR/CV/LULC), set production model.
+
+View / export all data, audit logs, system reports.
+
+Issue API keys / manage integrations.
+
+Hard delete or restore data (subject to policy).
+
+UI / features accessible
+
+Global dashboard (all states/districts).
+
+User management panel.
+
+Data import/export console (bulk jobs).
+
+Model & pipeline manager.
+
+Audit & logs viewer.
+
+API & integration settings.
+
+Notes / constraints
+
+Full PII visibility by default; exports can be anonymized on demand.
+
+All admin actions are fully audited (who, when, why).
+
+2) State Officer
+
+Primary purpose: Oversee FRA progress and data quality at state level; approve district-level decisions.
+
+Actions allowed
+
+View & search all claims in their state.
+
+Approve / reject district escalations.
+
+Request field verifications or assign district tasks.
+
+Run DSS at state/block level and export recommendations.
+
+Upload state-level datasets, guidelines, or supporting PDFs.
+
+View model-run results and flag issues.
+
+UI / features accessible
+
+State dashboard (claims metrics, map of state).
+
+Claim detail panel with attachments & extracted fields.
+
+DSS run panel for state/block.
+
+Import wizard (state-only imports).
+
+Reports & export (CSV/PDF) for state data.
+
+Notes / constraints
+
+Cannot create/Delete users (only Admin).
+
+PII visibility allowed for verification tasks; exports may require redaction toggle.
+
+3) District Officer
+
+Primary purpose: Day-to-day verification and approvals for claims inside their district.
+
+Actions allowed
+
+View & manage claims in assigned district.
+
+Approve / reject claims after field verification.
+
+Assign claims to field officers and track verification status.
+
+Trigger DSS for a district/block and accept/export recommendations.
+
+Comment, attach officer notes, request re-inspection.
+
+UI / features accessible
+
+District dashboard + map.
+
+Pending verifications list.
+
+Claim workflow panel (history, attachments, signatures).
+
+Mobile sync summary for field inputs.
+
+Notes / constraints
+
+Cannot change system-wide config or model versions.
+
+Exports containing PII require role-based checks or redaction.
+
+4) Field Officer (Mobile-first)
+
+Primary purpose: Collect documents, capture field verification, attach photos/consent, and perform on-ground linking.
+
+Actions allowed
+
+Create new claim records (or field verification entries) via mobile/web.
+
+Capture photos, GPS, consent forms, and upload scanned docs.
+
+Edit extracted fields (human verification) and submit corrections.
+
+Mark verification checklist items and update claim status (e.g., inspected -> verified).
+
+Work offline and sync when online.
+
+UI / features accessible
+
+Mobile capture form (photos, GPS, checklist).
+
+Offline queue / sync manager.
+
+Small map viewer to select village polygon and pin homestead.
+
+My tasks / assigned claims list.
+
+Notes / constraints
+
+Cannot approve final grant (only District/State/Admin).
+
+Limited PII export; can view claimant PII to perform verification but cannot bulk-export PII.
+
+Every status update stored with GPS + timestamp for audit.
+
+5) NGO Partner
+
+Primary purpose: Support claimants, submit supporting evidence, and suggest interventions.
+
+Actions allowed
+
+Register and submit supporting documents for a claim (with claimant consent).
+
+Propose community-level interventions and upload reports.
+
+View claims and aggregated (non-PII) dashboards for areas they operate in.
+
+Request field verification via District channels.
+
+UI / features accessible
+
+NGO dashboard (limited to approved geographies).
+
+Claim support upload panel.
+
+Request/track verification requests.
+
+Notes / constraints
+
+Cannot directly change claim status to verified/granted.
+
+Access to PII restricted; NGOs see claimant details only after consent and role approval.
+
+6) Public Viewer
+
+Primary purpose: Transparent public access to aggregated FRA outcomes (no sensitive PII).
+
+Actions allowed
+
+Browse interactive FRA Atlas (granted pattas, aggregated stats).
+
+Search by district/village to view non-PII maps & summary metrics.
+
+Download anonymized / public datasets (if enabled).
+
+UI / features accessible
+
+Public map viewer with restricted layers (no PII).
+
+Aggregated dashboards (counts by state/district/village).
+
+Public downloads (pre-approved public CSV/GeoJSON).
+
+Notes / constraints
+
+Cannot submit documents or request verification unless they register as NGO or Field role.
+
+PII and detailed claim-level layers are hidden.

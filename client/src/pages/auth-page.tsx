@@ -9,6 +9,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, TreePine, ShieldCheck, UsersRound, Satellite, Brain, Globe, Lock, Sparkles, Network, MapPin, Cpu } from "lucide-react";
 import { useLocation } from "wouter";
 import forestSunriseImage from "@assets/generated_images/Forest_sunrise_panoramic_background_2afc9c55.png";
@@ -26,6 +29,11 @@ const registerSchema = z.object({
   confirmPassword: z.string(),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  requestedRole: z.string().min(1, "Please select a role"),
+  state: z.string().optional(),
+  district: z.string().optional(),
+  organizationName: z.string().optional(),
+  justification: z.string().optional()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -38,6 +46,18 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
+  const [selectedRole, setSelectedRole] = useState<string>("");
+
+  // Fetch available roles for registration
+  const { data: availableRoles = [] } = useQuery({
+    queryKey: ['/api/auth/roles'],
+    queryFn: async () => {
+      const response = await fetch('/api/auth/roles');
+      if (!response.ok) throw new Error('Failed to fetch roles');
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -62,6 +82,11 @@ export default function AuthPage() {
       confirmPassword: "",
       firstName: "",
       lastName: "",
+      requestedRole: "public",
+      state: "",
+      district: "",
+      organizationName: "",
+      justification: ""
     },
   });
 
@@ -310,6 +335,118 @@ export default function AuthPage() {
                             </FormItem>
                           )}
                         />
+                        
+                        <FormField
+                          control={registerForm.control}
+                          name="requestedRole"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-700 font-medium">Role</FormLabel>
+                              <Select onValueChange={(value) => {
+                                field.onChange(value);
+                                setSelectedRole(value);
+                              }} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="border-2 border-gray-200 focus:border-green-500 focus:ring-green-500 h-11">
+                                    <SelectValue placeholder="Select your role" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {availableRoles.map((role: any) => (
+                                    <SelectItem key={role.name} value={role.name}>
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{role.displayName}</span>
+                                        <span className="text-sm text-gray-500">{role.description}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {selectedRole === 'field' || selectedRole === 'district' || selectedRole === 'state' ? (
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={registerForm.control}
+                              name="state"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-medium">State</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="Enter state" 
+                                      className="border-2 border-gray-200 focus:border-green-500 focus:ring-green-500 h-11"
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            {(selectedRole === 'district' || selectedRole === 'field') && (
+                              <FormField
+                                control={registerForm.control}
+                                name="district"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700 font-medium">District</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        placeholder="Enter district" 
+                                        className="border-2 border-gray-200 focus:border-green-500 focus:ring-green-500 h-11"
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            )}
+                          </div>
+                        ) : null}
+
+                        {selectedRole === 'ngo' && (
+                          <FormField
+                            control={registerForm.control}
+                            name="organizationName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 font-medium">Organization Name</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Enter your NGO/organization name" 
+                                    className="border-2 border-gray-200 focus:border-green-500 focus:ring-green-500 h-11"
+                                    {...field} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        {selectedRole !== 'public' && (
+                          <FormField
+                            control={registerForm.control}
+                            name="justification"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 font-medium">Justification</FormLabel>
+                                <FormControl>
+                                  <Textarea 
+                                    placeholder="Please explain why you need this role access..." 
+                                    className="border-2 border-gray-200 focus:border-green-500 focus:ring-green-500 min-h-[80px]"
+                                    {...field} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
                         <Button 
                           type="submit" 
                           className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold text-lg transition-all duration-200 shadow-lg" 

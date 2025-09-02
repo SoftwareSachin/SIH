@@ -32,6 +32,11 @@ type RegisterData = {
   confirmPassword: string;
   firstName?: string;
   lastName?: string;
+  requestedRole?: string;
+  state?: string;
+  district?: string;
+  organizationName?: string;
+  justification?: string;
 };
 
 type AuthResponse = {
@@ -131,14 +136,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return res.json();
     },
-    onSuccess: (response: AuthResponse) => {
+    onSuccess: (response: any) => {
       setToken(response.token);
       localStorage.setItem('authToken', response.token);
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      toast({
-        title: "Welcome to FRA Atlas!",
-        description: "Your account has been created successfully.",
-      });
+      
+      if (response.requiresApproval) {
+        toast({
+          title: "Registration Successful!",
+          description: `Your ${response.requestedRole} role request is pending admin approval. You can access public features in the meantime.`,
+          duration: 6000,
+        });
+      } else {
+        toast({
+          title: "Welcome to FRA Atlas!",
+          description: "Your account has been created successfully.",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({

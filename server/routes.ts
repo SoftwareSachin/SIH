@@ -37,7 +37,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
   const registerSchema = insertUserSchema.extend({
     password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string()
+    confirmPassword: z.string(),
+    requestedRole: z.enum(['admin', 'state', 'district', 'field', 'ngo', 'public']).optional().default('public'),
+    state: z.string().optional(),
+    district: z.string().optional(),
+    organizationName: z.string().optional(),
+    justification: z.string().optional()
   }).refine(data => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"]
@@ -68,8 +73,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
-        role: 'public' // Default role
+        role: validatedData.requestedRole || 'public',
+        state: validatedData.state,
+        district: validatedData.district
       });
+
+      // Assign role based on request
+      const requestedRoleName = validatedData.requestedRole || 'public';
+      const role = await storage.getRoleByName(requestedRoleName);
+      
+      if (role) {
+        // For non-public roles, mark as inactive pending admin approval
+        const isActive = requestedRoleName === 'public';
+        
+        await storage.assignUserRole({
+          userId: newUser.id,
+          roleId: role.id,
+          isActive,
+          notes: isActive ? 'Auto-assigned public role' : 
+                `Requested role: ${role.displayName}. ${validatedData.justification ? 'Justification: ' + validatedData.justification : 'Pending admin approval.'}`
+        });
+        
+        // If role requires approval, inform user
+        if (!isActive) {
+          return res.status(201).json({
+            message: 'Registration successful. Your role request is pending admin approval.',
+            requiresApproval: true,
+            requestedRole: role.displayName,
+            token: generateToken(newUser),
+            user: {
+              id: newUser.id,
+              email: newUser.email,
+              firstName: newUser.firstName,
+              lastName: newUser.lastName,
+              role: 'public' // Default until approved
+            }
+          });
+        }
+      }
 
       // Generate JWT token
       const token = generateToken(newUser);
@@ -93,6 +134,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       console.error('Registration error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get roles endpoint for registration
+  app.get('/api/auth/roles', async (req, res) => {
+    try {
+      const roles = await storage.getRoles();
+      const publicRoles = roles.filter(role => 
+        ['public', 'field', 'ngo'].includes(role.name) // Allow self-registration for these roles
+      ).map(role => ({
+        name: role.name,
+        displayName: role.displayName,
+        description: role.description
+      }));
+      
+      res.json(publicRoles);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get authenticated user with roles
+  app.get('/api/auth/user', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      // Get user with roles
+      const userWithRoles = await storage.getUserWithRoles(req.user.id);
+      if (!userWithRoles) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Get active role and permissions
+      const activeRoleAssignment = userWithRoles.roleAssignments.find(assignment => 
+        assignment.isActive && (!assignment.expiresAt || new Date(assignment.expiresAt) > new Date())
+      );
+
+      const currentRole = activeRoleAssignment?.role.name || 'public';
+      const permissions = activeRoleAssignment?.role.permissions as string[] || ['view_public_maps'];
+
+      res.json({
+        ...userWithRoles,
+        currentRole,
+        permissions,
+        roleAssignments: userWithRoles.roleAssignments.map(assignment => ({
+          ...assignment,
+          role: {
+            name: assignment.role.name,
+            displayName: assignment.role.displayName,
+            description: assignment.role.description
+          }
+        }))
+      });
+    } catch (error) {
+      console.error('Error fetching user:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   });
@@ -654,8 +754,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard stats
-  app.get('/api/dashboard/stats', authenticateToken, async (req: any, res) => {
+  // Dashboard stats - role-based access
+  app.get('/api/dashboard/stats', authenticateToken, requirePermission('view_public_maps'), async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -672,8 +772,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Claims routes
-  app.get('/api/claims', authenticateToken, async (req: any, res) => {
+  // Claims routes - role-based viewing 
+  app.get('/api/claims', authenticateToken, requirePermission('view_district_claims', 'view_state_claims', 'view_all_claims'), async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
