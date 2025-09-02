@@ -17,13 +17,13 @@ export default function AIProcessing() {
   });
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0">
         <TopBar />
         
-        <div className="p-6 overflow-y-auto h-full">
+        <div className="flex-1 p-6 overflow-y-auto">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-foreground">AI Processing Pipeline</h1>
             <p className="text-muted-foreground">

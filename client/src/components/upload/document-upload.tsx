@@ -192,7 +192,7 @@ export default function DocumentUpload() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full">
       <Card>
         <CardHeader>
           <CardTitle>Document Upload</CardTitle>

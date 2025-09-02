@@ -189,7 +189,7 @@ export default function OCRProcessor() {
   const healthStatus = getHealthStatus();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full">
       {/* OCR System Health */}
       <Card>
         <CardHeader>
