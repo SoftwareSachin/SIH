@@ -144,6 +144,11 @@ export const requirePermission = (permission: string) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
+    // Admin users have access to everything
+    if (req.user.currentRole === 'admin') {
+      return next();
+    }
+
     if (!req.user.permissions?.includes(permission)) {
       return res.status(403).json({ message: `Permission '${permission}' required` });
     }
@@ -170,6 +175,11 @@ export const requireAnyPermission = (permissions: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    // Admin users have access to everything
+    if (req.user.currentRole === 'admin') {
+      return next();
     }
 
     const hasPermission = permissions.some(permission => req.user!.permissions?.includes(permission));

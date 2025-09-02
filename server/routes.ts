@@ -83,33 +83,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const role = await storage.getRoleByName(requestedRoleName);
       
       if (role) {
-        // For non-public roles, mark as inactive pending admin approval
-        const isActive = requestedRoleName === 'public';
-        
+        // Auto-activate all roles - no approval required
         await storage.assignUserRole({
           userId: newUser.id,
           roleId: role.id,
-          isActive,
-          notes: isActive ? 'Auto-assigned public role' : 
-                `Requested role: ${role.displayName}. ${validatedData.justification ? 'Justification: ' + validatedData.justification : 'Pending admin approval.'}`
+          isActive: true,
+          notes: `Auto-assigned ${role.displayName} role. ${validatedData.justification || 'No justification provided.'}`
         });
-        
-        // If role requires approval, inform user
-        if (!isActive) {
-          return res.status(201).json({
-            message: 'Registration successful. Your role request is pending admin approval.',
-            requiresApproval: true,
-            requestedRole: role.displayName,
-            token: generateToken(newUser),
-            user: {
-              id: newUser.id,
-              email: newUser.email,
-              firstName: newUser.firstName,
-              lastName: newUser.lastName,
-              role: 'public' // Default until approved
-            }
-          });
-        }
       }
 
       // Generate JWT token
