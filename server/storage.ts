@@ -100,6 +100,7 @@ export interface IStorage {
   }>;
   getClaimById(id: string): Promise<Claim | undefined>;
   getClaimsByVillage(villageId: string): Promise<Claim[]>;
+  getPublicClaims(): Promise<Claim[]>;
   createClaim(claim: InsertClaim): Promise<Claim>;
   updateClaim(id: string, updates: Partial<InsertClaim>): Promise<Claim>;
   updateClaimStatus(id: string, status: string, userId: string, notes?: string): Promise<Claim>;
@@ -413,6 +414,11 @@ export class DatabaseStorage implements IStorage {
 
   async getClaimsByVillage(villageId: string): Promise<Claim[]> {
     return db.select().from(claims).where(eq(claims.villageId, villageId));
+  }
+
+  async getPublicClaims(): Promise<Claim[]> {
+    // Return only verified claims for public access
+    return db.select().from(claims).where(eq(claims.status, 'verified')).orderBy(desc(claims.submittedDate));
   }
 
   async createClaim(claim: InsertClaim): Promise<Claim> {
