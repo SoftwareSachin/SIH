@@ -745,10 +745,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/claims', authenticateToken, requirePermission('view_district_claims', 'view_state_claims', 'view_all_claims'), async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const user = await storage.getUser(userId);
       
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      // Handle dev bypass - use mock user directly instead of database lookup
+      let user;
+      if (process.env.NODE_ENV === 'development' && userId === 'dev-admin-001') {
+        user = req.user; // Use the mock user directly
+      } else {
+        user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
       }
 
       const page = parseInt(req.query.page as string) || 1;
