@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Brain, TrendingUp, AlertCircle, FileText } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 
 export default function DecisionSupportPanel() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   // Get latest schemes and recommendations
   const { data: schemes } = useQuery({
@@ -17,7 +17,7 @@ export default function DecisionSupportPanel() {
   // Get a sample village for demonstration
   const { data: villages } = useQuery({
     queryKey: ["/api/geo/villages/all"],
-    select: (data) => data?.slice(0, 3), // Get first 3 villages for quick preview
+    select: (data: any) => data?.slice?.(0, 3), // Get first 3 villages for quick preview
   });
 
   const sampleVillage = villages?.[0];
@@ -53,7 +53,7 @@ export default function DecisionSupportPanel() {
     }
   };
 
-  const topRecommendations = sampleRecommendations?.recommendations?.slice(0, 3) || [];
+  const topRecommendations = (sampleRecommendations as any)?.recommendations?.slice?.(0, 3) || [];
 
   return (
     <Card className="border border-border">
@@ -110,7 +110,7 @@ export default function DecisionSupportPanel() {
             <div className="mt-4 p-3 bg-muted rounded-lg">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">Total Schemes Available:</span>
-                <span className="font-medium">{schemes?.length || 0}</span>
+                <span className="font-medium">{schemes?.length ?? 0}</span>
               </div>
               <div className="flex justify-between items-center text-sm mt-1">
                 <span className="text-muted-foreground">Sample Village:</span>
@@ -130,7 +130,7 @@ export default function DecisionSupportPanel() {
         <Button 
           className="w-full" 
           data-testid="button-full-report"
-          onClick={() => navigate('/decision-support')}
+          onClick={() => setLocation('/decision-support')}
         >
           <FileText className="h-4 w-4 mr-2" />
           View Full DSS Analysis
