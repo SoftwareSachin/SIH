@@ -6,7 +6,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import StatsCards from "@/components/dashboard/stats-cards";
-import WebGISMap from "@/components/dashboard/webgis-map";
+import RealWebGISMap from "@/components/webgis/real-webgis-map";
 import ClaimsPanel from "@/components/dashboard/claims-panel";
 import AIProcessingPanel from "@/components/dashboard/ai-processing-panel";
 import DecisionSupportPanel from "@/components/dashboard/decision-support-panel";
@@ -62,7 +62,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
             {/* WebGIS Map */}
             <div className="lg:col-span-2">
-              <WebGISMap />
+              <RealWebGISMap />
             </div>
             
             {/* Claims Panel */}
