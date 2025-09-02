@@ -1,4 +1,4 @@
-import { geolib } from 'geolib';
+import * as geolib from 'geolib';
 import proj4 from 'proj4';
 import { storage } from '../storage';
 

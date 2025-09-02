@@ -19,7 +19,8 @@ import {
   TestTube2,
   Satellite,
   Shield,
-  Users
+  Users,
+  ClipboardCheck
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -34,6 +35,11 @@ export default function Sidebar() {
       { name: 'WebGIS Portal', href: '/webgis', icon: Map, permission: 'view_public_maps' },
       { name: 'Claims Management', href: '/claims', icon: FileText, permission: 'view_district_claims' },
     ];
+
+    // Add verification workflow for eligible users
+    if (hasPermission('access_workflow_management') || hasRole('admin') || hasRole('state') || hasRole('district') || hasRole('field')) {
+      baseNav.push({ name: 'Verification Workflow', href: '/verification-workflow', icon: ClipboardCheck, permission: 'access_workflow_management' });
+    }
 
     const conditionalNav = [];
     

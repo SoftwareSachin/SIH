@@ -12,6 +12,7 @@ import { dssEngine } from "./services/dssEngine";
 import { batchProcessor } from "./services/batchProcessor";
 import { landUseClassificationService } from "./services/landUseClassificationService";
 import { gisIntegrationService } from "./services/gisIntegrationService";
+import { verificationWorkflow } from "./services/verificationWorkflow";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -706,6 +707,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating claim status:", error);
       res.status(500).json({ message: "Failed to update claim status" });
+    }
+  });
+
+  // Verification Workflow API endpoints
+  app.post('/api/workflow/initialize/:claimId', authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { claimId } = req.params;
+      const { priority = 'medium' } = req.body;
+
+      // Verify user has permission to initialize workflows
+      const user = await storage.getUser(userId);
+      if (!user || !['admin', 'state', 'district', 'field'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions to initialize workflow" });
+      }
+
+      const workflow = await verificationWorkflow.initializeWorkflow(claimId, priority);
+      
+      res.status(201).json({
+        success: true,
+        workflow,
+        message: "Verification workflow initialized successfully"
+      });
+    } catch (error) {
+      console.error("Error initializing workflow:", error);
+      res.status(500).json({ message: "Failed to initialize verification workflow" });
+    }
+  });
+
+  app.get('/api/workflow/status/:claimId', authenticateToken, async (req: any, res) => {
+    try {
+      const { claimId } = req.params;
+      const workflow = await verificationWorkflow.getWorkflowStatus(claimId);
+      
+      if (!workflow) {
+        return res.status(404).json({ message: "Workflow not found for this claim" });
+      }
+
+      // Get workflow steps
+      const steps = await storage.getVerificationSteps(workflow.id);
+      
+      res.json({
+        workflow,
+        steps,
+        currentStepName: steps[workflow.currentStep]?.stepName || 'Completed'
+      });
+    } catch (error) {
+      console.error("Error fetching workflow status:", error);
+      res.status(500).json({ message: "Failed to fetch workflow status" });
+    }
+  });
+
+  app.post('/api/workflow/process-step/:claimId', authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { claimId } = req.params;
+
+      const user = await storage.getUser(userId);
+      if (!user || !['admin', 'state', 'district', 'field'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions to process workflow steps" });
+      }
+
+      const updatedWorkflow = await verificationWorkflow.processNextStep(claimId, userId);
+      
+      res.json({
+        success: true,
+        workflow: updatedWorkflow,
+        message: "Workflow step processed successfully"
+      });
+    } catch (error) {
+      console.error("Error processing workflow step:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to process workflow step" });
+    }
+  });
+
+  app.get('/api/workflow/audit/:claimId', authenticateToken, async (req: any, res) => {
+    try {
+      const { claimId } = req.params;
+      const auditTrail = await verificationWorkflow.getAuditTrail(claimId);
+      
+      res.json({
+        auditTrail,
+        totalEntries: auditTrail.length
+      });
+    } catch (error) {
+      console.error("Error fetching audit trail:", error);
+      res.status(500).json({ message: "Failed to fetch audit trail" });
+    }
+  });
+
+  app.post('/api/workflow/assign/:claimId', authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { claimId } = req.params;
+      const { assignedTo } = req.body;
+
+      const user = await storage.getUser(userId);
+      if (!user || !['admin', 'state', 'district'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions to assign workflows" });
+      }
+
+      await verificationWorkflow.assignWorkflow(claimId, userId, assignedTo);
+      
+      res.json({
+        success: true,
+        message: "Workflow assigned successfully"
+      });
+    } catch (error) {
+      console.error("Error assigning workflow:", error);
+      res.status(500).json({ message: "Failed to assign workflow" });
+    }
+  });
+
+  app.post('/api/workflow/escalate/:claimId', authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { claimId } = req.params;
+      const { reason } = req.body;
+
+      const user = await storage.getUser(userId);
+      if (!user || !['admin', 'state', 'district', 'field'].includes(user.role || '')) {
+        return res.status(403).json({ message: "Insufficient permissions to escalate workflows" });
+      }
+
+      await verificationWorkflow.escalateWorkflow(claimId, userId, reason);
+      
+      res.json({
+        success: true,
+        message: "Workflow escalated successfully"
+      });
+    } catch (error) {
+      console.error("Error escalating workflow:", error);
+      res.status(500).json({ message: "Failed to escalate workflow" });
     }
   });
 

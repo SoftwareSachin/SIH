@@ -13,6 +13,8 @@ import {
   auditTrail,
   roles,
   userRoleAssignments,
+  verificationWorkflows,
+  verificationSteps,
   type User,
   type UpsertUser,
   type State,
@@ -26,6 +28,8 @@ import {
   type AuditTrail,
   type Role,
   type UserRoleAssignment,
+  type VerificationWorkflow,
+  type VerificationStep,
   type InsertState,
   type InsertDistrict,
   type InsertVillage,
@@ -37,6 +41,8 @@ import {
   type InsertAuditTrail,
   type InsertRole,
   type InsertUserRoleAssignment,
+  type InsertVerificationWorkflow,
+  type InsertVerificationStep,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, ilike, isNull } from "drizzle-orm";
@@ -130,6 +136,16 @@ export interface IStorage {
   createSchemeRecommendation(recommendation: any): Promise<any>;
   updateSchemeRecommendationStatus(id: string, updates: any): Promise<any>;
   getUserSchemeRecommendations(userId: string, options: any): Promise<any[]>;
+
+  // Verification Workflow Operations
+  createVerificationWorkflow(workflow: InsertVerificationWorkflow): Promise<VerificationWorkflow>;
+  getVerificationWorkflow(claimId: string): Promise<VerificationWorkflow | undefined>;
+  updateVerificationWorkflow(workflow: VerificationWorkflow): Promise<VerificationWorkflow>;
+  createVerificationStep(step: InsertVerificationStep): Promise<VerificationStep>;
+  updateVerificationStep(stepId: string, updates: Partial<InsertVerificationStep>): Promise<VerificationStep>;
+  getVerificationSteps(workflowId: string): Promise<VerificationStep[]>;
+  getAuditTrail(entityId: string, entityType?: string): Promise<AuditTrail[]>;
+  getDocumentsByClaimId(claimId: string): Promise<Document[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -789,7 +805,57 @@ export class DatabaseStorage implements IStorage {
       query = query.offset(options.offset);
     }
 
-    return query;
+    return await query;
+  }
+
+  // Verification Workflow Operations
+  async createVerificationWorkflow(workflow: InsertVerificationWorkflow): Promise<VerificationWorkflow> {
+    const [newWorkflow] = await db.insert(verificationWorkflows).values(workflow).returning();
+    return newWorkflow;
+  }
+
+  async getVerificationWorkflow(claimId: string): Promise<VerificationWorkflow | undefined> {
+    const [workflow] = await db.select().from(verificationWorkflows).where(eq(verificationWorkflows.claimId, claimId));
+    return workflow;
+  }
+
+  async updateVerificationWorkflow(workflow: VerificationWorkflow): Promise<VerificationWorkflow> {
+    const [updatedWorkflow] = await db
+      .update(verificationWorkflows)
+      .set({ ...workflow, updatedAt: new Date() })
+      .where(eq(verificationWorkflows.id, workflow.id))
+      .returning();
+    return updatedWorkflow;
+  }
+
+  async createVerificationStep(step: InsertVerificationStep): Promise<VerificationStep> {
+    const [newStep] = await db.insert(verificationSteps).values(step).returning();
+    return newStep;
+  }
+
+  async updateVerificationStep(stepId: string, updates: Partial<InsertVerificationStep>): Promise<VerificationStep> {
+    const [updatedStep] = await db
+      .update(verificationSteps)
+      .set(updates)
+      .where(eq(verificationSteps.id, stepId))
+      .returning();
+    return updatedStep;
+  }
+
+  async getVerificationSteps(workflowId: string): Promise<VerificationStep[]> {
+    return db.select().from(verificationSteps).where(eq(verificationSteps.workflowId, workflowId)).orderBy(verificationSteps.stepOrder);
+  }
+
+  async getAuditTrail(entityId: string, entityType?: string): Promise<AuditTrail[]> {
+    const conditions = [eq(auditTrail.entityId, entityId)];
+    if (entityType) {
+      conditions.push(eq(auditTrail.entityType, entityType));
+    }
+    return db.select().from(auditTrail).where(and(...conditions)).orderBy(desc(auditTrail.timestamp));
+  }
+
+  async getDocumentsByClaimId(claimId: string): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.claimId, claimId));
   }
 }
 

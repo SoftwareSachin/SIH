@@ -275,18 +275,82 @@ export const recommendations = pgTable("recommendations", {
   implementedBy: varchar("implemented_by").references(() => users.id),
 });
 
+// Verification workflow status enum
+export const workflowStatusEnum = pgEnum('workflow_status', ['pending', 'in_progress', 'completed', 'rejected', 'on_hold']);
+export const stepStatusEnum = pgEnum('step_status', ['pending', 'in_progress', 'completed', 'failed', 'skipped']);
+
+// Verification Workflows table
+export const verificationWorkflows = pgTable("verification_workflows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  claimId: varchar("claim_id").references(() => claims.id).notNull(),
+  currentStep: integer("current_step").default(0),
+  status: workflowStatusEnum("status").default('pending'),
+  priority: varchar("priority").notNull().default('medium'), // low, medium, high, urgent
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  estimatedCompletion: timestamp("estimated_completion"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Verification workflow steps table
+export const verificationSteps = pgTable("verification_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").references(() => verificationWorkflows.id).notNull(),
+  stepOrder: integer("step_order").notNull(),
+  stepId: varchar("step_id").notNull(), // document_upload, ocr_processing, etc.
+  stepName: varchar("step_name").notNull(),
+  status: stepStatusEnum("status").default('pending'),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  verifiedBy: varchar("verified_by").references(() => users.id),
+  result: jsonb("result"),
+  errors: text("errors").array(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Audit Trail
 export const auditTrail = pgTable("audit_trail", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  entityType: varchar("entity_type").notNull(), // claims, documents, etc.
+  entityType: varchar("entity_type").notNull(), // claims, documents, workflows, etc.
   entityId: varchar("entity_id").notNull(),
-  action: varchar("action").notNull(), // create, update, delete, verify, etc.
+  action: varchar("action").notNull(), // create, update, delete, verify, approve, reject, etc.
   userId: varchar("user_id").references(() => users.id),
+  userRole: varchar("user_role"),
   oldValues: jsonb("old_values"),
   newValues: jsonb("new_values"),
   timestamp: timestamp("timestamp").defaultNow(),
   notes: text("notes"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
 });
+
+// Relations
+export const verificationWorkflowsRelations = relations(verificationWorkflows, ({ one, many }) => ({
+  claim: one(claims, {
+    fields: [verificationWorkflows.claimId],
+    references: [claims.id],
+  }),
+  assignedUser: one(users, {
+    fields: [verificationWorkflows.assignedTo],
+    references: [users.id],
+  }),
+  steps: many(verificationSteps),
+}));
+
+export const verificationStepsRelations = relations(verificationSteps, ({ one }) => ({
+  workflow: one(verificationWorkflows, {
+    fields: [verificationSteps.workflowId],
+    references: [verificationWorkflows.id],
+  }),
+  verifiedByUser: one(users, {
+    fields: [verificationSteps.verifiedBy],
+    references: [users.id],
+  }),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -403,6 +467,8 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({ id: tru
 export const insertAssetSchema = createInsertSchema(assets).omit({ id: true });
 export const insertSchemeSchema = createInsertSchema(schemes).omit({ id: true, createdAt: true });
 export const insertRecommendationSchema = createInsertSchema(recommendations).omit({ id: true });
+export const insertVerificationWorkflowSchema = createInsertSchema(verificationWorkflows).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertVerificationStepSchema = createInsertSchema(verificationSteps).omit({ id: true, createdAt: true });
 export const insertAuditTrailSchema = createInsertSchema(auditTrail).omit({ id: true, timestamp: true });
 
 // Types
@@ -431,3 +497,7 @@ export type InsertRecommendation = typeof recommendations.$inferInsert;
 export type InsertAuditTrail = typeof auditTrail.$inferInsert;
 export type InsertRole = typeof roles.$inferInsert;
 export type InsertUserRoleAssignment = typeof userRoleAssignments.$inferInsert;
+export type VerificationWorkflow = typeof verificationWorkflows.$inferSelect;
+export type VerificationStep = typeof verificationSteps.$inferSelect;
+export type InsertVerificationWorkflow = typeof verificationWorkflows.$inferInsert;
+export type InsertVerificationStep = typeof verificationSteps.$inferInsert;

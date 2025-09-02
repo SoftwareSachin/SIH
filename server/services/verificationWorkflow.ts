@@ -3,45 +3,24 @@ import { documentProcessor } from './documentProcessor';
 import { aiProcessor } from './aiProcessor';
 import { spatialProcessor } from './spatialProcessor';
 import { dssEngine } from './dssEngine';
+import { 
+  type VerificationWorkflow,
+  type VerificationStep,
+  type InsertVerificationWorkflow,
+  type InsertVerificationStep,
+  type AuditTrail,
+  type InsertAuditTrail
+} from '@shared/schema';
 
-interface VerificationStep {
+// Local interfaces for workflow step definitions
+interface WorkflowStepDefinition {
   id: string;
   name: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped';
-  startedAt?: Date;
-  completedAt?: Date;
-  result?: any;
-  errors?: string[];
-  verifiedBy?: string;
-}
-
-interface AuditTrail {
-  id: string;
-  claimId: string;
-  action: string;
-  performedBy: string;
-  performedAt: Date;
-  oldValue?: any;
-  newValue?: any;
-  notes?: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
-
-interface VerificationWorkflow {
-  claimId: string;
-  currentStep: number;
-  status: 'pending' | 'in_progress' | 'completed' | 'rejected' | 'on_hold';
-  steps: VerificationStep[];
-  startedAt: Date;
-  completedAt?: Date;
-  assignedTo?: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  estimatedCompletion?: Date;
+  required: boolean;
 }
 
 class VerificationWorkflowEngine {
-  private readonly WORKFLOW_STEPS = [
+  private readonly WORKFLOW_STEPS: WorkflowStepDefinition[] = [
     { id: 'document_upload', name: 'Document Upload', required: true },
     { id: 'ocr_processing', name: 'OCR Text Extraction', required: true },
     { id: 'ner_extraction', name: 'Entity Extraction', required: true },
@@ -54,29 +33,36 @@ class VerificationWorkflowEngine {
 
   async initializeWorkflow(claimId: string, priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium'): Promise<VerificationWorkflow> {
     try {
-      const steps: VerificationStep[] = this.WORKFLOW_STEPS.map(step => ({
-        id: step.id,
-        name: step.name,
-        status: 'pending'
-      }));
-
-      const workflow: VerificationWorkflow = {
+      const workflowData: InsertVerificationWorkflow = {
         claimId,
         currentStep: 0,
         status: 'pending',
-        steps,
-        startedAt: new Date(),
         priority,
+        startedAt: new Date(),
         estimatedCompletion: this.calculateEstimatedCompletion(priority)
       };
 
       // Save workflow to database
-      await storage.createVerificationWorkflow(workflow);
+      const workflow = await storage.createVerificationWorkflow(workflowData);
+
+      // Create workflow steps
+      for (let i = 0; i < this.WORKFLOW_STEPS.length; i++) {
+        const stepDef = this.WORKFLOW_STEPS[i];
+        const stepData: InsertVerificationStep = {
+          workflowId: workflow.id,
+          stepOrder: i,
+          stepId: stepDef.id,
+          stepName: stepDef.name,
+          status: 'pending'
+        };
+        await storage.createVerificationStep(stepData);
+      }
 
       // Create initial audit trail
       await this.createAuditEntry(claimId, 'workflow_initialized', 'system', {
         priority,
-        estimatedCompletion: workflow.estimatedCompletion
+        estimatedCompletion: workflow.estimatedCompletion,
+        workflowId: workflow.id
       });
 
       return workflow;
@@ -408,15 +394,15 @@ class VerificationWorkflowEngine {
     return tempProcessor.extractEntities(text);
   }
 
-  private async createAuditEntry(claimId: string, action: string, userId: string, data?: any): Promise<void> {
-    const auditEntry: AuditTrail = {
-      id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      claimId,
+  private async createAuditEntry(entityId: string, action: string, userId: string, data?: any): Promise<void> {
+    const auditEntry: InsertAuditTrail = {
+      entityType: 'verification_workflow',
+      entityId,
       action,
-      performedBy: userId,
-      performedAt: new Date(),
-      oldValue: data?.oldValue,
-      newValue: data?.newValue || data,
+      userId,
+      userRole: 'system',
+      oldValues: data?.oldValue,
+      newValues: data?.newValue || data,
       notes: data?.notes
     };
 

@@ -14,6 +14,7 @@ import AssetDetection from "@/pages/asset-detection";
 import DecisionSupport from "@/pages/decision-support";
 import DSSPage from "@/pages/dss-page";
 import AdminPage from "@/pages/admin";
+import { VerificationWorkflowPage } from "@/pages/verification-workflow";
 import { NERTester } from "@/components/test/ner-tester";
 import NotFound from "@/pages/not-found";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -70,6 +71,11 @@ function Router() {
           <Route path="/admin">
             <ProtectedRoute requiredRole="admin">
               <AdminPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/verification-workflow">
+            <ProtectedRoute requiredPermission="access_workflow_management">
+              <VerificationWorkflowPage />
             </ProtectedRoute>
           </Route>
         </>
