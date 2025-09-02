@@ -142,10 +142,10 @@ export default function RealWebGISMap() {
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    // Initialize map with India center coordinates
+    // Initialize map centered on Madhya Pradesh where our sample data is located
     const map = L.map(mapRef.current, {
       zoomControl: false // We'll add custom controls
-    }).setView([23.5937, 78.9629], 5);
+    }).setView([23.4734, 81.1409], 8); // Centered on Shahdol/Anuppur region with sample data
     mapInstance.current = map;
 
     // Add the default basemap
@@ -236,59 +236,126 @@ export default function RealWebGISMap() {
 
   // Load real claims data
   useEffect(() => {
-    if (!mapInstance.current || !claims || !layersRef.current.claims) return;
+    if (!mapInstance.current || !claims || !layersRef.current?.claims) return;
     
     const claimsData = Array.isArray(claims) ? claims : (claims && typeof claims === 'object' && 'data' in claims) ? (claims as any).data || [] : [];
     const claimsLayer = layersRef.current.claims;
-    claimsLayer.clearLayers();
+    
+    try {
+      claimsLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing claims layer:', error);
+      return;
+    }
 
     claimsData.forEach((claim: any) => {
-      if (claim.latitude && claim.longitude) {
-        const marker = L.marker([parseFloat(claim.latitude), parseFloat(claim.longitude)])
-          .bindPopup(`
-            <div>
-              <h3>${claim.claimantName || 'Unknown Claimant'}</h3>
-              <p><strong>Claim ID:</strong> ${claim.claimId}</p>
-              <p><strong>Type:</strong> ${claim.claimType}</p>
-              <p><strong>Status:</strong> ${claim.status}</p>
-              <p><strong>Area:</strong> ${claim.area || 'N/A'} acres</p>
-            </div>
-          `);
-        claimsLayer.addLayer(marker);
+      // Handle coordinates from GeoJSON format
+      let lat, lng;
+      if (claim.coordinates?.coordinates) {
+        // GeoJSON polygon - get center point
+        if (claim.coordinates.type === 'Polygon' && claim.coordinates.coordinates[0]) {
+          const coords = claim.coordinates.coordinates[0];
+          lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+          lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+        }
+      } else if (claim.latitude && claim.longitude) {
+        lat = parseFloat(claim.latitude);
+        lng = parseFloat(claim.longitude);
+      }
+
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const marker = L.marker([lat, lng])
+            .bindPopup(`
+              <div>
+                <h3>${claim.claimantName || 'Unknown Claimant'}</h3>
+                <p><strong>Claim ID:</strong> ${claim.claimId}</p>
+                <p><strong>Type:</strong> ${claim.claimType}</p>
+                <p><strong>Status:</strong> ${claim.status}</p>
+                <p><strong>Area:</strong> ${claim.area || 'N/A'} acres</p>
+                <p><strong>Confidence:</strong> ${claim.aiConfidence || 'N/A'}%</p>
+              </div>
+            `);
+          claimsLayer.addLayer(marker);
+        } catch (error) {
+          console.warn('Error adding claim marker:', error, claim);
+        }
       }
     });
 
     setLayers(prev => prev.map(layer => 
       layer.id === 'claims' ? { ...layer, count: claimsData.length } : layer
     ));
+
+    // Auto-zoom to show all claims if this is the first load and we have data
+    if (claimsData.length > 0) {
+      const validCoords = claimsData.map((claim: any) => {
+        if (claim.coordinates?.coordinates) {
+          if (claim.coordinates.type === 'Polygon' && claim.coordinates.coordinates[0]) {
+            const coords = claim.coordinates.coordinates[0];
+            const lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+            const lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+            return [lat, lng];
+          }
+        }
+        return null;
+      }).filter(Boolean);
+
+      if (validCoords.length > 0) {
+        const group = new L.FeatureGroup(validCoords.map(coord => L.marker(coord as [number, number])));
+        mapInstance.current.fitBounds(group.getBounds().pad(0.1));
+      }
+    }
   }, [claims]);
 
   // Load real villages data
   useEffect(() => {
-    if (!mapInstance.current || !villages || !layersRef.current.villages) return;
+    if (!mapInstance.current || !villages || !layersRef.current?.villages) return;
     
     const villagesData = Array.isArray(villages) ? villages : [];
     const villagesLayer = layersRef.current.villages;
-    villagesLayer.clearLayers();
+    
+    try {
+      villagesLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing villages layer:', error);
+      return;
+    }
 
     villagesData.forEach((village: any) => {
+      // Handle coordinates from database - they might be decimal fields
+      let lat, lng;
       if (village.latitude && village.longitude) {
-        const currentLayer = layers.find(l => l.id === 'villages');
-        const opacity = currentLayer ? currentLayer.opacity / 100 : 0.3;
-        const circle = L.circle([parseFloat(village.latitude), parseFloat(village.longitude)], {
-          color: 'green',
-          fillColor: '#90EE90',
-          fillOpacity: opacity,
-          radius: 1000 // 1km radius
-        }).bindPopup(`
-          <div>
-            <h3>${village.name}</h3>
-            <p><strong>District:</strong> ${village.districtName}</p>
-            <p><strong>State:</strong> ${village.stateName}</p>
-            <p><strong>Block:</strong> ${village.blockName || 'N/A'}</p>
-          </div>
-        `);
-        villagesLayer.addLayer(circle);
+        lat = parseFloat(village.latitude);
+        lng = parseFloat(village.longitude);
+      } else if (village.boundary?.coordinates) {
+        // GeoJSON polygon - get center point
+        const coords = village.boundary.coordinates[0];
+        lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+        lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+      }
+
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const currentLayer = layers.find(l => l.id === 'villages');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.3;
+          const circle = L.circle([lat, lng], {
+            color: 'green',
+            fillColor: '#90EE90',
+            fillOpacity: opacity,
+            radius: 1000 // 1km radius
+          }).bindPopup(`
+            <div>
+              <h3>${village.name}</h3>
+              <p><strong>Population:</strong> ${village.population || 'N/A'}</p>
+              <p><strong>Tribal Population:</strong> ${village.tribalPopulation || 'N/A'}</p>
+              <p><strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+            </div>
+          `);
+          villagesLayer.addLayer(circle);
+        } catch (error) {
+          console.warn('Error adding village marker:', error, village);
+        }
       }
     });
 
@@ -334,35 +401,60 @@ export default function RealWebGISMap() {
 
   // Load real assets data
   useEffect(() => {
-    if (!mapInstance.current || !assets || !layersRef.current.assets) return;
+    if (!mapInstance.current || !assets || !layersRef.current?.assets) return;
     
     const assetsData = Array.isArray(assets) ? assets : [];
     const assetsLayer = layersRef.current.assets;
-    assetsLayer.clearLayers();
+    
+    try {
+      assetsLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing assets layer:', error);
+      return;
+    }
 
     assetsData.forEach((asset: any) => {
+      // Handle GeoJSON coordinates
+      let lat, lng;
       if (asset.coordinates?.coordinates) {
-        const [lng, lat] = asset.coordinates.coordinates;
-        const color = asset.assetType === 'pond' ? 'blue' : 
-                     asset.assetType === 'farm' ? 'green' : 
-                     asset.assetType === 'homestead' ? 'orange' : 'purple';
-        
-        const currentLayer = layers.find(l => l.id === 'assets');
-        const opacity = currentLayer ? currentLayer.opacity / 100 : 0.6;
-        const marker = L.circleMarker([lat, lng], {
-          color: color,
-          fillColor: color,
-          fillOpacity: opacity,
-          radius: 8
-        }).bindPopup(`
-          <div>
-            <h3>${asset.assetType.charAt(0).toUpperCase() + asset.assetType.slice(1)}</h3>
-            <p><strong>Confidence:</strong> ${asset.confidence?.toFixed(1)}%</p>
-            <p><strong>Area:</strong> ${asset.area || 'N/A'} sq m</p>
-            <p><strong>Detected:</strong> ${new Date(asset.detectedAt).toLocaleDateString()}</p>
-          </div>
-        `);
-        assetsLayer.addLayer(marker);
+        if (asset.coordinates.type === 'Polygon' && asset.coordinates.coordinates[0]) {
+          // Polygon - get center point
+          const coords = asset.coordinates.coordinates[0];
+          lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+          lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+        } else if (asset.coordinates.type === 'Point') {
+          // Point coordinates
+          [lng, lat] = asset.coordinates.coordinates;
+        }
+      }
+
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const color = asset.assetType === 'pond' ? 'blue' : 
+                       asset.assetType === 'farm' ? 'green' : 
+                       asset.assetType === 'homestead' ? 'orange' : 
+                       asset.assetType === 'forest' ? 'darkgreen' :
+                       asset.assetType === 'water_body' ? 'cyan' : 'purple';
+          
+          const currentLayer = layers.find(l => l.id === 'assets');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.6;
+          const marker = L.circleMarker([lat, lng], {
+            color: color,
+            fillColor: color,
+            fillOpacity: opacity,
+            radius: 8
+          }).bindPopup(`
+            <div>
+              <h3>${asset.assetType.charAt(0).toUpperCase() + asset.assetType.slice(1).replace('_', ' ')}</h3>
+              <p><strong>Confidence:</strong> ${typeof asset.confidence === 'number' ? asset.confidence.toFixed(1) : asset.confidence || 'N/A'}%</p>
+              <p><strong>Area:</strong> ${asset.area || 'N/A'} sq m</p>
+              <p><strong>Detected:</strong> ${asset.detectedAt ? new Date(asset.detectedAt).toLocaleDateString() : 'N/A'}</p>
+            </div>
+          `);
+          assetsLayer.addLayer(marker);
+        } catch (error) {
+          console.warn('Error adding asset marker:', error, asset);
+        }
       }
     });
 
