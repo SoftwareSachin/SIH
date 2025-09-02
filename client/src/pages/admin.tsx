@@ -48,9 +48,11 @@ export default function AdminPage() {
   const [assignmentNotes, setAssignmentNotes] = useState<string>("");
 
   // Fetch all roles
-  const { data: roles = [], isLoading: rolesLoading } = useQuery<Role[]>({
+  const { data: rolesResponse = { success: true, roles: [] }, isLoading: rolesLoading } = useQuery<{ success: boolean, roles: Role[] }>({
     queryKey: ["/api/admin/roles"],
   });
+  
+  const roles = rolesResponse.roles || [];
 
   // Fetch all users with roles
   const { data: users = [], isLoading: usersLoading } = useQuery<UserWithRoles[]>({
