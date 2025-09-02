@@ -48,22 +48,29 @@ export async function comparePassword(password: string, hashedPassword: string):
 
 export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    // For development, allow bypass
+    // For development, allow bypass with simulated admin user
     if (process.env.NODE_ENV === 'development' && req.headers['x-dev-bypass'] === 'true') {
-      // Use real admin user for development testing
-      const adminUser = await storage.getUserByEmail('admin@fraatlas.gov');
-      if (adminUser) {
-        req.user = {
-          ...adminUser,
-          currentRole: 'admin',
-          permissions: [
-            'view_all_claims', 'approve_claims', 'reject_claims', 'upload_documents',
-            'verify_documents', 'manage_users', 'manage_system_settings', 'view_public_maps',
-            'export_data', 'generate_reports', 'access_admin_panel', 'access_ai_processing', 'access_dss_engine'
-          ]
-        };
-        return next();
-      }
+      // Create a mock admin user for development testing
+      req.user = {
+        id: 'dev-admin-001',
+        email: 'admin@fraatlas.gov',
+        firstName: 'System',
+        lastName: 'Administrator',
+        role: 'admin',
+        state: null,
+        district: null,
+        password: null,
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        currentRole: 'admin',
+        permissions: [
+          'view_all_claims', 'approve_claims', 'reject_claims', 'upload_documents',
+          'verify_documents', 'manage_users', 'manage_system_settings', 'view_public_maps',
+          'export_data', 'generate_reports', 'access_admin_panel', 'access_ai_processing', 'access_dss_engine'
+        ]
+      };
+      return next();
     }
 
     const authHeader = req.headers.authorization;
