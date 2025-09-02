@@ -345,10 +345,12 @@ export default function AuthPage() {
                               <Select onValueChange={(value) => {
                                 field.onChange(value);
                                 setSelectedRole(value);
-                              }} defaultValue={field.value}>
+                              }} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="border-2 border-gray-200 focus:border-green-500 focus:ring-green-500 h-11">
-                                    <SelectValue placeholder="Select your role" />
+                                    <SelectValue placeholder="Select your role">
+                                      {field.value && availableRoles.find((role: any) => role.name === field.value)?.displayName}
+                                    </SelectValue>
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent className="min-w-[400px]">
