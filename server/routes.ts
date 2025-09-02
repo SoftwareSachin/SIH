@@ -143,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const roles = await storage.getRoles();
       const publicRoles = roles.filter(role => 
-        ['public', 'field', 'ngo'].includes(role.name) // Allow self-registration for these roles
+        ['public', 'field', 'ngo', 'district', 'state', 'admin'].includes(role.name) // Allow self-registration for all roles
       ).map(role => ({
         name: role.name,
         displayName: role.displayName,
