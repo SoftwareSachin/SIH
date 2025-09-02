@@ -163,6 +163,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== PUBLIC API ENDPOINTS ====================
+  // These endpoints are accessible without authentication for public WebGIS access
+  
+  // Public claims endpoint - only verified claims
+  app.get('/api/public/claims', async (req, res) => {
+    try {
+      // Only return verified claims for public access
+      const claims = await storage.getPublicClaims();
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching public claims:", error);
+      res.status(500).json({ message: "Failed to fetch claims" });
+    }
+  });
+
+  // Public villages endpoint
+  app.get('/api/public/villages', async (req, res) => {
+    try {
+      const villages = await storage.getAllVillages();
+      res.json(villages);
+    } catch (error) {
+      console.error("Error fetching villages:", error);
+      res.status(500).json({ message: "Failed to fetch villages" });
+    }
+  });
+
+  // Public assets endpoint 
+  app.get('/api/public/assets', async (req, res) => {
+    try {
+      const assets = await storage.getAllAssets();
+      res.json(assets);
+    } catch (error) {
+      console.error("Error fetching assets:", error);
+      res.status(500).json({ message: "Failed to fetch assets" });
+    }
+  });
+
+  // Backward compatibility - redirect old endpoints to public versions
+  app.get('/api/geo/villages/all', async (req, res) => {
+    try {
+      const villages = await storage.getAllVillages();
+      res.json(villages);
+    } catch (error) {
+      console.error("Error fetching villages:", error);
+      res.status(500).json({ message: "Failed to fetch villages" });
+    }
+  });
+
+  app.get('/api/assets', async (req, res) => {
+    try {
+      const assets = await storage.getAllAssets();
+      res.json(assets);
+    } catch (error) {
+      console.error("Error fetching assets:", error);
+      res.status(500).json({ message: "Failed to fetch assets" });
+    }
+  });
+
+  // Backward compatibility for claims - redirect to public claims for unauthenticated requests
+  app.get('/api/claims', async (req, res) => {
+    try {
+      // For unauthenticated WebGIS access, return public claims
+      const claims = await storage.getPublicClaims();
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching public claims:", error);
+      res.status(500).json({ message: "Failed to fetch claims" });
+    }
+  });
+
   // Apply JWT middleware to all other protected API routes
   app.use('/api', authenticateToken);
 
