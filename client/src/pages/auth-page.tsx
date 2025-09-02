@@ -351,14 +351,14 @@ export default function AuthPage() {
                                     <SelectValue placeholder="Select your role" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent className="max-w-md">
+                                <SelectContent className="max-w-lg">
                                   {availableRoles.map((role: any) => (
-                                    <SelectItem key={role.name} value={role.name} className="py-3">
-                                      <div className="flex flex-col space-y-1 w-full">
-                                        <span className="font-medium text-sm">{role.displayName}</span>
-                                        <span className="text-xs text-gray-500 whitespace-normal leading-relaxed max-w-xs">
+                                    <SelectItem key={role.name} value={role.name} className="min-h-[60px] py-2 px-3">
+                                      <div className="w-full">
+                                        <div className="font-medium text-sm text-gray-900">{role.displayName}</div>
+                                        <div className="text-xs text-gray-600 mt-1 line-clamp-2 leading-relaxed">
                                           {role.description}
-                                        </span>
+                                        </div>
                                       </div>
                                     </SelectItem>
                                   ))}
