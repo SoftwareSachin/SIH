@@ -302,6 +302,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // Public geographic endpoints (must be before auth middleware)
+  app.get('/api/geo/states', async (req, res) => {
+    try {
+      const states = await storage.getStates();
+      res.json(states);
+    } catch (error) {
+      console.error("Error fetching states:", error);
+      res.status(500).json({ message: "Failed to fetch states" });
+    }
+  });
+
+  app.get('/api/geo/districts/:stateId', async (req, res) => {
+    try {
+      const districts = await storage.getDistrictsByState(req.params.stateId);
+      res.json(districts);
+    } catch (error) {
+      console.error("Error fetching districts:", error);
+      res.status(500).json({ message: "Failed to fetch districts" });
+    }
+  });
+
+  app.get('/api/geo/villages/:districtId', async (req, res) => {
+    try {
+      const villages = await storage.getVillagesByDistrict(req.params.districtId);
+      res.json(villages);
+    } catch (error) {
+      console.error("Error fetching villages:", error);
+      res.status(500).json({ message: "Failed to fetch villages" });
+    }
+  });
+
   // Apply JWT middleware to all other protected API routes
   app.use('/api', authenticateToken);
 
@@ -1219,46 +1250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Geographic data
-  app.get('/api/geo/states', async (req, res) => {
-    try {
-      const states = await storage.getStates();
-      res.json(states);
-    } catch (error) {
-      console.error("Error fetching states:", error);
-      res.status(500).json({ message: "Failed to fetch states" });
-    }
-  });
-
-  app.get('/api/geo/districts/:stateId', async (req, res) => {
-    try {
-      const districts = await storage.getDistrictsByState(req.params.stateId);
-      res.json(districts);
-    } catch (error) {
-      console.error("Error fetching districts:", error);
-      res.status(500).json({ message: "Failed to fetch districts" });
-    }
-  });
-
-  app.get('/api/geo/villages/all', async (req, res) => {
-    try {
-      const villages = await storage.getAllVillages();
-      res.json(villages);
-    } catch (error) {
-      console.error("Error fetching all villages:", error);
-      res.status(500).json({ message: "Failed to fetch villages" });
-    }
-  });
-
-  app.get('/api/geo/villages/:districtId', async (req, res) => {
-    try {
-      const villages = await storage.getVillagesByDistrict(req.params.districtId);
-      res.json(villages);
-    } catch (error) {
-      console.error("Error fetching villages:", error);
-      res.status(500).json({ message: "Failed to fetch villages" });
-    }
-  });
+  // Note: Geographic endpoints moved to public section before auth middleware
 
   // OCR health check endpoint
   app.get('/api/ocr/health', async (req, res) => {

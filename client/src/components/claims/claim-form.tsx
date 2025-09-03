@@ -57,11 +57,13 @@ export default function ClaimForm({ onSuccess, onCancel }: ClaimFormProps) {
 
   const { data: districts } = useQuery({
     queryKey: ["/api/geo/districts", selectedState],
+    queryFn: () => fetch(`/api/geo/districts/${selectedState}`).then(res => res.json()),
     enabled: !!selectedState,
   });
 
   const { data: villages } = useQuery({
     queryKey: ["/api/geo/villages", selectedDistrict],
+    queryFn: () => fetch(`/api/geo/villages/${selectedDistrict}`).then(res => res.json()),
     enabled: !!selectedDistrict,
   });
 
