@@ -137,45 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get authenticated user with roles
-  app.get('/api/auth/user', authenticateToken, async (req: AuthenticatedRequest, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      // Get user with roles
-      const userWithRoles = await storage.getUserWithRoles(req.user.id);
-      if (!userWithRoles) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Get active role and permissions
-      const activeRoleAssignment = userWithRoles.roleAssignments.find(assignment => 
-        assignment.isActive && (!assignment.expiresAt || new Date(assignment.expiresAt) > new Date())
-      );
-
-      const currentRole = activeRoleAssignment?.role.name || 'public';
-      const permissions = activeRoleAssignment?.role.permissions as string[] || ['view_public_maps'];
-
-      res.json({
-        ...userWithRoles,
-        currentRole,
-        permissions,
-        roleAssignments: userWithRoles.roleAssignments.map(assignment => ({
-          ...assignment,
-          role: {
-            name: assignment.role.name,
-            displayName: assignment.role.displayName,
-            description: assignment.role.description
-          }
-        }))
-      });
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
+  // Removed duplicate /api/auth/user route - keeping the one below after login
 
   // Login endpoint
   app.post('/api/auth/login', async (req, res) => {

@@ -777,7 +777,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(schemeRecommendations.status, options.status));
     }
 
-    let query = db
+    const baseQuery = db
       .select({
         id: schemeRecommendations.id,
         eligibilityScore: schemeRecommendations.eligibilityScore,
@@ -802,15 +802,16 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(schemeRecommendations.generatedAt));
 
-    if (options.limit) {
-      query = query.limit(options.limit);
-    }
+    // Apply pagination if provided
+    const finalQuery = options.limit 
+      ? (options.offset 
+          ? baseQuery.limit(options.limit).offset(options.offset)
+          : baseQuery.limit(options.limit))
+      : (options.offset 
+          ? baseQuery.offset(options.offset)
+          : baseQuery);
 
-    if (options.offset) {
-      query = query.offset(options.offset);
-    }
-
-    return await query;
+    return await finalQuery;
   }
 
   // Verification Workflow Operations
