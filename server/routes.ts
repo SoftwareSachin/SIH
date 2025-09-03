@@ -815,6 +815,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(claim);
     } catch (error) {
       console.error("Error creating claim:", error);
+      if (error.name === 'ZodError') {
+        console.error("Zod validation failed for field(s):", error.errors.map(e => ({ path: e.path, message: e.message })));
+      }
       res.status(500).json({ message: "Failed to create claim" });
     }
   });
