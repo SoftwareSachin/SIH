@@ -12,7 +12,7 @@ export default function Claims() {
   const { user } = useAuth();
   const [isNewClaimOpen, setIsNewClaimOpen] = useState(false);
 
-  const canCreateClaim = (user as any)?.role && ['admin', 'state', 'district', 'field'].includes((user as any).role);
+  const canCreateClaim = (user as any)?.currentRole && ['admin', 'state', 'district', 'field'].includes((user as any).currentRole);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
