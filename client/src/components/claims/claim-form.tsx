@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import geoData from '@/data/geo-data';
 
 const claimFormSchema = z.object({
   claimantName: z.string().min(2, "Claimant name is required"),
@@ -50,22 +51,10 @@ export default function ClaimForm({ onSuccess, onCancel }: ClaimFormProps) {
     },
   });
 
-  // Fetch geographic data
-  const { data: states } = useQuery({
-    queryKey: ["/api/geo/states"],
-  });
-
-  const { data: districts } = useQuery({
-    queryKey: ["/api/geo/districts", selectedState],
-    queryFn: () => fetch(`/api/geo/districts/${selectedState}`).then(res => res.json()),
-    enabled: !!selectedState,
-  });
-
-  const { data: villages } = useQuery({
-    queryKey: ["/api/geo/villages", selectedDistrict],
-    queryFn: () => fetch(`/api/geo/villages/${selectedDistrict}`).then(res => res.json()),
-    enabled: !!selectedDistrict,
-  });
+  // Use static geographic data - no API calls needed
+  const states = geoData.getStates();
+  const districts = selectedState ? geoData.getDistrictsByState(selectedState) : [];
+  const villages = selectedDistrict ? geoData.getVillagesByDistrict(selectedDistrict) : [];
 
   const createClaimMutation = useMutation({
     mutationFn: async (data: ClaimFormData) => {

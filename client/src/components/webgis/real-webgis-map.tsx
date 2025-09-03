@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Layers, Download, ZoomIn, ZoomOut, Map, Satellite, Eye, EyeOff, ChevronUp, ChevronDown, Search, MapPin, Home, Building, Trees, Route, Zap, Radio, Ruler, Edit3, Save, FileDown, Camera, Globe, Mountain } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
+import geoData from '@/data/geo-data';
 
 // Fix for default markers in Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -136,7 +137,8 @@ export default function RealWebGISMap() {
 
   // Fetch real data for map layers
   const { data: claims } = useQuery({ queryKey: ['/api/claims'] });
-  const { data: villages } = useQuery({ queryKey: ['/api/geo/villages/all'] });
+  // Use static villages data instead of API call
+  const villages = geoData.getAllVillages();
   const { data: assets } = useQuery({ queryKey: ['/api/assets'] });
 
   useEffect(() => {
