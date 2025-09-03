@@ -34,7 +34,7 @@ function Router() {
           <Route path="/landing" component={Landing} />
           <Route path="/auth" component={AuthPage} />
           <Route path="/claims">
-            <ProtectedRoute requiredPermission="view_district_claims">
+            <ProtectedRoute requiredPermission="view_all_claims">
               <Claims />
             </ProtectedRoute>
           </Route>
