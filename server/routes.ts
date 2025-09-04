@@ -789,7 +789,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/claims', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const claimData = insertClaimSchema.parse(req.body);
+      
+      // Transform decimal fields from number to string for compatibility
+      const requestBody = {
+        ...req.body,
+        area: req.body.area ? String(req.body.area) : undefined,
+        aiConfidence: req.body.aiConfidence ? String(req.body.aiConfidence) : undefined
+      };
+      
+      const claimData = insertClaimSchema.parse(requestBody);
       
       // Generate claim ID
       const user = await storage.getUser(userId);
