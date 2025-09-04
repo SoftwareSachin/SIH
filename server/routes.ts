@@ -790,7 +790,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       
-      const claimData = insertClaimSchema.parse(req.body);
+      // Transform numeric fields to strings before validation
+      const transformedBody = {
+        ...req.body,
+      };
+      
+      // Convert numeric decimal fields to strings
+      if (typeof req.body.area === 'number') {
+        transformedBody.area = req.body.area.toString();
+      }
+      if (typeof req.body.aiConfidence === 'number') {
+        transformedBody.aiConfidence = req.body.aiConfidence.toString();
+      }
+      
+      const claimData = insertClaimSchema.parse(transformedBody);
       
       // Generate claim ID
       const user = await storage.getUser(userId);
