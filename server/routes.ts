@@ -806,7 +806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const claimData = insertClaimSchema.parse(transformedBody);
       
       // Generate claim ID
-      const user = await storage.getUser(userId);
+      const user = userId !== 'dev-admin-001' ? await storage.getUser(userId) : null;
       const stateCode = user?.state?.substring(0, 2).toUpperCase() || 'XX';
       const timestamp = Date.now();
       const claimId = `FRA-${stateCode}-${timestamp.toString().slice(-6)}`;
@@ -816,15 +816,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         claimId,
       });
 
-      // Log audit trail
-      await storage.createAuditTrail({
-        entityType: 'claims',
-        entityId: claim.id,
-        action: 'create',
-        userId,
-        newValues: claim,
-        notes: 'Claim created',
-      });
+      // Log audit trail (skip for dev bypass users)
+      if (userId !== 'dev-admin-001') {
+        await storage.createAuditTrail({
+          entityType: 'claims',
+          entityId: claim.id,
+          action: 'create',
+          userId,
+          newValues: claim,
+          notes: 'Claim created',
+        });
+      }
 
       res.status(201).json(claim);
     } catch (error) {
