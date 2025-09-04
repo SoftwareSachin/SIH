@@ -12,6 +12,7 @@ import {
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
 
 // API Keys table for simple authentication
 export const apiKeys = pgTable("api_keys", {
@@ -462,7 +463,10 @@ export const insertUserRoleAssignmentSchema = createInsertSchema(userRoleAssignm
 export const insertStateSchema = createInsertSchema(states).omit({ createdAt: true });
 export const insertDistrictSchema = createInsertSchema(districts).omit({ id: true, createdAt: true });
 export const insertVillageSchema = createInsertSchema(villages).omit({ id: true, createdAt: true });
-export const insertClaimSchema = createInsertSchema(claims).omit({ id: true, claimId: true, createdAt: true, updatedAt: true });
+export const insertClaimSchema = createInsertSchema(claims).omit({ id: true, claimId: true, createdAt: true, updatedAt: true }).extend({
+  area: z.union([z.string(), z.number()]).transform(val => String(val)).optional(),
+  aiConfidence: z.union([z.string(), z.number()]).transform(val => String(val)).optional(),
+});
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
 export const insertAssetSchema = createInsertSchema(assets).omit({ id: true });
 export const insertSchemeSchema = createInsertSchema(schemes).omit({ id: true, createdAt: true });
