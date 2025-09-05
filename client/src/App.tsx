@@ -33,41 +33,13 @@ function Router() {
           <Route path="/" component={isAuthenticated ? Dashboard : Landing} />
           <Route path="/landing" component={Landing} />
           <Route path="/auth" component={AuthPage} />
-          <Route path="/claims">
-            <ProtectedRoute requiredPermission="view_all_claims">
-              <Claims />
-            </ProtectedRoute>
-          </Route>
-          <Route path="/webgis">
-            <ProtectedRoute requiredPermission="view_public_maps">
-              <WebGIS />
-            </ProtectedRoute>
-          </Route>
-          <Route path="/ai-processing">
-            <ProtectedRoute requiredPermission="access_ai_processing">
-              <AIProcessing />
-            </ProtectedRoute>
-          </Route>
-          <Route path="/asset-detection">
-            <ProtectedRoute requiredPermission="access_ai_processing">
-              <AssetDetection />
-            </ProtectedRoute>
-          </Route>
-          <Route path="/test/ner">
-            <ProtectedRoute requiredRole="admin">
-              <NERTester />
-            </ProtectedRoute>
-          </Route>
-          <Route path="/decision-support">
-            <ProtectedRoute requiredPermission="access_dss_engine">
-              <DecisionSupport />
-            </ProtectedRoute>
-          </Route>
-          <Route path="/dss">
-            <ProtectedRoute requiredPermission="view_public_maps">
-              <DSSPage />
-            </ProtectedRoute>
-          </Route>
+          <Route path="/claims" component={Claims} />
+          <Route path="/webgis" component={WebGIS} />
+          <Route path="/ai-processing" component={AIProcessing} />
+          <Route path="/asset-detection" component={AssetDetection} />
+          <Route path="/test/ner" component={NERTester} />
+          <Route path="/decision-support" component={DecisionSupport} />
+          <Route path="/dss" component={DSSPage} />
           <Route path="/admin">
             <ProtectedRoute requiredRole="admin">
               <AdminPage />

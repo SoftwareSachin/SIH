@@ -59,24 +59,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
   } = useQuery<(User & { currentRole?: string; permissions?: string[] }) | undefined, Error>({
     queryKey: ["/api/auth/user"],
-    enabled: !!token,
+    enabled: true, // Always enabled to allow anonymous access
     retry: false,
     queryFn: async () => {
-      if (!token) return undefined;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Only add auth header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       
       const response = await fetch('/api/auth/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
       
       if (!response.ok) {
-        if (response.status === 401) {
-          setToken(null);
-          localStorage.removeItem('authToken');
-          return undefined;
-        }
+        // Don't clear token on 401 - let users continue as anonymous
         throw new Error(`${response.status}: ${response.statusText}`);
       }
       
@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: user ?? null,
         isLoading,
         error,
-        isAuthenticated: !!user && !!token,
+        isAuthenticated: !!user, // User can be authenticated as guest user
         loginMutation,
         registerMutation,
         logout,

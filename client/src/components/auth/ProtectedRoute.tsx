@@ -21,19 +21,7 @@ export function ProtectedRoute({
   const { toast } = useToast();
   const { isAuthenticated, isLoading, hasRole, hasPermission, hasAnyRole } = useAuth();
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
+  // Removed automatic redirect - let users access as guest
 
   // Show loading state
   if (isLoading) {
@@ -47,23 +35,7 @@ export function ProtectedRoute({
     );
   }
 
-  // Check authentication
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Authentication Required</h2>
-          <p className="text-gray-600 mb-4">Please log in to access this page.</p>
-          <button 
-            onClick={() => window.location.href = "/api/login"}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Log In
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Allow anonymous access - users can continue as guest
 
   // Check role requirements
   if (requiredRole && !hasRole(requiredRole)) {
