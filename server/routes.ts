@@ -118,12 +118,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get roles endpoint for registration
+  // Get roles endpoint for registration - made more accessible
   app.get('/api/auth/roles', async (req, res) => {
     try {
-      const roles = await storage.getRoles();
+      const roles = await storage.getAllRoles();
       const publicRoles = roles.filter(role => 
-        ['public', 'field', 'ngo', 'district', 'state', 'admin'].includes(role.name) // Allow self-registration for all roles
+        role.isActive && ['public', 'field', 'ngo', 'district', 'state', 'admin'].includes(role.name)
       ).map(role => ({
         name: role.name,
         displayName: role.displayName,
