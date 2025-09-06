@@ -59,9 +59,9 @@ export default function AuthPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (exclude anonymous users)
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && user.id !== 'anonymous-user') {
       setLocation("/");
     }
   }, [user, isLoading, setLocation]);

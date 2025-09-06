@@ -176,10 +176,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       description: "You have been logged out successfully.",
     });
     // Force immediate redirect to landing page
-    setTimeout(() => {
-      console.log('Redirecting to landing page');
-      window.location.href = '/landing';
-    }, 100);
+    console.log('Redirecting to landing page');
+    window.location.href = '/landing';
   };
 
   const hasRole = (role: string): boolean => {

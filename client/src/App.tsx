@@ -27,7 +27,10 @@ function Router() {
     isAuthenticated, 
     isLoading, 
     user: user?.id,
-    userEmail: user?.email 
+    userEmail: user?.email,
+    componentToRender: isAuthenticated ? 'Dashboard' : 'Landing',
+    currentURL: window.location.href,
+    pathname: window.location.pathname
   });
 
   return (
