@@ -42,8 +42,7 @@ function Router() {
       ) : (
         <>
           <Route path="/">
-            {/* Temporarily hard-code Landing to test */}
-            <Landing />
+            {isAuthenticated ? <Dashboard /> : <Landing />}
           </Route>
           <Route path="/landing" component={Landing} />
           <Route path="/auth" component={AuthPage} />
