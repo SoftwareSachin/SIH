@@ -166,15 +166,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const logout = () => {
+    console.log('Logout called - clearing all auth data');
     setToken(null);
     localStorage.removeItem('authToken');
     queryClient.clear();
+    console.log('After logout - token cleared, cache cleared');
     toast({
       title: "Logged out",
       description: "You have been logged out successfully.",
     });
     // Force immediate redirect to landing page
-    window.location.href = '/landing';
+    setTimeout(() => {
+      console.log('Redirecting to landing page');
+      window.location.href = '/landing';
+    }, 100);
   };
 
   const hasRole = (role: string): boolean => {

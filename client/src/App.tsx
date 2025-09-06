@@ -38,7 +38,9 @@ function Router() {
         </div>
       ) : (
         <>
-          <Route path="/" component={isAuthenticated ? Dashboard : Landing} />
+          <Route path="/">
+            {isAuthenticated ? <Dashboard /> : <Landing />}
+          </Route>
           <Route path="/landing" component={Landing} />
           <Route path="/auth" component={AuthPage} />
           <Route path="/claims" component={Claims} />
