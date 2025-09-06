@@ -195,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: user ?? null,
         isLoading,
         error,
-        isAuthenticated: !!user, // User can be authenticated as guest user
+        isAuthenticated: !!user && user.id !== 'anonymous-user', // Exclude anonymous users from being considered authenticated
         loginMutation,
         registerMutation,
         logout,
