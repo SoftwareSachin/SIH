@@ -189,13 +189,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return roles.some(role => hasRole(role));
   };
 
+  const isAuthenticated = !!user && user.id !== 'anonymous-user';
+  
+  // Debug logging
+  console.log('AuthProvider Debug:', {
+    user: user?.id,
+    userEmail: user?.email,
+    isAuthenticated,
+    isLoading,
+    hasUser: !!user
+  });
+
   return (
     <AuthContext.Provider
       value={{
         user: user ?? null,
         isLoading,
         error,
-        isAuthenticated: !!user && user.id !== 'anonymous-user', // Exclude anonymous users from being considered authenticated
+        isAuthenticated, // Exclude anonymous users from being considered authenticated
         loginMutation,
         registerMutation,
         logout,

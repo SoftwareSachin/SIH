@@ -20,7 +20,15 @@ import NotFound from "@/pages/not-found";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 function Router() {
-  const { isAuthenticated, isLoading, hasRole, hasPermission } = useAuth();
+  const { isAuthenticated, isLoading, hasRole, hasPermission, user } = useAuth();
+
+  // Debug logging
+  console.log('Router Debug:', { 
+    isAuthenticated, 
+    isLoading, 
+    user: user?.id,
+    userEmail: user?.email 
+  });
 
   return (
     <Switch>
