@@ -7,6 +7,7 @@ import {
 import { User } from "@shared/schema";
 import { queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 type AuthContextType = {
   user: (User & { currentRole?: string; permissions?: string[] }) | null;
@@ -49,6 +50,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [token, setToken] = useState<string | null>(() => 
     localStorage.getItem('authToken')
   );
@@ -171,6 +173,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       title: "Logged out",
       description: "You have been logged out successfully.",
     });
+    // Redirect to landing page after logout
+    setLocation('/landing');
   };
 
   const hasRole = (role: string): boolean => {
