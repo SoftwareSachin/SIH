@@ -194,13 +194,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!user && user.id !== 'anonymous-user';
   
-  // Debug logging
+  // Debug logging - temporary
   console.log('AuthProvider Debug:', {
     user: user?.id,
     userEmail: user?.email,
     isAuthenticated,
     isLoading,
-    hasUser: !!user
+    hasUser: !!user,
+    userObject: user
   });
 
   return (
