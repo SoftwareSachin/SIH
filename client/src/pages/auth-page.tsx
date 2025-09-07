@@ -48,16 +48,39 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const [selectedRole, setSelectedRole] = useState<string>("");
 
-  // Fetch available roles for registration
-  const { data: availableRoles = [] } = useQuery({
-    queryKey: ['/api/auth/roles'],
-    queryFn: async () => {
-      const response = await fetch('/api/auth/roles');
-      if (!response.ok) throw new Error('Failed to fetch roles');
-      return response.json();
+  // Static roles data - no API fetching needed
+  const availableRoles = [
+    {
+      name: 'admin',
+      displayName: 'System Administrator',
+      description: 'Full system control, user management, config, data & model governance.'
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+    {
+      name: 'state',
+      displayName: 'State Officer',
+      description: 'Oversee FRA progress and data quality at state level; approve district-level decisions.'
+    },
+    {
+      name: 'district',
+      displayName: 'District Officer',
+      description: 'Day-to-day verification and approvals for claims inside their district.'
+    },
+    {
+      name: 'field',
+      displayName: 'Field Officer',
+      description: 'Mobile-first field verification, document collection, and on-ground linking.'
+    },
+    {
+      name: 'ngo',
+      displayName: 'NGO Partner',
+      description: 'Support claimants, submit supporting evidence, and suggest interventions.'
+    },
+    {
+      name: 'public',
+      displayName: 'Public Viewer',
+      description: 'Transparent public access to aggregated FRA outcomes (no sensitive PII).'
+    }
+  ];
 
   // Redirect if already authenticated (exclude anonymous users)
   useEffect(() => {

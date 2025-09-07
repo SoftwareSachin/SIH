@@ -47,12 +47,59 @@ export default function AdminPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [assignmentNotes, setAssignmentNotes] = useState<string>("");
 
-  // Fetch all roles
-  const { data: rolesResponse = { success: true, roles: [] }, isLoading: rolesLoading } = useQuery<{ success: boolean, roles: Role[] }>({
-    queryKey: ["/api/admin/roles"],
-  });
+  // Static roles data - no API fetching needed
+  const roles: Role[] = [
+    {
+      id: 'admin-role-id',
+      name: 'admin',
+      displayName: 'System Administrator',
+      description: 'Full system control, user management, config, data & model governance.',
+      permissions: ['view_all_claims', 'approve_claims', 'reject_claims', 'upload_documents', 'verify_documents', 'manage_users', 'manage_system_settings', 'view_public_maps', 'export_data', 'generate_reports', 'access_admin_panel', 'access_ai_processing', 'access_dss_engine', 'manage_roles', 'manage_api_keys', 'view_audit_logs', 'hard_delete_data', 'restore_data', 'configure_rbac', 'manage_basemaps', 'upload_baseline_datasets', 'manage_model_versions', 'view_all_pii'],
+      isActive: true
+    },
+    {
+      id: 'state-role-id',
+      name: 'state',
+      displayName: 'State Officer',
+      description: 'Oversee FRA progress and data quality at state level; approve district-level decisions.',
+      permissions: ['view_state_claims', 'approve_claims', 'reject_claims', 'upload_documents', 'verify_documents', 'view_public_maps', 'export_data', 'generate_reports', 'access_dss_engine', 'approve_district_escalations', 'request_field_verifications', 'assign_district_tasks', 'upload_state_datasets', 'view_model_results', 'flag_model_issues', 'view_pii_with_restrictions', 'run_state_dss'],
+      isActive: true
+    },
+    {
+      id: 'district-role-id',
+      name: 'district',
+      displayName: 'District Officer',
+      description: 'Day-to-day verification and approvals for claims inside their district.',
+      permissions: ['view_district_claims', 'approve_claims', 'reject_claims', 'upload_documents', 'verify_documents', 'view_public_maps', 'export_data', 'generate_reports', 'access_dss_engine', 'assign_field_officers', 'track_verification_status', 'add_officer_notes', 'request_reinspection', 'run_district_dss', 'view_pii_for_verification'],
+      isActive: true
+    },
+    {
+      id: 'field-role-id',
+      name: 'field',
+      displayName: 'Field Officer',
+      description: 'Mobile-first field verification, document collection, and on-ground linking.',
+      permissions: ['upload_documents', 'verify_documents', 'view_public_maps', 'create_claim_records', 'capture_field_data', 'capture_photos_gps', 'capture_consent_forms', 'edit_extracted_fields', 'update_claim_status', 'work_offline_sync', 'mark_verification_checklist', 'view_assigned_claims', 'select_village_polygon', 'pin_homestead_location', 'view_limited_pii'],
+      isActive: true
+    },
+    {
+      id: 'ngo-role-id',
+      name: 'ngo',
+      displayName: 'NGO Partner',
+      description: 'Support claimants, submit supporting evidence, and suggest interventions.',
+      permissions: ['upload_documents', 'view_public_maps', 'register_supporting_documents', 'propose_interventions', 'upload_community_reports', 'view_aggregated_dashboards', 'request_field_verification', 'track_verification_requests', 'view_approved_geographies', 'view_pii_with_consent'],
+      isActive: true
+    },
+    {
+      id: 'public-role-id',
+      name: 'public',
+      displayName: 'Public Viewer',
+      description: 'Transparent public access to aggregated FRA outcomes (no sensitive PII).',
+      permissions: ['view_public_maps', 'browse_fra_atlas', 'search_district_village', 'view_aggregated_stats', 'download_public_datasets'],
+      isActive: true
+    }
+  ];
   
-  const roles = rolesResponse.roles || [];
+  const rolesLoading = false;
 
   // Fetch all users with roles
   const { data: users = [], isLoading: usersLoading } = useQuery<UserWithRoles[]>({
