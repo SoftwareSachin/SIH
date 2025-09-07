@@ -61,14 +61,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
   } = useQuery<(User & { currentRole?: string; permissions?: string[] }) | undefined, Error>({
     queryKey: ["/api/auth/user", token],
-    enabled: true, // Always enabled to allow anonymous access
+    enabled: true,
     retry: false,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
       
-      // Only add auth header if token exists
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
@@ -78,7 +78,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       if (!response.ok) {
-        // Don't clear token on 401 - let users continue as anonymous
         throw new Error(`${response.status}: ${response.statusText}`);
       }
       
@@ -106,11 +105,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (response: AuthResponse) => {
       setToken(response.token);
       localStorage.setItem('authToken', response.token);
-      queryClient.clear(); // Clear all cached queries to force refetch with new token
+      queryClient.clear();
       toast({
         title: "Welcome back!",
         description: "You have been logged in successfully.",
       });
+      // Force immediate redirect
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
     },
     onError: (error: Error) => {
       toast({
@@ -141,20 +144,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (response: any) => {
       setToken(response.token);
       localStorage.setItem('authToken', response.token);
-      queryClient.clear(); // Clear all cached queries to force refetch with new token
+      queryClient.clear();
       
-      if (response.requiresApproval) {
-        toast({
-          title: "Registration Successful!",
-          description: `Your ${response.requestedRole} role request is pending admin approval. You can access public features in the meantime.`,
-          duration: 6000,
-        });
-      } else {
-        toast({
-          title: "Welcome to FRA Atlas!",
-          description: "Your account has been created successfully.",
-        });
-      }
+      toast({
+        title: "Welcome to FRA Atlas!",
+        description: "Your account has been created successfully.",
+      });
+      // Force immediate redirect
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
     },
     onError: (error: Error) => {
       toast({

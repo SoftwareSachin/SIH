@@ -85,9 +85,10 @@ export default function AuthPage() {
   // Redirect if already authenticated (exclude anonymous users)
   useEffect(() => {
     if (!isLoading && user && user.id !== 'anonymous-user') {
-      setLocation("/");
+      console.log('User authenticated, redirecting:', user);
+      window.location.href = '/';
     }
-  }, [user, isLoading, setLocation]);
+  }, [user, isLoading]);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
