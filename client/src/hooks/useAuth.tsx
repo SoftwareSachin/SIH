@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     isLoading,
   } = useQuery<(User & { currentRole?: string; permissions?: string[] }) | undefined, Error>({
-    queryKey: ["/api/auth/user"],
+    queryKey: ["/api/auth/user", token],
     enabled: true, // Always enabled to allow anonymous access
     retry: false,
     queryFn: async () => {
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (response: AuthResponse) => {
       setToken(response.token);
       localStorage.setItem('authToken', response.token);
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.clear(); // Clear all cached queries to force refetch with new token
       toast({
         title: "Welcome back!",
         description: "You have been logged in successfully.",
@@ -141,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (response: any) => {
       setToken(response.token);
       localStorage.setItem('authToken', response.token);
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.clear(); // Clear all cached queries to force refetch with new token
       
       if (response.requiresApproval) {
         toast({
