@@ -169,15 +169,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('Logout called - clearing all auth data');
     setToken(null);
     localStorage.removeItem('authToken');
+    // Also clear any other potential stored data
+    localStorage.clear();
     queryClient.clear();
-    console.log('After logout - token cleared, cache cleared');
+    console.log('After logout - token cleared, cache cleared, localStorage cleared');
     toast({
       title: "Logged out",
       description: "You have been logged out successfully.",
     });
-    // Force immediate redirect to landing page
-    console.log('Redirecting to landing page');
-    window.location.href = '/landing';
+    // Force immediate redirect to auth page
+    console.log('Redirecting to auth page');
+    window.location.href = '/auth';
   };
 
   const hasRole = (role: string): boolean => {
@@ -201,6 +203,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated,
     isLoading,
     hasUser: !!user,
+    token: token ? 'Present' : 'None',
+    tokenLength: token?.length || 0,
     userObject: user
   });
 
