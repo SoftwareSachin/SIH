@@ -1,79 +1,92 @@
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useSimpleAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { useState } from "react";
+import { useAuth } from "@/hooks/useSimpleAuth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TreePine } from "lucide-react";
 
 export default function SimpleAuthPage() {
   const { login, register, isLoading } = useAuth();
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [registerForm, setRegisterForm] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: '',
-    requestedRole: 'public'
-  });
-
-  // Static roles data
-  const roles = [
-    { name: 'admin', displayName: 'System Administrator', description: 'Full system control, user management, config, data & model governance.' },
-    { name: 'state', displayName: 'State Officer', description: 'Oversee FRA progress and data quality at state level; approve district-level decisions.' },
-    { name: 'district', displayName: 'District Officer', description: 'Day-to-day verification and approvals for claims inside their district.' },
-    { name: 'field', displayName: 'Field Officer', description: 'Mobile-first field verification, document collection, and on-ground linking.' },
-    { name: 'ngo', displayName: 'NGO Partner', description: 'Support claimants, submit supporting evidence, and suggest interventions.' },
-    { name: 'public', displayName: 'Public Viewer', description: 'Transparent public access to aggregated FRA outcomes (no sensitive PII).' }
-  ];
+  
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  
+  // Register form state
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  
+  const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(loginForm.email, loginForm.password);
+    setError("");
+    
+    if (!loginEmail || !loginPassword) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    try {
+      await login(loginEmail, loginPassword);
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (registerForm.password !== registerForm.confirmPassword) {
-      alert('Passwords do not match');
+    setError("");
+    
+    if (!registerEmail || !registerPassword || !firstName || !lastName) {
+      setError("Please fill in all fields");
       return;
     }
-    await register(registerForm);
+
+    try {
+      await register(registerEmail, registerPassword, firstName, lastName);
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-          <span className="text-lg font-medium text-gray-600">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md p-6">
+        {/* Brand Header */}
         <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <div className="bg-green-600 p-3 rounded-xl">
+              <TreePine className="h-8 w-8 text-white" />
+            </div>
+          </div>
           <h1 className="text-3xl font-bold text-gray-900">FRA Atlas</h1>
-          <p className="text-gray-600 mt-2">Forest Rights Act Management System</p>
+          <p className="text-gray-600">Forest Rights Management System</p>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
+        {/* Auth Tabs */}
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="register">Register</TabsTrigger>
+            <TabsTrigger value="register">Sign Up</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Login to your account</CardTitle>
-                <CardDescription>Access the Forest Rights Act management system</CardDescription>
+                <CardTitle>Login</CardTitle>
+                <CardDescription>Enter your credentials to access the system</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -82,8 +95,8 @@ export default function SimpleAuthPage() {
                     <Input
                       id="login-email"
                       type="email"
-                      value={loginForm.email}
-                      onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
                       placeholder="your.email@example.com"
                       required
                     />
@@ -93,15 +106,18 @@ export default function SimpleAuthPage() {
                     <Input
                       id="login-password"
                       type="password"
-                      value={loginForm.password}
-                      onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
-                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="Your password"
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Login
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Logging in..." : "Login"}
                   </Button>
                 </form>
               </CardContent>
@@ -111,97 +127,61 @@ export default function SimpleAuthPage() {
           <TabsContent value="register">
             <Card>
               <CardHeader>
-                <CardTitle>Create your account</CardTitle>
-                <CardDescription>Join the Forest Rights Act management system</CardDescription>
+                <CardTitle>Sign Up</CardTitle>
+                <CardDescription>Create a new account to get started</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="firstName">First Name</Label>
+                      <Label htmlFor="first-name">First Name</Label>
                       <Input
-                        id="firstName"
-                        value={registerForm.firstName}
-                        onChange={(e) => setRegisterForm(prev => ({ ...prev, firstName: e.target.value }))}
-                        placeholder="John"
+                        id="first-name"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="First name"
                         required
                       />
                     </div>
                     <div>
-                      <Label htmlFor="lastName">Last Name</Label>
+                      <Label htmlFor="last-name">Last Name</Label>
                       <Input
-                        id="lastName"
-                        value={registerForm.lastName}
-                        onChange={(e) => setRegisterForm(prev => ({ ...prev, lastName: e.target.value }))}
-                        placeholder="Doe"
+                        id="last-name"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Last name"
                         required
                       />
                     </div>
                   </div>
-                  
                   <div>
                     <Label htmlFor="register-email">Email</Label>
                     <Input
                       id="register-email"
                       type="email"
-                      value={registerForm.email}
-                      onChange={(e) => setRegisterForm(prev => ({ ...prev, email: e.target.value }))}
+                      value={registerEmail}
+                      onChange={(e) => setRegisterEmail(e.target.value)}
                       placeholder="your.email@example.com"
                       required
                     />
                   </div>
-
-                  <div>
-                    <Label htmlFor="role">Role</Label>
-                    <Select 
-                      value={registerForm.requestedRole}
-                      onValueChange={(value) => setRegisterForm(prev => ({ ...prev, requestedRole: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roles.map((role) => (
-                          <SelectItem key={role.name} value={role.name}>
-                            <div className="flex flex-col gap-1 py-1">
-                              <span className="font-medium">{role.displayName}</span>
-                              <span className="text-xs text-gray-600">{role.description}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <div>
                     <Label htmlFor="register-password">Password</Label>
                     <Input
                       id="register-password"
                       type="password"
-                      value={registerForm.password}
-                      onChange={(e) => setRegisterForm(prev => ({ ...prev, password: e.target.value }))}
-                      placeholder="••••••••"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                      placeholder="Create a password"
                       required
-                      minLength={6}
                     />
                   </div>
-                  
-                  <div>
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={registerForm.confirmPassword}
-                      onChange={(e) => setRegisterForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      placeholder="••••••••"
-                      required
-                      minLength={6}
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Create Account
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Creating account..." : "Sign Up"}
                   </Button>
                 </form>
               </CardContent>

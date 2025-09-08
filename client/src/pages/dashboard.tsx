@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useSimpleAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/sidebar";
