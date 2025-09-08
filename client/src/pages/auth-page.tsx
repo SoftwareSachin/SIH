@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useSimpleAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -44,7 +44,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
-  const { user, isLoading, loginMutation, registerMutation } = useAuth();
+  const { user, isLoading, login, register } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedRole, setSelectedRole] = useState<string>("");
 
@@ -114,12 +114,20 @@ export default function AuthPage() {
     },
   });
 
-  const onLogin = (data: LoginFormData) => {
-    loginMutation.mutate(data);
+  const onLogin = async (data: LoginFormData) => {
+    try {
+      await login(data.email, data.password);
+    } catch (error) {
+      // Error handling is done in the useSimpleAuth hook
+    }
   };
 
-  const onRegister = (data: RegisterFormData) => {
-    registerMutation.mutate(data);
+  const onRegister = async (data: RegisterFormData) => {
+    try {
+      await register(data);
+    } catch (error) {
+      // Error handling is done in the useSimpleAuth hook
+    }
   };
 
   if (isLoading) {
@@ -235,10 +243,10 @@ export default function AuthPage() {
                         <Button 
                           type="submit" 
                           className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold text-lg transition-all duration-200 shadow-lg" 
-                          disabled={loginMutation.isPending}
+                          disabled={isLoading}
                           data-testid="button-login"
                         >
-                          {loginMutation.isPending ? (
+                          {isLoading ? (
                             <>
                               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                               Logging in...
@@ -478,10 +486,10 @@ export default function AuthPage() {
                         <Button 
                           type="submit" 
                           className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold text-lg transition-all duration-200 shadow-lg" 
-                          disabled={registerMutation.isPending}
+                          disabled={isLoading}
                           data-testid="button-register"
                         >
-                          {registerMutation.isPending ? (
+                          {isLoading ? (
                             <>
                               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                               Creating account...
