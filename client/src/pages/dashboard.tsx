@@ -1,8 +1,4 @@
-import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useSimpleAuth";
-import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import StatsCards from "@/components/dashboard/stats-cards";
@@ -13,26 +9,10 @@ import DecisionSupportPanel from "@/components/dashboard/decision-support-panel"
 import ClaimsTable from "@/components/claims/claims-table";
 
 export default function Dashboard() {
-  const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
-
-  // Remove conflicting redirect logic - let App.tsx handle routing
-
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/dashboard/stats"],
     retry: false,
   });
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

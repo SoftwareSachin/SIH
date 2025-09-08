@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import ClaimsTable from "@/components/claims/claims-table";
@@ -9,10 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus } from "lucide-react";
 
 export default function Claims() {
-  const { user } = useAuth();
   const [isNewClaimOpen, setIsNewClaimOpen] = useState(false);
-
-  const canCreateClaim = (user as any)?.currentRole && ['admin', 'state', 'district', 'field'].includes((user as any).currentRole);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -30,25 +26,23 @@ export default function Claims() {
               </p>
             </div>
             
-            {canCreateClaim && (
-              <Dialog open={isNewClaimOpen} onOpenChange={setIsNewClaimOpen}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-new-claim">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Claim
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Create New FRA Claim</DialogTitle>
-                  </DialogHeader>
-                  <ClaimForm 
-                    onSuccess={() => setIsNewClaimOpen(false)}
-                    onCancel={() => setIsNewClaimOpen(false)}
-                  />
-                </DialogContent>
-              </Dialog>
-            )}
+            <Dialog open={isNewClaimOpen} onOpenChange={setIsNewClaimOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-new-claim">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Claim
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New FRA Claim</DialogTitle>
+                </DialogHeader>
+                <ClaimForm 
+                  onSuccess={() => setIsNewClaimOpen(false)}
+                  onCancel={() => setIsNewClaimOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
 
           <ClaimsTable showHeader={false} />

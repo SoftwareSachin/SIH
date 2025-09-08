@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +28,6 @@ interface Recommendation {
 }
 
 export default function DSSPage() {
-  const { user } = useAuth();
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,21 +35,14 @@ export default function DSSPage() {
   // Fetch available schemes
   const { data: schemesData, isLoading: schemesLoading } = useQuery({
     queryKey: ['/api/dss/schemes'],
-    enabled: !!user,
   });
 
   const generateRecommendations = async () => {
-    if (!user) return;
-    
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`/api/dss/recommendations/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const response = await fetch('/api/dss/recommendations/demo-user');
       
       if (!response.ok) {
         throw new Error('Failed to generate recommendations');
@@ -102,7 +93,7 @@ export default function DSSPage() {
         
         <Button 
           onClick={generateRecommendations}
-          disabled={loading || !user}
+          disabled={loading}
           className="mb-6"
           data-testid="generate-recommendations-btn"
         >
@@ -131,7 +122,7 @@ export default function DSSPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Available Schemes ({schemesData?.schemes?.length || 0})
+            Available Schemes ({Array.isArray(schemesData) ? schemesData.length : 0})
           </CardTitle>
           <CardDescription>
             Central Sector Schemes available for Forest Rights Act claimants
@@ -145,7 +136,7 @@ export default function DSSPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {schemesData?.schemes?.map((scheme: Scheme) => (
+              {Array.isArray(schemesData) ? schemesData.map((scheme: Scheme) => (
                 <Card key={scheme.id} className="border-l-4 border-l-blue-500" data-testid={`scheme-card-${scheme.id}`}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -171,7 +162,7 @@ export default function DSSPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )) : null}
             </div>
           )}
         </CardContent>
