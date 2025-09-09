@@ -63,17 +63,21 @@ class DocumentProcessor {
       // Create scheduler for better performance
       this.ocrScheduler = createScheduler();
       
-      // Start with fewer workers for production efficiency - configurable via ENV
-      const workerCount = parseInt(process.env.OCR_WORKERS || '2');
+      // Optimized worker count for better performance
+      const workerCount = parseInt(process.env.OCR_WORKERS || '4');
       
       // Initialize workers with core languages only initially
       for (let i = 0; i < workerCount; i++) {
-        const worker = await createWorker('eng+hin+ben+guj+kan+mal+mar+ori+pan+tam+tel+urd');
+        const worker = await createWorker('eng+hin');
         await worker.setParameters({
           preserve_interword_spaces: '1',
           tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?()-/\@#$%^&*+=[]{}"\' ।।',
           tessjs_create_hocr: '1',
-          tessjs_create_tsv: '1'
+          tessjs_create_tsv: '1',
+          tessedit_pageseg_mode: '1',
+          tessedit_ocr_engine_mode: '1',
+          tessedit_do_invert: '0',
+          tessjs_create_pdf: '0'
         });
         this.workers.push(worker);
         this.ocrScheduler.addWorker(worker);
