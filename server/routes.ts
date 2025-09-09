@@ -1036,7 +1036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Document upload and processing
   app.post('/api/documents/upload', upload.single('document'), async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = 'test-user'; // Mock user ID since auth is removed
       const file = req.file;
       const { claimId } = req.body;
 
