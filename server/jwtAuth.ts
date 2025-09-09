@@ -48,8 +48,8 @@ export async function comparePassword(password: string, hashedPassword: string):
 
 export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    // For development, allow bypass with simulated admin user
-    if (process.env.NODE_ENV === 'development' && req.headers['x-dev-bypass'] === 'true') {
+    // For development mode, automatically provide admin access without requiring tokens
+    if (process.env.NODE_ENV === 'development') {
       // Create a mock admin user for development testing
       req.user = {
         id: 'dev-admin-001',

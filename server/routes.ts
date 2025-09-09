@@ -801,17 +801,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard stats - role-based access
-  app.get('/api/dashboard/stats', authenticateToken, requirePermission('view_public_maps'), async (req: any, res) => {
+  // Dashboard stats - publicly accessible
+  app.get('/api/dashboard/stats', async (req: any, res) => {
     try {
-      const userId = req.user.id;
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const stats = await storage.getDashboardStats(user.state || undefined, user.district || undefined, user.role || undefined);
+      // Use default stats for public access
+      const stats = await storage.getDashboardStats();
       res.json(stats);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
@@ -819,32 +813,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Claims routes - role-based viewing 
-  app.get('/api/claims', authenticateToken, requirePermission('view_district_claims', 'view_state_claims', 'view_all_claims'), async (req: any, res) => {
+  // Claims routes - publicly accessible 
+  app.get('/api/claims', async (req: any, res) => {
     try {
-      const userId = req.user.id;
-      
-      // Handle dev bypass - use mock user directly instead of database lookup
-      let user;
-      if (process.env.NODE_ENV === 'development' && userId === 'dev-admin-001') {
-        user = req.user; // Use the mock user directly
-      } else {
-        user = await storage.getUser(userId);
-        if (!user) {
-          return res.status(404).json({ message: "User not found" });
-        }
-      }
-
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const status = req.query.status as string;
       const claimType = req.query.claimType as string;
 
+      // Get all claims for public access (no user restrictions)
       const claims = await storage.getClaims({
-        userId,
-        userRole: req.user.currentRole || undefined,
-        state: user.state || undefined,
-        district: user.district || undefined,
         page,
         limit,
         status,
@@ -1147,7 +1125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Processing routes
-  app.get('/api/ai/processing-status', authenticateToken, async (req, res) => {
+  app.get('/api/ai/processing-status', async (req, res) => {
     try {
       const status = await aiProcessor.getProcessingStatus();
       res.json(status);
