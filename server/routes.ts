@@ -2,7 +2,6 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { authenticateToken, requireRole, requirePermission, generateToken, hashPassword, comparePassword, type AuthenticatedRequest } from "./jwtAuth";
 import { insertUserSchema, insertClaimSchema, insertDocumentSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -522,7 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Remove role from user (Admin only)
-  app.delete('/api/admin/users/:id/roles/:roleId', requireRole('admin'), async (req: AuthenticatedRequest, res) => {
+  app.delete('/api/admin/users/:id/roles/:roleId', async (req: any, res) => {
     try {
       const { id: userId, roleId } = req.params;
       const adminId = req.user?.id || 'anonymous-admin';
@@ -556,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all available roles (Admin only)
-  app.get('/api/admin/roles', requireRole('admin'), async (req: AuthenticatedRequest, res) => {
+  app.get('/api/admin/roles', async (req: any, res) => {
     try {
       const roles = await storage.getAllRoles();
       
@@ -579,7 +578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user's geographic assignment (Admin only)
-  app.put('/api/admin/users/:id/geography', requireRole('admin'), async (req: AuthenticatedRequest, res) => {
+  app.put('/api/admin/users/:id/geography', async (req: any, res) => {
     try {
       const { state, district } = req.body;
       const userId = req.params.id;
@@ -615,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user statistics by role (Admin and State users)
-  app.get('/api/admin/users/stats', requireRole('admin', 'state'), async (req: AuthenticatedRequest, res) => {
+  app.get('/api/admin/users/stats', async (req: any, res) => {
     try {
       const stats = await storage.getUserStatsByRole();
       
@@ -790,7 +789,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
 
   // Auth routes
-  app.get('/api/auth/user', authenticateToken, async (req: any, res) => {
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -836,7 +835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/claims/:id', authenticateToken, async (req, res) => {
+  app.get('/api/claims/:id', async (req, res) => {
     try {
       const claim = await storage.getClaimById(req.params.id);
       if (!claim) {
@@ -849,7 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/claims', authenticateToken, async (req: any, res) => {
+  app.post('/api/claims', async (req: any, res) => {
     try {
       const userId = req.user.id;
       
@@ -901,7 +900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/claims/:id/status', authenticateToken, async (req: any, res) => {
+  app.patch('/api/claims/:id/status', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -931,7 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Verification Workflow API endpoints
-  app.post('/api/workflow/initialize/:claimId', authenticateToken, async (req: any, res) => {
+  app.post('/api/workflow/initialize/:claimId', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { claimId } = req.params;
@@ -956,7 +955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/workflow/status/:claimId', authenticateToken, async (req: any, res) => {
+  app.get('/api/workflow/status/:claimId', async (req: any, res) => {
     try {
       const { claimId } = req.params;
       const workflow = await verificationWorkflow.getWorkflowStatus(claimId);
@@ -979,7 +978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/workflow/process-step/:claimId', authenticateToken, async (req: any, res) => {
+  app.post('/api/workflow/process-step/:claimId', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { claimId } = req.params;
@@ -1002,7 +1001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/workflow/audit/:claimId', authenticateToken, async (req: any, res) => {
+  app.get('/api/workflow/audit/:claimId', async (req: any, res) => {
     try {
       const { claimId } = req.params;
       const auditTrail = await verificationWorkflow.getAuditTrail(claimId);
@@ -1017,7 +1016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/workflow/assign/:claimId', authenticateToken, async (req: any, res) => {
+  app.post('/api/workflow/assign/:claimId', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { claimId } = req.params;
@@ -1040,7 +1039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/workflow/escalate/:claimId', authenticateToken, async (req: any, res) => {
+  app.post('/api/workflow/escalate/:claimId', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { claimId } = req.params;
@@ -1064,7 +1063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Document upload and processing
-  app.post('/api/documents/upload', authenticateToken, upload.single('document'), async (req: any, res) => {
+  app.post('/api/documents/upload', upload.single('document'), async (req: any, res) => {
     try {
       const userId = req.user.id;
       const file = req.file;
@@ -1135,7 +1134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/reprocess-document/:documentId', authenticateToken, async (req: any, res) => {
+  app.post('/api/ai/reprocess-document/:documentId', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -1177,7 +1176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Asset detection
-  app.post('/api/assets/detect/:villageId', authenticateToken, async (req: any, res) => {
+  app.post('/api/assets/detect/:villageId', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -1195,7 +1194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Decision Support System
-  app.get('/api/dss/recommendations/:claimId', authenticateToken, async (req, res) => {
+  app.get('/api/dss/recommendations/:claimId', async (req, res) => {
     try {
       const recommendations = await dssEngine.generateRecommendations(req.params.claimId);
       res.json(recommendations);
@@ -1205,7 +1204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dss/village-recommendations/:villageId', authenticateToken, async (req, res) => {
+  app.get('/api/dss/village-recommendations/:villageId', async (req, res) => {
     try {
       const recommendations = await dssEngine.generateVillageRecommendations(req.params.villageId);
       res.json(recommendations);
@@ -1215,7 +1214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/dss/implement-recommendation/:recommendationId', authenticateToken, async (req: any, res) => {
+  app.post('/api/dss/implement-recommendation/:recommendationId', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -1244,7 +1243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Additional DSS endpoints for comprehensive scheme management
-  app.get('/api/dss/schemes', authenticateToken, async (req, res) => {
+  app.get('/api/dss/schemes', async (req, res) => {
     try {
       // Return all available schemes with their details
       const schemes = await dssEngine.getAllSchemes();
@@ -1255,7 +1254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dss/schemes/:schemeId', authenticateToken, async (req, res) => {
+  app.get('/api/dss/schemes/:schemeId', async (req, res) => {
     try {
       const scheme = await dssEngine.getSchemeDetails(req.params.schemeId);
       if (!scheme) {
@@ -1268,7 +1267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dss/eligibility-matrix/:villageId', authenticateToken, async (req, res) => {
+  app.get('/api/dss/eligibility-matrix/:villageId', async (req, res) => {
     try {
       const matrix = await dssEngine.getSchemeEligibilityMatrix(req.params.villageId);
       res.json(matrix);
@@ -1278,7 +1277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/dss/search-schemes', authenticateToken, async (req, res) => {
+  app.post('/api/dss/search-schemes', async (req, res) => {
     try {
       const { category, ministry, targetBeneficiaries, searchTerm } = req.body;
       const schemes = await dssEngine.searchSchemes({
@@ -1314,7 +1313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batch processing endpoints
-  app.post('/api/documents/batch', authenticateToken, upload.array('documents', 50), async (req: any, res) => {
+  app.post('/api/documents/batch', upload.array('documents', 50), async (req: any, res) => {
     try {
       const userId = req.user.id;
       const files = req.files as Express.Multer.File[];
@@ -1384,7 +1383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get batch processing status
-  app.get('/api/batch/:batchId', authenticateToken, async (req, res) => {
+  app.get('/api/batch/:batchId', async (req, res) => {
     try {
       const { batchId } = req.params;
       const batchStatus = batchProcessor.getBatchStatus(batchId);
@@ -1401,7 +1400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get processing queue status
-  app.get('/api/ocr/queue', authenticateToken, async (req: any, res) => {
+  app.get('/api/ocr/queue', async (req: any, res) => {
     try {
       const user = req.user;
       
@@ -1424,7 +1423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get OCR processing statistics
-  app.get('/api/ocr/stats', authenticateToken, async (req, res) => {
+  app.get('/api/ocr/stats', async (req, res) => {
     try {
       const processingStats = await documentProcessor.getProcessingStats();
       res.json(processingStats);
@@ -1435,7 +1434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Export routes
-  app.get('/api/export/claims', authenticateToken, async (req: any, res) => {
+  app.get('/api/export/claims', async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -1465,7 +1464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Land-Use Classification Routes
   
   // Single point land-use classification
-  app.post('/api/land-use/classify', authenticateToken, async (req, res) => {
+  app.post('/api/land-use/classify', async (req, res) => {
     try {
       const { lat, lng, highResolution, apiKey } = req.body;
       
@@ -1488,7 +1487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batch land-use classification for multiple points
-  app.post('/api/land-use/classify-batch', authenticateToken, async (req, res) => {
+  app.post('/api/land-use/classify-batch', async (req, res) => {
     try {
       const { locations, highResolution, apiKey } = req.body;
       
@@ -1509,7 +1508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Regional land-use statistics
-  app.post('/api/land-use/region-stats', authenticateToken, async (req, res) => {
+  app.post('/api/land-use/region-stats', async (req, res) => {
     try {
       const { bounds, gridSize } = req.body;
       
@@ -1532,7 +1531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate GeoJSON for land-use classification
-  app.post('/api/land-use/geojson', authenticateToken, async (req, res) => {
+  app.post('/api/land-use/geojson', async (req, res) => {
     try {
       const { bounds, gridResolution, highResolution, apiKey, includeMetadata } = req.body;
       
@@ -1558,7 +1557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate heatmap data for specific land-use class
-  app.post('/api/land-use/heatmap', authenticateToken, async (req, res) => {
+  app.post('/api/land-use/heatmap', async (req, res) => {
     try {
       const { bounds, classType, resolution } = req.body;
       
@@ -1589,7 +1588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Export land-use classification data
-  app.post('/api/land-use/export', authenticateToken, async (req, res) => {
+  app.post('/api/land-use/export', async (req, res) => {
     try {
       const { bounds, format, gridResolution } = req.body;
       
@@ -1637,7 +1636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Asset Detection API endpoints
-  app.post('/api/assets/detect', authenticateToken, async (req: any, res) => {
+  app.post('/api/assets/detect', async (req: any, res) => {
     try {
       const { villageId, coordinates } = req.body;
       
@@ -1679,7 +1678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Land use classification endpoint
-  app.post('/api/landuse/classify', authenticateToken, async (req: any, res) => {
+  app.post('/api/landuse/classify', async (req: any, res) => {
     try {
       const { lat, lng, highResolution = false } = req.body;
       
@@ -1707,7 +1706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batch asset detection for multiple locations
-  app.post('/api/assets/batch-detect', authenticateToken, async (req: any, res) => {
+  app.post('/api/assets/batch-detect', async (req: any, res) => {
     try {
       const { locations, highResolution = false } = req.body;
       
@@ -1736,10 +1735,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // RBAC Management Routes (Admin only)
   
   // Get all roles
-  app.get('/api/admin/roles', 
-    authenticateToken, 
-    requireRole('admin'), 
-    async (req: any, res) => {
+  app.get('/api/admin/roles', async (req: any, res) => {
       try {
         const roles = await storage.getRoles();
         res.json(roles);
@@ -1751,10 +1747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Get all users with their roles (Admin only)
-  app.get('/api/admin/users', 
-    authenticateToken, 
-    requireRole('admin'), 
-    async (req: any, res) => {
+  app.get('/api/admin/users', async (req: any, res) => {
       try {
         // This would need to be implemented in storage
         const users = await storage.getAllUsersWithRoles();
@@ -1767,10 +1760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Assign role to user (Admin only)
-  app.post('/api/admin/users/:userId/roles', 
-    authenticateToken, 
-    requireRole('admin'),
-    async (req: any, res) => {
+  app.post('/api/admin/users/:userId/roles', async (req: any, res) => {
       try {
         const { userId } = req.params;
         const { roleId, notes, expiresAt } = req.body;
@@ -1794,10 +1784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Remove role from user (Admin only)
-  app.delete('/api/admin/users/:userId/roles/:roleId', 
-    authenticateToken, 
-    requireRole('admin'),
-    async (req: any, res) => {
+  app.delete('/api/admin/users/:userId/roles/:roleId', async (req: any, res) => {
       try {
         const { userId, roleId } = req.params;
         await storage.removeUserRole(userId, roleId);
@@ -1810,9 +1797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Get user's role assignments
-  app.get('/api/users/:userId/roles', 
-    authenticateToken, 
-    async (req: any, res) => {
+  app.get('/api/users/:userId/roles', async (req: any, res) => {
       try {
         const { userId } = req.params;
         const requestingUserId = req.user.id;
@@ -1834,7 +1819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== DECISION SUPPORT SYSTEM (DSS) ENDPOINTS =====
   
   // Get scheme recommendations for a user/claimant
-  app.get('/api/dss/recommendations/:userId', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/dss/recommendations/:userId', async (req: any, res) => {
     try {
       const { userId } = req.params;
       const { claimId } = req.query;
@@ -1892,7 +1877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get all available schemes
-  app.get('/api/dss/schemes', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/dss/schemes', async (req: any, res) => {
     try {
       const schemes = await storage.getAllActiveSchemes();
       res.json({ schemes });
@@ -1903,7 +1888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get scheme details by ID
-  app.get('/api/dss/schemes/:schemeId', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/dss/schemes/:schemeId', async (req: any, res) => {
     try {
       const { schemeId } = req.params;
       const scheme = await storage.getSchemeById(schemeId);
@@ -1920,7 +1905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update recommendation status (applied, approved, rejected)
-  app.patch('/api/dss/recommendations/:recommendationId/status', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.patch('/api/dss/recommendations/:recommendationId/status', async (req: any, res) => {
     try {
       const { recommendationId } = req.params;
       const { status, appliedDate } = req.body;
@@ -1943,7 +1928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get user's recommendation history
-  app.get('/api/dss/users/:userId/recommendations', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/dss/users/:userId/recommendations', async (req: any, res) => {
     try {
       const { userId } = req.params;
       const { status, limit = 20, offset = 0 } = req.query;
@@ -1964,7 +1949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== ADDITIONAL REST API ENDPOINTS ====================
 
   // Bulk import/export endpoints
-  app.post('/api/bulk/import/claims', authenticateToken, requirePermission('upload_documents'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/bulk/import/claims', upload.single('file'), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'No file provided' });
@@ -2063,7 +2048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Export claims in multiple formats
-  app.get('/api/bulk/export/claims', authenticateToken, requirePermission('export_data'), async (req: any, res) => {
+  app.get('/api/bulk/export/claims', async (req: any, res) => {
     try {
       const format = (req.query.format as string) || 'json';
       const status = req.query.status as string;
@@ -2139,7 +2124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GIS Data retrieval endpoints
-  app.get('/api/gis/villages', authenticateToken, async (req: any, res) => {
+  app.get('/api/gis/villages', async (req: any, res) => {
     try {
       const districtId = req.query.districtId as string;
       const format = req.query.format as string || 'json';
@@ -2188,7 +2173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get claims with spatial data
-  app.get('/api/gis/claims/spatial', authenticateToken, async (req: any, res) => {
+  app.get('/api/gis/claims/spatial', async (req: any, res) => {
     try {
       const villageId = req.query.villageId as string;
       const format = req.query.format as string || 'geojson';
@@ -2251,7 +2236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get detected assets spatial data
-  app.get('/api/gis/assets', authenticateToken, async (req: any, res) => {
+  app.get('/api/gis/assets', async (req: any, res) => {
     try {
       const villageId = req.query.villageId as string;
       const assetType = req.query.assetType as string;
