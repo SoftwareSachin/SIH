@@ -118,12 +118,18 @@ class DocumentProcessor {
         const imageHash = cacheService.generateImageHash(filePath);
         const cachedOCR = await cacheService.getCachedOCRResult(imageHash);
         
+        let hocrData = '';
+        let tsvData = '';
+        let processedPath = filePath; // Default to original file path
+        
         if (cachedOCR) {
           console.log('Using cached OCR result for performance');
           text = cachedOCR.text;
           confidence = cachedOCR.confidence;
           detectedLanguage = cachedOCR.language;
           imageQuality = cachedOCR.quality;
+          hocrData = cachedOCR.hocr || '';
+          tsvData = cachedOCR.tsv || '';
           preprocessingApplied.push('cache-hit');
         } else {
           // Enhanced image preprocessing pipeline with caching
@@ -157,11 +163,16 @@ class DocumentProcessor {
           });
           
           // Cache OCR results
+          hocrData = data.hocr || '';
+          tsvData = data.tsv || '';
+          
           await cacheService.cacheOCRResult(imageHash, {
             text: data.text,
             confidence: data.confidence,
             language: detectedLanguage,
-            quality: imageQuality
+            quality: imageQuality,
+            hocr: hocrData,
+            tsv: tsvData
           });
           
           text = data.text;
@@ -169,7 +180,7 @@ class DocumentProcessor {
         }
         
         // Enhance OCR results with AI if available
-        const enhancement = await this.enhanceOCRWithAI(data.text, data.confidence);
+        const enhancement = await this.enhanceOCRWithAI(text, confidence);
         text = enhancement.enhancedText;
         confidence = enhancement.enhancedConfidence;
         
@@ -196,8 +207,8 @@ class DocumentProcessor {
             documentId, 
             text, 
             confidence, 
-            data.hocr || '', 
-            data.tsv || '',
+            hocrData, 
+            tsvData,
             detectedLanguage,
             currentProcessingTime,
             imageQuality,
@@ -206,9 +217,13 @@ class DocumentProcessor {
           );
         }
         
-        // Clean up processed image
+        // Clean up processed image if we created a temporary one
         if (processedPath !== filePath && fs.existsSync(processedPath)) {
-          fs.unlinkSync(processedPath);
+          try {
+            fs.unlinkSync(processedPath);
+          } catch (error) {
+            console.warn('Failed to clean up processed image:', error);
+          }
         }
       }
 
