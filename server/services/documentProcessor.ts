@@ -74,10 +74,10 @@ class DocumentProcessor {
           tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?()-/\@#$%^&*+=[]{}"\' ।।',
           tessjs_create_hocr: '1',
           tessjs_create_tsv: '1',
-          tessedit_pageseg_mode: '1',
-          tessedit_ocr_engine_mode: '1',
-          tessedit_do_invert: '0',
-          tessjs_create_pdf: '0'
+          tessedit_pageseg_mode: 1,
+          tessedit_ocr_engine_mode: 1,
+          tessedit_do_invert: 0,
+          tessjs_create_pdf: 0
         });
         this.workers.push(worker);
         this.ocrScheduler.addWorker(worker);
@@ -236,78 +236,69 @@ class DocumentProcessor {
       
       let sharpInstance = sharp(filePath);
       
-      // Advanced preprocessing pipeline for FRA documents
+      // Streamlined preprocessing pipeline for speed and accuracy
       
-      // 1. Auto-rotation correction based on EXIF data
+      // 1. Auto-rotation (essential for document orientation)
       sharpInstance = sharpInstance.rotate();
       applied.push('auto-rotate');
       
-      // 2. Resize for optimal OCR (300-600 DPI equivalent)
+      // 2. Smart resize for optimal OCR performance
       if (metadata.width && metadata.width < 1200) {
-        sharpInstance = sharpInstance.resize(null, 1800, { 
+        sharpInstance = sharpInstance.resize(null, 1600, { 
           withoutEnlargement: true,
-          kernel: sharp.kernel.lanczos3 // High-quality upscaling
+          kernel: sharp.kernel.lanczos2 // Faster than lanczos3, still good quality
         });
-        applied.push('upscale-lanczos');
-      } else if (metadata.width && metadata.width > 4500) {
-        sharpInstance = sharpInstance.resize(null, 3500, { 
+        applied.push('upscale-optimized');
+      } else if (metadata.width && metadata.width > 3500) {
+        sharpInstance = sharpInstance.resize(null, 2800, { 
           withoutEnlargement: true,
-          kernel: sharp.kernel.lanczos3
+          kernel: sharp.kernel.lanczos2
         });
-        applied.push('downscale-lanczos');
+        applied.push('downscale-optimized');
       }
       
-      // 3. Advanced noise reduction and document enhancement
+      // 3. Efficient document enhancement for FRA documents
       sharpInstance = sharpInstance
-        .median(3) // Strong noise reduction for document scanning artifacts
-        .blur(0.3) // Slight blur to smooth out scan lines
         .sharpen({ 
-          sigma: 1.2, 
-          m1: 1.0, 
-          m2: 2.5,
-          x1: 2,
-          y2: 10 
-        }) // Enhanced edge sharpening for text clarity
-        .normalize({ lower: 1, upper: 99 }) // Aggressive contrast normalization
-        .gamma(1.1) // Fine-tune gamma for document readability
-        .linear(1.1, -(128 * 1.1) + 128); // Increase contrast linearly
+          sigma: 1.0, 
+          m1: 0.8, 
+          m2: 2.0
+        }) // Text sharpening optimized for Hindi/English documents
+        .normalize() // Fast contrast normalization
+        .gamma(1.05); // Subtle gamma correction for readability
       
-      applied.push('advanced-noise-reduction', 'document-blur', 'edge-enhance', 'contrast-normalize', 'gamma-tune', 'linear-contrast');
+      applied.push('text-sharpen', 'auto-contrast', 'gamma-correct');
       
-      // 4. Convert to grayscale for better OCR performance on handwritten documents
+      // 4. Convert to grayscale (faster processing, better OCR)
       sharpInstance = sharpInstance.greyscale();
-      applied.push('grayscale-conversion');
+      applied.push('grayscale');
       
-      // 5. Adaptive thresholding simulation using levels adjustment
+      // 5. Document threshold optimization for clear text
       sharpInstance = sharpInstance.normalise({
-        lower: 5, // Black point
-        upper: 95  // White point - creates cleaner text boundaries
+        lower: 8, // Optimized black point for FRA documents
+        upper: 92  // Optimized white point
       });
-      applied.push('adaptive-threshold');
+      applied.push('document-threshold');
       
-      // 6. Final optimization for OCR
+      // 6. Fast output optimization
       await sharpInstance
         .jpeg({ 
-          quality: 98, 
+          quality: 92, // Reduced from 98 for faster processing
           progressive: false,
-          mozjpeg: true // Better compression for documents
+          mozjpeg: false // Disabled for speed
         })
         .toFile(processedPath);
       
-      applied.push('mozjpeg-optimization');
+      applied.push('fast-jpeg');
       
-      // 7. Advanced quality assessment
-      const processedMetadata = await sharp(processedPath).metadata();
+      // 7. Quick quality assessment
       const stats = await sharp(processedPath).stats();
       
-      // Check if processing improved quality based on image statistics
       if (stats.channels && stats.channels.length > 0) {
-        const meanBrightness = stats.channels[0].mean;
         const stdDev = stats.channels[0].stdev;
-        
-        if (stdDev > 40 && meanBrightness > 50 && meanBrightness < 200) {
+        if (stdDev > 35) {
           quality = 'excellent';
-        } else if (stdDev > 25) {
+        } else if (stdDev > 20) {
           quality = 'good';
         } else {
           quality = 'fair';
@@ -531,20 +522,16 @@ class DocumentProcessor {
     surveyNumbers?: string[];
     boundaries?: string[];
   }> {
-    // Start with traditional NLP extraction
-    const nlpEntities = await this.extractFRAEntities(text);
+    // Parallel processing for faster extraction
+    const [nlpEntities, aiEntities] = await Promise.allSettled([
+      this.extractFRAEntities(text),
+      this.genAI && text.length > 50 ? this.extractEntitiesWithGemini(text) : Promise.resolve({})
+    ]);
     
-    // Enhance with AI if available
-    if (this.genAI && text.length > 50) {
-      try {
-        const aiEntities = await this.extractEntitiesWithGemini(text);
-        return this.mergeEntityResults(nlpEntities, aiEntities);
-      } catch (error) {
-        console.error('AI entity extraction failed, using NLP only:', error);
-      }
-    }
+    const nlpResult = nlpEntities.status === 'fulfilled' ? nlpEntities.value : {};
+    const aiResult = aiEntities.status === 'fulfilled' ? aiEntities.value : {};
     
-    return nlpEntities;
+    return this.mergeEntityResults(nlpResult, aiResult);
   }
 
   private async extractEntitiesWithGemini(text: string): Promise<Partial<ProcessedDocument['entities'] & {
