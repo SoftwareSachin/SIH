@@ -1,0 +1,50 @@
+12:34:09 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:34:09 PM [express] GET /api/claims 401 in 0ms :: {"message":"Access token required"}
+12:34:09 PM [express] GET /api/geo/villages/all 304 in 14ms :: []
+12:34:09 PM [express] GET /api/dashboard/stats 401 in 1ms :: {"message":"Access token required"}
+12:34:19 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:34:30 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:34:39 PM [express] GET /api/test/ocr/health 304 in 1ms :: {"status":"healthy","workersActive":2,"t…
+12:34:40 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:34:50 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:35:01 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:35:10 PM [express] GET /api/test/ocr/health 304 in 0ms :: {"status":"healthy","workersActive":2,"t…
+12:35:11 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:35:21 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:35:32 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:35:40 PM [express] GET /api/test/ocr/health 304 in 1ms :: {"status":"healthy","workersActive":2,"t…
+12:35:42 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:35:53 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:36:03 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:36:10 PM [express] GET /api/test/ocr/health 304 in 1ms :: {"status":"healthy","workersActive":2,"t…
+12:36:13 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:36:24 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:36:34 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:36:41 PM [express] GET /api/test/ocr/health 304 in 1ms :: {"status":"healthy","workersActive":2,"t…
+12:36:44 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:36:55 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:37:05 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:37:11 PM [express] GET /api/test/ocr/health 304 in 1ms :: {"status":"healthy","workersActive":2,"t…
+12:37:15 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:37:26 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:37:36 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:37:41 PM [express] GET /api/test/ocr/health 304 in 0ms :: {"status":"healthy","workersActive":2,"t…
+12:37:47 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:37:57 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:38:07 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:38:12 PM [express] GET /api/test/ocr/health 304 in 1ms :: {"status":"healthy","workersActive":2,"t…
+12:38:18 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:38:28 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:38:38 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:38:42 PM [express] GET /api/test/ocr/health 304 in 1ms :: {"status":"healthy","workersActive":2,"t…
+12:38:49 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:38:59 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:39:10 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:39:12 PM [express] GET /api/test/ocr/health 304 in 1ms :: {"status":"healthy","workersActive":2,"t…
+12:39:20 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:39:30 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:39:41 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
+12:39:43 PM [express] GET /api/test/ocr/health 304 in 1ms :: {"status":"healthy","workersActive":2,"t…
+12:39:51 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:40:01 PM [express] GET /api/ai/processing-status 401 in 1ms :: {"message":"Access token required"}
+12:40:12 PM [express] GET /api/ai/processing-status 401 in 0ms :: {"message":"Access token required"}
