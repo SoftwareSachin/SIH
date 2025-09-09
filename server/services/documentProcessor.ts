@@ -73,11 +73,7 @@ class DocumentProcessor {
           preserve_interword_spaces: '1',
           tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?()-/\@#$%^&*+=[]{}"\' ।।',
           tessjs_create_hocr: '1',
-          tessjs_create_tsv: '1',
-          tessedit_pageseg_mode: 1,
-          tessedit_ocr_engine_mode: 1,
-          tessedit_do_invert: 0,
-          tessjs_create_pdf: 0
+          tessjs_create_tsv: '1'
         });
         this.workers.push(worker);
         this.ocrScheduler.addWorker(worker);
@@ -126,9 +122,13 @@ class DocumentProcessor {
         // Auto-detect best language for OCR
         detectedLanguage = await this.detectLanguage(processedPath);
         
-        // Process image with OCR using scheduler for better performance
+        // Process image with OCR using optimized settings
         const { data } = await this.ocrScheduler.addJob('recognize', processedPath, {
-          lang: detectedLanguage
+          lang: detectedLanguage,
+          options: {
+            tessedit_pageseg_mode: '1', // Auto page segmentation with OSD
+            tessedit_char_blacklist: '~`$%^*()+=[]{}\\|;:"<>,#' // Remove problematic chars
+          }
         });
         
         // Enhance OCR results with AI if available
@@ -643,6 +643,46 @@ ${text.substring(0, 4000)}`;
       boundaries: [] as string[]
     };
 
+    // Enhanced NLP extraction with FRA-specific patterns
+    const doc = nlp(text);
+    const normalizedText = text.toLowerCase();
+    
+    // FRA-specific pattern matching for better accuracy
+    const fraPatterns = {
+      claimTypes: [
+        /\b(ifr|individual\s+forest\s+rights?)\b/gi,
+        /\b(cfr|community\s+forest\s+resource\s+rights?)\b/gi,
+        /\b(cr|community\s+rights?)\b/gi
+      ],
+      documentTypes: [
+        /\b(form\s*[a-z]*\s*\d+)\b/gi,
+        /\b(fra\s*certificate)\b/gi,
+        /\b(forest\s*rights\s*act)\b/gi
+      ],
+      surveyNumbers: [
+        /\b(survey\s*no\.?\s*:?\s*[\d\/\-]+)\b/gi,
+        /\b(khasra\s*no\.?\s*:?\s*[\d\/\-]+)\b/gi,
+        /\b(plot\s*no\.?\s*:?\s*[\d\/\-]+)\b/gi
+      ],
+      areas: [
+        /\b(\d+\.?\d*)\s*(acre|hectare|bigha|guntha)s?\b/gi,
+        /\barea\s*:?\s*(\d+\.?\d*)\s*(acre|hectare|bigha|guntha)s?\b/gi
+      ]
+    };
+    
+    // Extract using enhanced patterns
+    for (const [key, patterns] of Object.entries(fraPatterns)) {
+      for (const pattern of patterns) {
+        const matches = text.match(pattern);
+        if (matches) {
+          entities[key as keyof typeof entities] = [
+            ...entities[key as keyof typeof entities] || [],
+            ...matches.map(m => m.trim())
+          ];
+        }
+      }
+    }
+    
     // Use Compromise NLP for advanced entity extraction
     const doc = nlp(text);
     
