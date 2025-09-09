@@ -8,6 +8,7 @@ import { storage } from '../storage';
 import { nanoid } from 'nanoid';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { cacheService } from './cacheService';
+import { TextProcessor } from './textProcessor';
 
 interface ProcessedDocument {
   text: string;
@@ -69,9 +70,7 @@ class DocumentProcessor {
       
       // Initialize workers with enhanced multi-language support
       for (let i = 0; i < workerCount; i++) {
-        const worker = await createWorker('eng+hin+ben+ori+tel', {
-          logger: m => console.log(`OCR Worker ${i+1}: ${m.status} (${m.progress})`) 
-        });
+        const worker = await createWorker('eng+hin+ben+ori+tel');
         
         // Ultra-enhanced OCR parameters for maximum accuracy
         await worker.setParameters({
@@ -187,14 +186,31 @@ class DocumentProcessor {
           confidence = data.confidence;
         }
         
-        // Enhance OCR results with AI if available
-        const enhancement = await this.enhanceOCRWithAI(text, confidence);
-        text = enhancement.enhancedText;
-        confidence = enhancement.enhancedConfidence;
+        // Ultra-enhance OCR results with advanced text processing
+        const textEnhancement = TextProcessor.enhanceOCRText(text, confidence);
+        text = textEnhancement.cleanedText;
+        confidence = textEnhancement.enhancedConfidence;
         
-        if (enhancement.corrections.length > 0) {
+        if (textEnhancement.corrections.length > 0) {
+          preprocessingApplied.push('ultra-text-cleanup');
+          console.log('Text corrections applied:', textEnhancement.corrections.join(', '));
+        }
+        
+        // Additional AI enhancement if available
+        const aiEnhancement = await this.enhanceOCRWithAI(text, confidence);
+        text = aiEnhancement.enhancedText;
+        confidence = aiEnhancement.enhancedConfidence;
+        
+        if (aiEnhancement.corrections.length > 0) {
           preprocessingApplied.push('ai-ocr-enhancement');
         }
+        
+        // Calculate text quality metrics
+        const structuredData = TextProcessor.extractStructuredData(text);
+        const qualityMetrics = TextProcessor.calculateTextQuality(text, structuredData);
+        
+        console.log(`Text quality score: ${qualityMetrics.score}%, factors: ${qualityMetrics.factors.join(', ')}`);
+        console.log(`Structured data extracted:`, Object.keys(structuredData).map(k => `${k}: ${structuredData[k]}`).join(', '));
         
         // Calculate processing time here
         const currentProcessingTime = Date.now() - startTime;
@@ -347,10 +363,7 @@ class DocumentProcessor {
           lower: 5,   // Aggressive black point for clear text
           upper: 95   // Aggressive white point for clean background
         })
-        .threshold(128, { // Additional thresholding for text clarity
-          greyscale: true,
-          colourspace: 'b-w'
-        });
+        .threshold(128); // Additional thresholding for text clarity
       
       applied.push('advanced-binarization', 'text-threshold');
       
