@@ -217,59 +217,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        // Auth removed - return guest user
-        const payload = null;
-        
-        if (!payload) {
-          console.log('Invalid token payload');
-          return res.json({
-            id: 'anonymous-user',
-            email: 'guest@fraatlas.gov',
-            firstName: 'Guest',
-            lastName: 'User',
-            currentRole: 'public',
-            permissions: ['view_public_maps', 'view_all_claims', 'access_ai_processing', 'access_dss_engine'],
-            state: null,
-            district: null
-          });
-        }
-
-        const user = await storage.getUserWithRoles(payload?.userId || 'anonymous');
-        if (!user) {
-          console.log('User not found for payload userId:', payload?.userId);
-          return res.json({
-            id: 'anonymous-user',
-            email: 'guest@fraatlas.gov',
-            firstName: 'Guest',
-            lastName: 'User',
-            currentRole: 'public',
-            permissions: ['view_public_maps', 'view_all_claims', 'access_ai_processing', 'access_dss_engine'],
-            state: null,
-            district: null
-          });
-        }
-
-        const activeRoles = user.roleAssignments.filter(
-          (assignment: any) => assignment.isActive && (!assignment.expiresAt || new Date(assignment.expiresAt) > new Date())
-        );
-        
-        const roleOrder: { [key: string]: number } = { admin: 0, state: 1, district: 2, field: 3, ngo: 4, public: 5 };
-        const primaryRole = activeRoles.length > 0 ? 
-          activeRoles.sort((a: any, b: any) => {
-            return roleOrder[a.role.name] - roleOrder[b.role.name];
-          })[0] : null;
-
-        console.log(`Authenticated user: ${user.email} with role: ${primaryRole?.role.name || 'public'}`);
-        
+        // Simplified auth - always return guest user for public access
+        console.log('Using public guest access mode');
         return res.json({
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          currentRole: primaryRole?.role.name || 'public',
-          permissions: primaryRole?.role.permissions || ['view_public_maps'],
-          state: user.state,
-          district: user.district
+          id: 'anonymous-user',
+          email: 'guest@fraatlas.gov',
+          firstName: 'Guest',
+          lastName: 'User',
+          currentRole: 'public',
+          permissions: ['view_public_maps', 'view_all_claims', 'access_ai_processing', 'access_dss_engine'],
+          state: null,
+          district: null
         });
       } catch (error) {
         console.error('Token verification error:', error);

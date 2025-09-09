@@ -11,10 +11,46 @@ import OCRProcessor from "@/components/ocr/ocr-processor";
 import { Scan, Brain, Satellite, Upload, RefreshCw } from "lucide-react";
 
 export default function AIProcessing() {
-  const { data: processingStatus, isLoading } = useQuery({
+  const { data: processingStatus, isLoading, error } = useQuery({
     queryKey: ["/api/ai/processing-status"],
     refetchInterval: 5000, // Refetch every 5 seconds
   });
+
+  // Error fallback
+  if (error) {
+    return (
+      <div className="flex h-screen bg-background">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-h-0">
+          <TopBar />
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="text-center py-8">
+              <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading AI Processing</h1>
+              <p className="text-muted-foreground">Please refresh the page or try again later.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading fallback
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-background">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-h-0">
+          <TopBar />
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading AI Processing...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background">
