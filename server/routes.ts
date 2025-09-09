@@ -658,28 +658,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filePath: file.path,
       });
 
-      // Use batch processor for real-time processing with queue management
-      await batchProcessor.addDocument({
-        id: document.id,
-        filePath: file.path,
-        fileType: file.mimetype,
-        claimId,
-        priority: 'high' // Real-time uploads get high priority
-      });
-      
-      // Just use batch processor for processing - no duplicate processing
-      // Return immediate response without waiting for processing
-      // Note: File cleanup will be handled by batch processor after processing
-      
-      res.json({
-        success: true,
-        documentId: document.id,
-        originalFileName: file.originalname,
-        fileType: file.mimetype,
-        fileSize: file.size,
-        claimId,
-        message: "Document uploaded and queued for processing"
-      });
+      // Process document immediately for instant feedback
+      try {
+        const processedData = await documentProcessor.processDocument(file.path, file.mimetype, document.id);
+        
+        // Update document with OCR results
+        await storage.updateDocument(document.id, {
+          ocrText: processedData.text,
+          ocrConfidence: processedData.confidence.toString(),
+          extractedEntities: processedData.entities,
+          processedAt: new Date(),
+          processingStatus: 'processed'
+        });
+
+        // Clean up uploaded file
+        try {
+          const fs = await import('fs');
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (cleanupError) {
+          console.log('File cleanup skipped:', cleanupError);
+        }
+        
+        res.json({
+          success: true,
+          documentId: document.id,
+          originalFileName: file.originalname,
+          fileType: file.mimetype,
+          fileSize: file.size,
+          claimId,
+          message: "Document processed successfully",
+          ocrResults: {
+            text: processedData.text,
+            confidence: processedData.confidence,
+            language: processedData.language,
+            entities: processedData.entities
+          }
+        });
+      } catch (processingError) {
+        console.error("Document processing failed:", processingError);
+        
+        // Clean up file on error
+        try {
+          const fs = await import('fs');
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (cleanupError) {
+          console.log('File cleanup skipped:', cleanupError);
+        }
+        
+        res.json({
+          success: true,
+          documentId: document.id,
+          originalFileName: file.originalname,
+          fileType: file.mimetype,
+          fileSize: file.size,
+          claimId,
+          message: "Document uploaded but processing failed",
+          error: processingError instanceof Error ? processingError.message : 'Unknown error'
+        });
+      }
     } catch (error) {
       console.error("OCR test processing failed:", error);
       res.status(500).json({ 
