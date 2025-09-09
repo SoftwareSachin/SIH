@@ -1167,6 +1167,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/assets', async (req, res) => {
+    try {
+      const asset = await storage.createAsset(req.body);
+      res.json(asset);
+    } catch (error) {
+      console.error("Error creating asset:", error);
+      res.status(500).json({ message: "Failed to create asset" });
+    }
+  });
+
+  // Village routes
+  app.post('/api/villages', async (req, res) => {
+    try {
+      const village = await storage.createVillage(req.body);
+      res.json(village);
+    } catch (error) {
+      console.error("Error creating village:", error);
+      res.status(500).json({ message: "Failed to create village" });
+    }
+  });
+
   // Asset detection
   app.post('/api/assets/detect/:villageId', async (req: any, res) => {
     try {

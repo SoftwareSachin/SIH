@@ -78,6 +78,7 @@ export interface IStorage {
   getVillagesByDistrict(districtId: string): Promise<Village[]>;
   getAllVillages(): Promise<Village[]>;
   getVillageById(villageId: string): Promise<Village | undefined>;
+  createVillage(village: InsertVillage): Promise<Village>;
 
   // Claims operations
   getClaims(params: {
@@ -297,6 +298,11 @@ export class DatabaseStorage implements IStorage {
   async getVillageById(villageId: string): Promise<Village | undefined> {
     const [village] = await db.select().from(villages).where(eq(villages.id, villageId));
     return village;
+  }
+
+  async createVillage(village: InsertVillage): Promise<Village> {
+    const [newVillage] = await db.insert(villages).values(village).returning();
+    return newVillage;
   }
 
   // Claims operations
