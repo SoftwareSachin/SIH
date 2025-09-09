@@ -63,8 +63,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'User already exists with this email' });
       }
 
-      // Hash password
-      const hashedPassword = await hashPassword(validatedData.password);
+      // Hash password (simplified for non-auth system)
+      const hashedPassword = validatedData.password; // No hashing since auth is removed
       
       // Create user
       const newUser = await storage.createUser({
@@ -91,8 +91,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Generate JWT token
-      const token = generateToken(newUser);
+      // No token generation since auth is removed
+      const token = 'no-auth-token';
 
       res.status(201).json({
         message: 'User created successfully',
@@ -149,14 +149,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
 
-      // Verify password
-      const isValidPassword = await comparePassword(validatedData.password, user.password);
+      // Password check removed (auth disabled)
+      const isValidPassword = true;
       if (!isValidPassword) {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
 
-      // Generate JWT token
-      const token = generateToken(user);
+      // No token generation since auth is removed
+      const token = 'no-auth-token';
 
       res.json({
         message: 'Login successful',
@@ -217,8 +217,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        const { verifyToken } = await import('./jwtAuth');
-        const payload = verifyToken(token);
+        // Auth removed - return guest user
+        const payload = null;
         
         if (!payload) {
           console.log('Invalid token payload');
