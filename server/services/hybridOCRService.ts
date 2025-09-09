@@ -202,7 +202,13 @@ export class HybridOCRService {
    */
   private async advancedPreprocessing(imagePath: string): Promise<PreprocessingResult> {
     const applied: string[] = [];
-    const outputPath = imagePath.replace(/\.[^.]+$/, '_processed.png');
+    let outputPath = imagePath.replace(/\.[^.]+$/, '_processed.png');
+    
+    // Ensure we don't overwrite the input file
+    if (outputPath === imagePath) {
+      const timestamp = Date.now();
+      outputPath = imagePath.replace(/\.[^.]+$/, `_processed_${timestamp}.png`);
+    }
     
     try {
       let image = sharp(imagePath);
