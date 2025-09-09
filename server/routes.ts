@@ -667,37 +667,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         priority: 'high' // Real-time uploads get high priority
       });
       
-      // For immediate response, also process synchronously
-      const processedData = await documentProcessor.processDocument(file.path, file.mimetype, document.id);
-      
-      // Update document with OCR results
-      await storage.updateDocument(document.id, {
-        ocrText: processedData.text,
-        ocrConfidence: processedData.confidence.toString(),
-        extractedEntities: processedData.entities,
-        processedAt: new Date(),
-        processingStatus: 'processed'
-      });
-
-      // Log audit trail
-      await storage.createAuditTrail({
-        entityType: 'documents',
-        entityId: document.id,
-        action: 'process',
-        userId,
-        newValues: { ocrConfidence: processedData.confidence, language: processedData.language },
-        notes: `Document processed with ${processedData.confidence}% confidence`
-      });
-      
-      // Clean up uploaded file  
-      try {
-        const fs = await import('fs');
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
-        }
-      } catch (cleanupError) {
-        console.log('File cleanup skipped:', cleanupError);
-      }
+      // Just use batch processor for processing - no duplicate processing
+      // Return immediate response without waiting for processing
+      // Note: File cleanup will be handled by batch processor after processing
       
       res.json({
         success: true,
@@ -706,13 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileType: file.mimetype,
         fileSize: file.size,
         claimId,
-        ocrResults: {
-          text: processedData.text,
-          confidence: processedData.confidence,
-          language: processedData.language,
-          entities: processedData.entities,
-          metadata: processedData.metadata
-        }
+        message: "Document uploaded and queued for processing"
       });
     } catch (error) {
       console.error("OCR test processing failed:", error);

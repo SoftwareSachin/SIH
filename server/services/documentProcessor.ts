@@ -340,7 +340,7 @@ class DocumentProcessor {
       // Check for Devanagari script (Hindi, Marathi, etc.)
       const devanagariPattern = /[\u0900-\u097F]/;
       if (devanagariPattern.test(text)) {
-        return 'hin+mar'; // Hindi + Marathi (removed Sanskrit as not in supported list)
+        return 'hin'; // Hindi (primary Devanagari language)
       }
       
       // Check for Bengali script
@@ -367,11 +367,11 @@ class DocumentProcessor {
         return 'tel';
       }
       
-      // Default to English + Hindi
-      return 'eng+hin';
+      // Default to English
+      return 'eng';
     } catch (error) {
       console.error('Language detection failed:', error);
-      return 'eng+hin';
+      return 'eng';
     }
   }
 

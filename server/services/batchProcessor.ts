@@ -168,6 +168,22 @@ class BatchProcessor extends EventEmitter {
         item.documentId
       );
 
+      // Map multi-language codes to single language enum values
+      const mapLanguageToEnum = (lang: string): string => {
+        if (lang.includes('hin') || lang.includes('mar')) return 'hin'; // Hindi/Marathi -> Hindi
+        if (lang.includes('eng')) return 'eng';
+        if (lang.includes('ben')) return 'ben';
+        if (lang.includes('guj')) return 'guj';
+        if (lang.includes('kan')) return 'kan';
+        if (lang.includes('mal')) return 'mal';
+        if (lang.includes('ori')) return 'ori';
+        if (lang.includes('pan')) return 'pan';
+        if (lang.includes('tam')) return 'tam';
+        if (lang.includes('tel')) return 'tel';
+        if (lang.includes('urd')) return 'urd';
+        return 'mixed'; // fallback
+      };
+
       // Update document with results
       await storage.updateDocument(item.documentId, {
         ocrText: result.text,
@@ -175,7 +191,8 @@ class BatchProcessor extends EventEmitter {
         extractedEntities: result.entities,
         processedAt: new Date(),
         processingStatus: 'processed',
-        ocrLanguage: result.language as any,
+        ocrLanguage: mapLanguageToEnum(result.language) as any,
+        languagesUsed: result.language.includes('+') ? result.language.split('+') : [result.language],
         processingTime: result.metadata.processingTime,
         imageQuality: result.metadata.imageQuality,
         preprocessingApplied: result.metadata.preprocessingApplied
@@ -184,6 +201,17 @@ class BatchProcessor extends EventEmitter {
       // Update batch progress if applicable
       this.updateBatchProgress(item.id, 'success');
       
+      // Clean up uploaded file after successful processing
+      try {
+        const fs = await import('fs');
+        if (fs.existsSync(item.filePath)) {
+          fs.unlinkSync(item.filePath);
+          console.log(`Cleaned up file: ${item.filePath}`);
+        }
+      } catch (cleanupError) {
+        console.log('File cleanup skipped:', cleanupError);
+      }
+
       // Remove from processing
       this.processing.delete(item.id);
       
