@@ -67,14 +67,22 @@ class DocumentProcessor {
       // Optimized worker count for better performance
       const workerCount = parseInt(process.env.OCR_WORKERS || '4');
       
-      // Initialize workers with core languages only initially
+      // Initialize workers with enhanced multi-language support
       for (let i = 0; i < workerCount; i++) {
-        const worker = await createWorker('eng+hin');
+        const worker = await createWorker('eng+hin+ben+ori+tel', {
+          logger: m => console.log(`OCR Worker ${i+1}: ${m.status} (${m.progress})`) 
+        });
+        
+        // Ultra-enhanced OCR parameters for maximum accuracy
         await worker.setParameters({
           preserve_interword_spaces: '1',
-          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?()-/\@#$%^&*+=[]{}"\' ।।',
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?()-/\@#$%^&*+=[]{}"\' ।।०१२३४५६७८९',
           tessjs_create_hocr: '1',
-          tessjs_create_tsv: '1'
+          tessjs_create_tsv: '1',
+          tessedit_write_images: '0',
+          tessedit_do_invert: '0',
+          tessjs_create_box: '1',
+          tessjs_create_unlv: '1'
         });
         this.workers.push(worker);
         this.ocrScheduler.addWorker(worker);
@@ -273,10 +281,10 @@ class DocumentProcessor {
     applied: string[];
   }> {
     try {
-      const processedPath = `${filePath}_processed_${nanoid(8)}.jpg`;
+      const processedPath = `${filePath}_ultra_processed_${nanoid(8)}.png`;
       const applied: string[] = [];
       
-      // Get image metadata for quality assessment
+      // Get image metadata for intelligent processing
       const metadata = await sharp(filePath).metadata();
       let quality = 'good';
       
@@ -288,76 +296,98 @@ class DocumentProcessor {
       
       let sharpInstance = sharp(filePath);
       
-      // Streamlined preprocessing pipeline for speed and accuracy
+      // ULTRA-ENHANCED preprocessing pipeline for maximum text clarity
       
-      // 1. Auto-rotation (essential for document orientation)
+      // 1. Auto-rotation with improved EXIF handling
       sharpInstance = sharpInstance.rotate();
-      applied.push('auto-rotate');
+      applied.push('auto-rotate-enhanced');
       
-      // 2. Smart resize for optimal OCR performance
-      if (metadata.width && metadata.width < 1200) {
-        sharpInstance = sharpInstance.resize(null, 1600, { 
+      // 2. Intelligent scaling for 300-600 DPI equivalent (OCR sweet spot)
+      const targetWidth = metadata.width && metadata.width < 1500 ? 2400 : 
+                         metadata.width && metadata.width > 4000 ? 3200 : null;
+      
+      if (targetWidth) {
+        sharpInstance = sharpInstance.resize(targetWidth, null, { 
           withoutEnlargement: true,
-          kernel: sharp.kernel.lanczos2 // Faster than lanczos3, still good quality
+          kernel: sharp.kernel.lanczos3, // Highest quality resampling
+          fit: 'inside'
         });
-        applied.push('upscale-optimized');
-      } else if (metadata.width && metadata.width > 3500) {
-        sharpInstance = sharpInstance.resize(null, 2800, { 
-          withoutEnlargement: true,
-          kernel: sharp.kernel.lanczos2
-        });
-        applied.push('downscale-optimized');
+        applied.push('ultra-scale-lanczos3');
       }
       
-      // 3. Efficient document enhancement for FRA documents
+      // 3. Advanced noise reduction specifically for scanned documents
       sharpInstance = sharpInstance
+        .median(2) // Remove scan artifacts and noise
+        .blur(0.2) // Micro-blur to smooth scan lines
         .sharpen({ 
-          sigma: 1.0, 
-          m1: 0.8, 
-          m2: 2.0
-        }) // Text sharpening optimized for Hindi/English documents
-        .normalize() // Fast contrast normalization
-        .gamma(1.05); // Subtle gamma correction for readability
+          sigma: 1.5,   // Enhanced text edge detection
+          m1: 1.2,      // Increased mask multiplier
+          m2: 3.0,      // Strong edge enhancement
+          x1: 3,        // Improved flat area threshold
+          y2: 15        // Enhanced edge slope
+        }); // Ultra text sharpening for Hindi/English characters
       
-      applied.push('text-sharpen', 'auto-contrast', 'gamma-correct');
+      applied.push('noise-reduction', 'micro-blur', 'ultra-sharpen');
       
-      // 4. Convert to grayscale (faster processing, better OCR)
+      // 4. Advanced contrast and brightness optimization
+      sharpInstance = sharpInstance
+        .normalize() // Auto-contrast stretch
+        .gamma(1.1)  // Improved midtone contrast
+        .linear(1.15, -(128 * 1.15) + 128); // Enhanced linear contrast
+      
+      applied.push('auto-contrast', 'gamma-enhance', 'linear-boost');
+      
+      // 5. Convert to grayscale with enhanced luminance calculation
       sharpInstance = sharpInstance.greyscale();
-      applied.push('grayscale');
+      applied.push('enhanced-grayscale');
       
-      // 5. Document threshold optimization for clear text
-      sharpInstance = sharpInstance.normalise({
-        lower: 8, // Optimized black point for FRA documents
-        upper: 92  // Optimized white point
-      });
-      applied.push('document-threshold');
+      // 6. Advanced document binarization for text clarity
+      sharpInstance = sharpInstance
+        .normalise({
+          lower: 5,   // Aggressive black point for clear text
+          upper: 95   // Aggressive white point for clean background
+        })
+        .threshold(128, { // Additional thresholding for text clarity
+          greyscale: true,
+          colourspace: 'b-w'
+        });
       
-      // 6. Fast output optimization
+      applied.push('advanced-binarization', 'text-threshold');
+      
+      // 7. Ultra-high quality output for maximum OCR accuracy
       await sharpInstance
-        .jpeg({ 
-          quality: 92, // Reduced from 98 for faster processing
+        .png({ 
+          quality: 100,          // Maximum PNG quality
+          compressionLevel: 0,   // No compression for clarity
           progressive: false,
-          mozjpeg: false // Disabled for speed
+          palette: false         // Full grayscale range
         })
         .toFile(processedPath);
       
-      applied.push('fast-jpeg');
+      applied.push('ultra-quality-png');
       
-      // 7. Quick quality assessment
+      // 8. Advanced quality metrics
       const stats = await sharp(processedPath).stats();
+      const processedMetadata = await sharp(processedPath).metadata();
       
       if (stats.channels && stats.channels.length > 0) {
-        const stdDev = stats.channels[0].stdev;
-        if (stdDev > 35) {
+        const channel = stats.channels[0];
+        const contrast = channel.stdev;
+        const brightness = channel.mean;
+        
+        // Enhanced quality scoring
+        if (contrast > 50 && brightness > 40 && brightness < 215) {
+          quality = 'ultra';
+        } else if (contrast > 35 && brightness > 30 && brightness < 225) {
           quality = 'excellent';
-        } else if (stdDev > 20) {
+        } else if (contrast > 20) {
           quality = 'good';
         } else {
           quality = 'fair';
         }
       }
       
-      console.log(`Image preprocessing complete: ${quality} quality, applied: ${applied.join(', ')}`);
+      console.log(`Ultra image preprocessing complete: ${quality} quality, size: ${processedMetadata?.width}x${processedMetadata?.height}, applied: ${applied.join(', ')}`);
       
       return {
         processedPath,
@@ -365,11 +395,11 @@ class DocumentProcessor {
         applied
       };
     } catch (error) {
-      console.error('Error in enhanced preprocessing:', error);
+      console.error('Error in ultra preprocessing:', error);
       return {
         processedPath: filePath,
         quality: 'unknown',
-        applied: ['preprocessing-failed']
+        applied: ['ultra-preprocessing-failed']
       };
     }
   }
