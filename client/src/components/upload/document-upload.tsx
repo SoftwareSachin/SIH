@@ -54,8 +54,17 @@ export default function DocumentUpload() {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`${response.status}: ${text}`);
+          // Try to parse as JSON first, fall back to text
+          let errorMessage;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorData.error || `HTTP ${response.status}`;
+          } catch {
+            // If JSON parsing fails, try text
+            const text = await response.text();
+            errorMessage = text || `HTTP ${response.status}`;
+          }
+          throw new Error(errorMessage);
         }
 
         return response.json();
