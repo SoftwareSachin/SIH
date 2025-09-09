@@ -5,21 +5,7 @@ import sharp from 'sharp';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { cacheService } from './cacheService';
 import { TextProcessor } from './textProcessor';
-
-// Cloud OCR providers
-interface CloudOCRProvider {
-  name: string;
-  processDocument: (imagePath: string, language?: string) => Promise<CloudOCRResult>;
-  isAvailable: () => boolean;
-}
-
-interface CloudOCRResult {
-  text: string;
-  confidence: number;
-  layout?: any;
-  entities?: any[];
-  method: string;
-}
+import { PaddleOCREngine, EasyOCREngine, TrOCREngine, LanguageMapper } from './localOCREngines';
 
 interface OCRResult {
   text: string;
@@ -48,7 +34,9 @@ export class HybridOCRService {
   private ocrScheduler: any;
   private workers: any[] = [];
   private genAI: GoogleGenerativeAI | null = null;
-  private cloudProviders: Map<string, CloudOCRProvider> = new Map();
+  private paddleOCRAvailable: boolean = false;
+  private easyOCRAvailable: boolean = false;
+  private trocr_Available: boolean = false;
   
   private readonly supportedLanguages = [
     'eng', 'hin', 'ben', 'guj', 'kan', 'mal', 'mar', 'ori', 'pan', 'tam', 'tel', 'urd'
@@ -57,7 +45,7 @@ export class HybridOCRService {
   constructor() {
     this.initializeTesseract();
     this.initializeAI();
-    this.initializeCloudProviders();
+    this.checkLocalOCREngines();
   }
 
   private async initializeTesseract() {
@@ -96,23 +84,41 @@ export class HybridOCRService {
     }
   }
 
-  private initializeCloudProviders() {
-    // Google Document AI
-    if (process.env.GOOGLE_CLOUD_PROJECT_ID && process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      this.cloudProviders.set('google-document-ai', this.createGoogleDocumentAIProvider());
-    }
-    
-    // Azure Document Intelligence
-    if (process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY) {
-      this.cloudProviders.set('azure-document-intelligence', this.createAzureDocumentIntelligenceProvider());
-    }
-    
-    // ABBYY Cloud OCR
-    if (process.env.ABBYY_APPLICATION_ID && process.env.ABBYY_PASSWORD) {
-      this.cloudProviders.set('abbyy-cloud-ocr', this.createABBYYCloudProvider());
+  private async checkLocalOCREngines() {
+    try {
+      // Check for PaddleOCR
+      await execAsync('python3 -c "import paddleocr; print(\'PaddleOCR available\')"');
+      this.paddleOCRAvailable = true;
+      console.log('✓ PaddleOCR detected and available');
+    } catch {
+      console.log('⚠ PaddleOCR not available - install with: pip install paddleocr');
     }
 
-    console.log(`✓ Hybrid OCR: ${this.cloudProviders.size} cloud providers initialized`);
+    try {
+      // Check for EasyOCR
+      await execAsync('python3 -c "import easyocr; print(\'EasyOCR available\')"');
+      this.easyOCRAvailable = true;
+      console.log('✓ EasyOCR detected and available');
+    } catch {
+      console.log('⚠ EasyOCR not available - install with: pip install easyocr');
+    }
+
+    try {
+      // Check for TrOCR (transformers)
+      await execAsync('python3 -c "from transformers import TrOCRProcessor; print(\'TrOCR available\')"');
+      this.trocr_Available = true;
+      console.log('✓ TrOCR detected and available');
+    } catch {
+      console.log('⚠ TrOCR not available - install with: pip install transformers torch pillow');
+    }
+
+    const availableEngines = [
+      this.paddleOCRAvailable && 'PaddleOCR',
+      this.easyOCRAvailable && 'EasyOCR', 
+      this.trocr_Available && 'TrOCR'
+    ].filter(Boolean);
+
+    console.log(`✓ Hybrid OCR: ${availableEngines.length} local engines available: ${availableEngines.join(', ')}`);
   }
 
   /**
@@ -148,9 +154,9 @@ export class HybridOCRService {
       if (preprocessingResult.handwritingDetected && useHandwritingRecognition) {
         // Handwriting pipeline with TrOCR
         ocrResult = await this.handwritingRecognitionPipeline(preprocessingResult);
-      } else if (useCloudOCR && this.cloudProviders.size > 0) {
-        // Cloud OCR for high accuracy on printed text
-        ocrResult = await this.cloudOCRPipeline(preprocessingResult);
+      } else if (this.paddleOCRAvailable || this.easyOCRAvailable) {
+        // Local OCR engines for high accuracy on printed text
+        ocrResult = await this.localOCRPipeline(preprocessingResult);
       } else {
         // Enhanced Tesseract pipeline
         ocrResult = await this.tesseractPipeline(preprocessingResult);
@@ -354,39 +360,58 @@ export class HybridOCRService {
   }
 
   /**
-   * Cloud OCR pipeline for high-accuracy printed text
+   * Local OCR pipeline using PaddleOCR, EasyOCR, and Tesseract
    */
-  private async cloudOCRPipeline(preprocessingResult: PreprocessingResult): Promise<OCRResult> {
+  private async localOCRPipeline(preprocessingResult: PreprocessingResult): Promise<OCRResult> {
     const results: OCRResult[] = [];
     
-    // Try each available cloud provider
-    for (const [name, provider] of Array.from(this.cloudProviders)) {
-      if (provider.isAvailable()) {
-        try {
-          const result = await provider.processDocument(preprocessingResult.processedPath);
-          results.push({
-            text: result.text,
-            confidence: result.confidence,
-            method: result.method,
-            processingTime: 0,
-            language: preprocessingResult.scriptType,
-            layout: result.layout,
-            entities: result.entities
-          });
-        } catch (error) {
-          console.warn(`Cloud provider ${name} failed:`, error);
-        }
+    // Try PaddleOCR first (generally best for multi-script documents)
+    if (this.paddleOCRAvailable) {
+      try {
+        const paddleResult = await this.runPaddleOCR(preprocessingResult);
+        results.push(paddleResult);
+      } catch (error) {
+        console.warn('PaddleOCR failed:', error);
       }
     }
     
-    // Fallback to Tesseract if no cloud providers worked
+    // Try EasyOCR as secondary option
+    if (this.easyOCRAvailable) {
+      try {
+        const easyResult = await this.runEasyOCR(preprocessingResult);
+        results.push(easyResult);
+      } catch (error) {
+        console.warn('EasyOCR failed:', error);
+      }
+    }
+    
+    // Fallback to Tesseract if no other engines worked
     if (results.length === 0) {
       return await this.tesseractPipeline(preprocessingResult);
     }
     
-    // Return best result
-    results.sort((a, b) => b.confidence - a.confidence);
+    // Return best result based on confidence and text quality
+    results.sort((a, b) => this.scoreOCRResult(b) - this.scoreOCRResult(a));
     return results[0];
+  }
+
+  /**
+   * Score OCR result based on confidence and text quality
+   */
+  private scoreOCRResult(result: OCRResult): number {
+    let score = result.confidence;
+    
+    // Bonus for longer, structured text
+    if (result.text.length > 100) score += 5;
+    if (result.text.includes('\n')) score += 3;
+    if (/[A-Z][a-z]+:/.test(result.text)) score += 5; // Field labels
+    if (/\d+/.test(result.text)) score += 3; // Numbers
+    
+    // Penalty for too short or garbled text
+    if (result.text.length < 20) score -= 15;
+    if (result.text.split(' ').length < 3) score -= 10;
+    
+    return score;
   }
 
   /**
@@ -396,9 +421,18 @@ export class HybridOCRService {
     console.log('📝 Processing handwritten content with TrOCR...');
     
     try {
-      // For now, use enhanced Tesseract with handwriting-optimized settings
-      // TODO: Integrate actual TrOCR model
-      const result = await this.tesseractHandwritingOCR(preprocessingResult.processedPath);
+      // Use TrOCR for handwriting recognition if available
+      if (this.trocr_Available) {
+        const result = await this.runTrOCRHandwriting(preprocessingResult.processedPath);
+        return {
+          ...result,
+          method: 'trocr-handwriting',
+          handwritingDetected: true
+        };
+      } else {
+        // Fallback to Tesseract with handwriting settings
+        const result = await this.tesseractHandwritingOCR(preprocessingResult.processedPath);
+      }
       
       return {
         ...result,
@@ -659,38 +693,70 @@ ${text}`;
     }
   }
 
-  // Cloud Provider Factory Methods
-  private createGoogleDocumentAIProvider(): CloudOCRProvider {
-    return {
-      name: 'Google Document AI',
-      isAvailable: () => !!process.env.GOOGLE_CLOUD_PROJECT_ID,
-      processDocument: async (imagePath: string): Promise<CloudOCRResult> => {
-        // TODO: Implement Google Document AI integration
-        throw new Error('Google Document AI not implemented yet');
-      }
-    };
+  /**
+   * Run PaddleOCR on preprocessed image
+   */
+  private async runPaddleOCR(preprocessingResult: PreprocessingResult): Promise<OCRResult> {
+    const language = LanguageMapper.mapToPaddleLanguage(preprocessingResult.scriptType);
+    
+    try {
+      const result = await PaddleOCREngine.process(preprocessingResult.processedPath, language);
+      
+      return {
+        text: result.text,
+        confidence: result.confidence,
+        method: result.method,
+        processingTime: result.processingTime,
+        language: preprocessingResult.scriptType,
+        layout: result.layout
+      };
+    } catch (error) {
+      console.error('PaddleOCR processing failed:', error);
+      throw error;
+    }
   }
 
-  private createAzureDocumentIntelligenceProvider(): CloudOCRProvider {
-    return {
-      name: 'Azure Document Intelligence',
-      isAvailable: () => !!process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
-      processDocument: async (imagePath: string): Promise<CloudOCRResult> => {
-        // TODO: Implement Azure Document Intelligence integration
-        throw new Error('Azure Document Intelligence not implemented yet');
-      }
-    };
+  /**
+   * Run EasyOCR on preprocessed image
+   */
+  private async runEasyOCR(preprocessingResult: PreprocessingResult): Promise<OCRResult> {
+    const languages = LanguageMapper.mapScriptToLanguages(preprocessingResult.scriptType);
+    
+    try {
+      const result = await EasyOCREngine.process(preprocessingResult.processedPath, languages);
+      
+      return {
+        text: result.text,
+        confidence: result.confidence,
+        method: result.method,
+        processingTime: result.processingTime,
+        language: preprocessingResult.scriptType,
+        layout: result.layout
+      };
+    } catch (error) {
+      console.error('EasyOCR processing failed:', error);
+      throw error;
+    }
   }
 
-  private createABBYYCloudProvider(): CloudOCRProvider {
-    return {
-      name: 'ABBYY Cloud OCR',
-      isAvailable: () => !!process.env.ABBYY_APPLICATION_ID,
-      processDocument: async (imagePath: string): Promise<CloudOCRResult> => {
-        // TODO: Implement ABBYY Cloud OCR integration
-        throw new Error('ABBYY Cloud OCR not implemented yet');
-      }
-    };
+  /**
+   * Run TrOCR for handwriting recognition
+   */
+  private async runTrOCRHandwriting(imagePath: string): Promise<OCRResult> {
+    try {
+      const result = await TrOCREngine.processHandwriting(imagePath);
+      
+      return {
+        text: result.text,
+        confidence: result.confidence,
+        method: result.method,
+        processingTime: result.processingTime,
+        handwritingDetected: true
+      };
+    } catch (error) {
+      console.error('TrOCR handwriting processing failed:', error);
+      throw error;
+    }
   }
 }
 
