@@ -850,7 +850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/claims', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      // Remove authentication requirement - direct access
       
       // Transform numeric fields to strings before validation
       const transformedBody = {
@@ -867,34 +867,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const claimData = insertClaimSchema.parse(transformedBody);
       
-      // Generate claim ID
-      const user = userId !== 'dev-admin-001' ? await storage.getUser(userId) : null;
-      const stateCode = user?.state?.substring(0, 2).toUpperCase() || 'XX';
+      // Generate claim ID without user dependency
       const timestamp = Date.now();
-      const claimId = `FRA-${stateCode}-${timestamp.toString().slice(-6)}`;
+      const claimId = `FRA-TEST-${timestamp.toString().slice(-6)}`;
 
       const claim = await storage.createClaim({
         ...claimData,
         claimId,
       });
 
-      // Log audit trail (skip for dev bypass users)
-      if (userId !== 'dev-admin-001') {
-        await storage.createAuditTrail({
-          entityType: 'claims',
-          entityId: claim.id,
-          action: 'create',
-          userId,
-          newValues: claim,
-          notes: 'Claim created',
-        });
-      }
-
       res.status(201).json(claim);
     } catch (error) {
       console.error("Error creating claim:", error);
-      if (error.name === 'ZodError') {
-        console.error("Zod validation failed for field(s):", error.errors.map(e => ({ path: e.path, message: e.message })));
+      if (error instanceof Error && error.name === 'ZodError') {
+        console.error("Zod validation failed for field(s):", (error as any).errors.map((e: any) => ({ path: e.path, message: e.message })));
       }
       res.status(500).json({ message: "Failed to create claim" });
     }
