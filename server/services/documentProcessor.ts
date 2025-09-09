@@ -721,10 +721,10 @@ ${text.substring(0, 4000)}`;
     }
     
     // Use Compromise NLP for advanced entity extraction
-    const doc = nlp(text);
+    const nlpDoc = nlp(text);
     
     // Enhanced person name extraction for Indian context
-    const people = doc.people().out('array');
+    const people = nlpDoc.people().out('array');
     
     // Comprehensive Indian name patterns including regional variations
     const indianNamePatterns = [
