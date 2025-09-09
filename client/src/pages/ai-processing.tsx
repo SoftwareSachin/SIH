@@ -168,7 +168,27 @@ export default function AIProcessing() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="upload">
+            <TabsContent value="upload" className="space-y-6">
+              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm">💡</span>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">Document Processing Info</h4>
+                    <p className="text-blue-700 dark:text-blue-200">
+                      AI processing may take 1-3 minutes per document. The system will:
+                    </p>
+                    <ul className="mt-2 text-blue-600 dark:text-blue-300 text-xs space-y-1 ml-4 list-disc">
+                      <li>Extract text using multi-language OCR (Hindi, English, Odia, Telugu, Bengali)</li>
+                      <li>Identify names, villages, coordinates, and claim details</li>
+                      <li>Analyze document structure and confidence scores</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
               <DocumentUpload />
             </TabsContent>
 

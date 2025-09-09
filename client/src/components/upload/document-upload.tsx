@@ -36,18 +36,44 @@ export default function DocumentUpload() {
       formData.append('document', file);
       formData.append('claimId', claimId);
 
-      const response = await fetch('/api/documents/process', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`${response.status}: ${text}`);
+      try {
+        const response = await fetch('/api/documents/process', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+          signal: controller.signal,
+          headers: {
+            // Remove content-type to let browser set it with boundary
+          }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`${response.status}: ${text}`);
+        }
+
+        return response.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('Upload timed out. Please try uploading a smaller file or try again later.');
+        }
+        throw error;
       }
-
-      return response.json();
+    },
+    onMutate: (variables) => {
+      // Update UI immediately when starting upload
+      setFiles(prev => prev.map(f => 
+        f.file === variables.file 
+          ? { ...f, status: 'processing' }
+          : f
+      ));
     },
     onSuccess: (result, variables) => {
       setFiles(prev => prev.map(f => 
@@ -56,12 +82,14 @@ export default function DocumentUpload() {
           : f
       ));
       queryClient.invalidateQueries({ queryKey: ["/api/ai/processing-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/claims"] });
       toast({
         title: "Success",
-        description: "Document uploaded and processing started",
+        description: `Document processed with ${result.ocrResults?.confidence || 'unknown'}% confidence`,
       });
     },
     onError: (error, variables) => {
+      console.error('Upload error:', error);
       setFiles(prev => prev.map(f => 
         f.file === variables.file 
           ? { ...f, status: 'error' }
@@ -75,9 +103,10 @@ export default function DocumentUpload() {
           variant: "destructive",
         });
       } else {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         toast({
-          title: "Error",
-          description: "Failed to upload document",
+          title: "Upload Failed",
+          description: errorMessage,
           variant: "destructive",
         });
       }
@@ -183,11 +212,11 @@ export default function DocumentUpload() {
       case 'uploading':
         return <Badge variant="secondary">Uploading</Badge>;
       case 'processing':
-        return <Badge className="bg-blue-100 text-blue-800">Processing</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800">🔄 AI Processing</Badge>;
       case 'completed':
-        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+        return <Badge className="bg-green-100 text-green-800">✅ Completed</Badge>;
       case 'error':
-        return <Badge variant="destructive">Error</Badge>;
+        return <Badge variant="destructive">❌ Error</Badge>;
     }
   };
 
@@ -322,9 +351,22 @@ export default function DocumentUpload() {
                       </Button>
                     </div>
                   </div>
-                  {uploadFile.status === 'uploading' && (
-                    <div className="mt-3">
-                      <Progress value={uploadFile.progress} className="w-full" />
+                  {(uploadFile.status === 'uploading' || uploadFile.status === 'processing') && (
+                    <div className="mt-3 space-y-2">
+                      {uploadFile.status === 'uploading' && (
+                        <Progress value={uploadFile.progress} className="w-full" />
+                      )}
+                      {uploadFile.status === 'processing' && (
+                        <div className="text-sm text-blue-600 space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500" />
+                            <span>AI processing document... This may take 1-3 minutes</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            ⚡ Converting text using OCR • 🧠 Extracting entities • 📍 Detecting locations
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

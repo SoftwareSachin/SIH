@@ -234,9 +234,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const user = await storage.getUserWithRoles(payload.userId);
+        const user = await storage.getUserWithRoles(payload?.userId || 'anonymous');
         if (!user) {
-          console.log('User not found for payload userId:', payload.userId);
+          console.log('User not found for payload userId:', payload?.userId);
           return res.json({
             id: 'anonymous-user',
             email: 'guest@fraatlas.gov',
@@ -828,6 +828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all claims for public access (no user restrictions)
       const claims = await storage.getClaims({
+        userId: 'anonymous-user', // Use anonymous for public access
         page,
         limit,
         status,
@@ -962,7 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         workflow,
         steps,
-        currentStepName: steps[workflow.currentStep]?.stepName || 'Completed'
+        currentStepName: (workflow.currentStep !== null && steps[workflow.currentStep]) ? steps[workflow.currentStep].stepName : 'Completed'
       });
     } catch (error) {
       console.error("Error fetching workflow status:", error);
