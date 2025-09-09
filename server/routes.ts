@@ -592,17 +592,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/documents/process', 
     upload.single('document'), 
     async (req: any, res) => {
+    // Ensure JSON response headers
+    res.setHeader('Content-Type', 'application/json');
+    
     try {
       const userId = req.user?.id || 'anonymous-user';
       const { claimId } = req.body;
       const { file } = req;
       
       if (!file) {
-        return res.status(400).json({ message: "No file uploaded" });
+        return res.status(400).json({ success: false, message: "No file uploaded" });
       }
 
       if (!claimId) {
-        return res.status(400).json({ message: "Claim ID is required" });
+        return res.status(400).json({ success: false, message: "Claim ID is required" });
       }
 
       console.log(`Processing FRA document: ${file.originalname} for claim ${claimId}`);
@@ -639,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('File cleanup skipped:', cleanupError);
         }
         
-        res.json({
+        return res.json({
           success: true,
           documentId: document.id,
           originalFileName: file.originalname,
@@ -651,7 +654,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             text: processedData.text,
             confidence: processedData.confidence,
             language: processedData.language,
-            entities: processedData.entities
+            entities: processedData.entities,
+            metadata: {
+              processingTime: processedData.metadata?.processingTime || 0,
+              imageQuality: processedData.metadata?.imageQuality || 'unknown',
+              ocrMethod: processedData.metadata?.ocrMethod || 'tesseract',
+              preprocessingApplied: processedData.metadata?.preprocessingApplied || []
+            }
           }
         });
       } catch (processingError) {
@@ -667,8 +676,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('File cleanup skipped:', cleanupError);
         }
         
-        res.json({
-          success: true,
+        return res.status(200).json({
+          success: false,
           documentId: document.id,
           originalFileName: file.originalname,
           fileType: file.mimetype,
@@ -679,12 +688,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
     } catch (error) {
-      console.error("OCR test processing failed:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "OCR processing failed", 
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      console.error("Document processing failed:", error);
+      // Ensure error response is JSON
+      try {
+        return res.status(500).json({ 
+          success: false,
+          message: "OCR processing failed", 
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      } catch (responseError) {
+        console.error("Error sending error response:", responseError);
+        // Fallback if JSON response fails
+        res.status(500).end(JSON.stringify({
+          success: false,
+          message: "OCR processing failed",
+          error: "Internal server error"
+        }));
+      }
     }
   });
 
