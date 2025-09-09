@@ -6,6 +6,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { cacheService } from './cacheService';
 import { TextProcessor } from './textProcessor';
 import { PaddleOCREngine, EasyOCREngine, TrOCREngine, LanguageMapper } from './localOCREngines';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 interface OCRResult {
   text: string;
@@ -432,13 +436,12 @@ export class HybridOCRService {
       } else {
         // Fallback to Tesseract with handwriting settings
         const result = await this.tesseractHandwritingOCR(preprocessingResult.processedPath);
+        return {
+          ...result,
+          method: 'tesseract-handwriting',
+          handwritingDetected: true
+        };
       }
-      
-      return {
-        ...result,
-        method: 'trocr-handwriting',
-        handwritingDetected: true
-      };
     } catch (error) {
       console.warn('Handwriting OCR failed, falling back to standard OCR:', error);
       return await this.tesseractPipeline(preprocessingResult);

@@ -9,6 +9,7 @@ import { nanoid } from 'nanoid';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { cacheService } from './cacheService';
 import { TextProcessor } from './textProcessor';
+import { hybridOCRService } from './hybridOCRService';
 
 interface ProcessedDocument {
   text: string;
@@ -139,46 +140,78 @@ class DocumentProcessor {
           tsvData = cachedOCR.tsv || '';
           preprocessingApplied.push('cache-hit');
         } else {
-          // Enhanced image preprocessing pipeline with caching
-          const cachedProcessedPath = await cacheService.getCachedPreprocessedImage(imageHash);
-          let processedPath: string;
-          
-          if (cachedProcessedPath) {
-            processedPath = cachedProcessedPath;
-            imageQuality = 'cached';
-            preprocessingApplied.push('cached-preprocessing');
-          } else {
-            const preprocessingResult = await this.ultraAdvancedGovernmentDocumentPreprocessing(filePath);
-            processedPath = preprocessingResult.processedPath;
-            imageQuality = preprocessingResult.quality;
-            preprocessingApplied.push(...preprocessingResult.applied);
+          // Use the new Hybrid OCR Service for better accuracy
+          try {
+            const hybridResult = await hybridOCRService.processDocument(filePath, {
+              documentId,
+              useCloudOCR: false, // Always false for on-premise setup
+              useHandwritingRecognition: true,
+              extractLayout: true,
+              confidenceThreshold: 80
+            });
             
-            // Cache preprocessed image
-            await cacheService.cachePreprocessedImage(imageHash, processedPath);
+            text = hybridResult.text;
+            confidence = hybridResult.confidence;
+            detectedLanguage = hybridResult.language || 'mixed';
+            imageQuality = 'hybrid-processed';
+            hocrData = hybridResult.hocr || '';
+            tsvData = hybridResult.tsv || '';
+            preprocessingApplied.push(`hybrid-ocr-${hybridResult.method}`);
+            
+            // Cache the hybrid OCR result
+            await cacheService.cacheOCRResult(imageHash, {
+              text: hybridResult.text,
+              confidence: hybridResult.confidence,
+              language: detectedLanguage,
+              quality: imageQuality,
+              hocr: hocrData,
+              tsv: tsvData
+            });
+            
+            console.log(`✅ Hybrid OCR completed: ${hybridResult.method} (${hybridResult.confidence}%)`);
+            
+          } catch (hybridError) {
+            console.warn('Hybrid OCR failed, falling back to original pipeline:', hybridError);
+            
+            // Fallback to original OCR pipeline
+            const cachedProcessedPath = await cacheService.getCachedPreprocessedImage(imageHash);
+            let processedPath: string;
+            
+            if (cachedProcessedPath) {
+              processedPath = cachedProcessedPath;
+              imageQuality = 'cached';
+              preprocessingApplied.push('cached-preprocessing');
+            } else {
+              const preprocessingResult = await this.ultraAdvancedGovernmentDocumentPreprocessing(filePath);
+              processedPath = preprocessingResult.processedPath;
+              imageQuality = preprocessingResult.quality;
+              preprocessingApplied.push(...preprocessingResult.applied);
+              
+              // Cache preprocessed image
+              await cacheService.cachePreprocessedImage(imageHash, processedPath);
+            }
+            
+            // Auto-detect best language for OCR
+            detectedLanguage = await this.detectLanguage(processedPath);
+            
+            // Process image with WORLD-CLASS multi-engine OCR system
+            const ocrResult = await this.worldClassOCRProcessing(processedPath, detectedLanguage);
+            
+            text = ocrResult.text;
+            confidence = ocrResult.confidence;
+            hocrData = ocrResult.hocr;
+            tsvData = ocrResult.tsv;
+            preprocessingApplied.push(`fallback-ocr-${ocrResult.method}`);
+            
+            await cacheService.cacheOCRResult(imageHash, {
+              text: ocrResult.text,
+              confidence: ocrResult.confidence,
+              language: detectedLanguage,
+              quality: imageQuality,
+              hocr: hocrData,
+              tsv: tsvData
+            });
           }
-          
-          // Auto-detect best language for OCR
-          detectedLanguage = await this.detectLanguage(processedPath);
-          
-          // Process image with WORLD-CLASS multi-engine OCR system
-          const ocrResult = await this.worldClassOCRProcessing(processedPath, detectedLanguage);
-          
-          text = ocrResult.text;
-          confidence = ocrResult.confidence;
-          hocrData = ocrResult.hocr;
-          tsvData = ocrResult.tsv;
-          preprocessingApplied.push(`world-class-ocr-${ocrResult.method}`);
-          
-          await cacheService.cacheOCRResult(imageHash, {
-            text: ocrResult.text,
-            confidence: ocrResult.confidence,
-            language: detectedLanguage,
-            quality: imageQuality,
-            hocr: hocrData,
-            tsv: tsvData
-          });
-          
-          // Text and confidence already set from OCR result above
         }
         
         // Ultra-enhance OCR results with advanced text processing
