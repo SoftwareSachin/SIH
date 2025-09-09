@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import { storage } from '../storage';
 import { nanoid } from 'nanoid';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { cacheService } from './cacheService';
 
 interface ProcessedDocument {
   text: string;
@@ -113,23 +114,59 @@ class DocumentProcessor {
         imageQuality = result.quality;
         preprocessingApplied.push('pdf-to-image-conversion');
       } else if (fileType.startsWith('image/')) {
-        // Enhanced image preprocessing pipeline
-        const preprocessingResult = await this.enhancedPreprocessImage(filePath);
-        const processedPath = preprocessingResult.processedPath;
-        imageQuality = preprocessingResult.quality;
-        preprocessingApplied.push(...preprocessingResult.applied);
+        // Check cache first for faster processing
+        const imageHash = cacheService.generateImageHash(filePath);
+        const cachedOCR = await cacheService.getCachedOCRResult(imageHash);
         
-        // Auto-detect best language for OCR
-        detectedLanguage = await this.detectLanguage(processedPath);
-        
-        // Process image with OCR using optimized settings
-        const { data } = await this.ocrScheduler.addJob('recognize', processedPath, {
-          lang: detectedLanguage,
-          options: {
-            tessedit_pageseg_mode: '1', // Auto page segmentation with OSD
-            tessedit_char_blacklist: '~`$%^*()+=[]{}\\|;:"<>,#' // Remove problematic chars
+        if (cachedOCR) {
+          console.log('Using cached OCR result for performance');
+          text = cachedOCR.text;
+          confidence = cachedOCR.confidence;
+          detectedLanguage = cachedOCR.language;
+          imageQuality = cachedOCR.quality;
+          preprocessingApplied.push('cache-hit');
+        } else {
+          // Enhanced image preprocessing pipeline with caching
+          const cachedProcessedPath = await cacheService.getCachedPreprocessedImage(imageHash);
+          let processedPath: string;
+          
+          if (cachedProcessedPath) {
+            processedPath = cachedProcessedPath;
+            imageQuality = 'cached';
+            preprocessingApplied.push('cached-preprocessing');
+          } else {
+            const preprocessingResult = await this.enhancedPreprocessImage(filePath);
+            processedPath = preprocessingResult.processedPath;
+            imageQuality = preprocessingResult.quality;
+            preprocessingApplied.push(...preprocessingResult.applied);
+            
+            // Cache preprocessed image
+            await cacheService.cachePreprocessedImage(imageHash, processedPath);
           }
-        });
+          
+          // Auto-detect best language for OCR
+          detectedLanguage = await this.detectLanguage(processedPath);
+          
+          // Process image with OCR using optimized settings
+          const { data } = await this.ocrScheduler.addJob('recognize', processedPath, {
+            lang: detectedLanguage,
+            options: {
+              tessedit_pageseg_mode: '1', // Auto page segmentation with OSD
+              tessedit_char_blacklist: '~`$%^*()+=[]{}\\|;:"<>,#' // Remove problematic chars
+            }
+          });
+          
+          // Cache OCR results
+          await cacheService.cacheOCRResult(imageHash, {
+            text: data.text,
+            confidence: data.confidence,
+            language: detectedLanguage,
+            quality: imageQuality
+          });
+          
+          text = data.text;
+          confidence = data.confidence;
+        }
         
         // Enhance OCR results with AI if available
         const enhancement = await this.enhanceOCRWithAI(data.text, data.confidence);
