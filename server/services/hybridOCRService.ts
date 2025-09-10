@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { cacheService } from './cacheService';
 import { TextProcessor } from './textProcessor';
 import { PaddleOCREngine, EasyOCREngine, TrOCREngine, LanguageMapper } from './localOCREngines';
+import { comprehensiveOCRPipeline, ComprehensiveOCRResult } from './comprehensiveOCRPipeline';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -129,7 +130,7 @@ export class HybridOCRService {
   }
 
   /**
-   * Main OCR processing method implementing the hybrid pipeline
+   * Main OCR processing method implementing the comprehensive hybrid pipeline
    */
   async processDocument(imagePath: string, options: {
     documentId?: string;
@@ -138,6 +139,8 @@ export class HybridOCRService {
     useHandwritingRecognition?: boolean;
     extractLayout?: boolean;
     confidenceThreshold?: number;
+    useComprehensivePipeline?: boolean;
+    documentType?: string;
   } = {}): Promise<OCRResult> {
     const startTime = Date.now();
     const {
@@ -145,11 +148,55 @@ export class HybridOCRService {
       useCloudOCR = true,
       useHandwritingRecognition = true,
       extractLayout = true,
-      confidenceThreshold = 85
+      confidenceThreshold = 85,
+      useComprehensivePipeline = true,
+      documentType = 'fra-document'
     } = options;
 
     try {
-      console.log('🚀 Starting Hybrid OCR Pipeline...');
+      console.log('🚀 Starting Enhanced Hybrid OCR Pipeline...');
+      
+      // NEW: Use comprehensive pipeline if enabled
+      if (useComprehensivePipeline) {
+        console.log('🎯 Using Comprehensive OCR Pipeline with all guide improvements...');
+        
+        const comprehensiveResult = await comprehensiveOCRPipeline.processDocument(imagePath, {
+          extractBlueChannel: useHandwritingRecognition,
+          cropFields: true,
+          documentType,
+          useEnsemble: true,
+          useFieldSpecificOCR: true,
+          ocrMethod: 'hybrid',
+          useGazetteerValidation: true,
+          useLanguageModelCorrection: true,
+          saveForTraining: true,
+          confidenceThreshold,
+          qualityThreshold: 70
+        });
+
+        // Convert comprehensive result to legacy OCRResult format
+        const ocrResult: OCRResult = {
+          text: comprehensiveResult.text,
+          confidence: comprehensiveResult.confidence,
+          method: comprehensiveResult.method,
+          processingTime: comprehensiveResult.processingTime,
+          language: comprehensiveResult.preprocessing.scriptType,
+          layout: comprehensiveResult.ocrResults.mainResult?.layout,
+          entities: Object.values(comprehensiveResult.extractedFields || {}),
+          hocr: comprehensiveResult.ocrResults.mainResult?.hocr || '',
+          tsv: comprehensiveResult.ocrResults.mainResult?.tsv || '',
+          handwritingDetected: comprehensiveResult.preprocessing.handwritingDetected,
+          scriptType: comprehensiveResult.preprocessing.scriptType
+        };
+
+        console.log(`✅ Comprehensive OCR completed: ${ocrResult.confidence}% confidence, ${ocrResult.processingTime}ms`);
+        console.log(`🔍 Quality Score: ${comprehensiveResult.qualityScore}%, Human Review: ${comprehensiveResult.needsHumanReview ? 'REQUIRED' : 'NOT NEEDED'}`);
+        
+        return ocrResult;
+      }
+
+      // FALLBACK: Original hybrid pipeline for compatibility
+      console.log('📝 Using legacy hybrid pipeline...');
       
       // Step 1: Advanced preprocessing and document analysis
       const preprocessingResult = await this.advancedPreprocessing(imagePath);
@@ -190,7 +237,7 @@ export class HybridOCRService {
       
       ocrResult.processingTime = Date.now() - startTime;
       
-      console.log(`✅ Hybrid OCR completed: ${ocrResult.method}, ${ocrResult.confidence}% confidence, ${ocrResult.processingTime}ms`);
+      console.log(`✅ Legacy Hybrid OCR completed: ${ocrResult.method}, ${ocrResult.confidence}% confidence, ${ocrResult.processingTime}ms`);
       
       return ocrResult;
       
