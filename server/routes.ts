@@ -708,6 +708,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced FRA OCR Processing Endpoints
+  
+  // Dedicated FRA document processing endpoint
+  app.post('/api/fra/process', 
+    upload.single('document'), 
+    async (req: any, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    
+    try {
+      const { file } = req;
+      const { documentType = 'individual_forest_rights', state = 'all_states' } = req.body;
+      
+      if (!file) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "No FRA document uploaded" 
+        });
+      }
+
+      console.log(`🔄 Processing FRA document: ${file.originalname} (Type: ${documentType}, State: ${state})`);
+      
+      // Process with enhanced FRA OCR engine
+      const processedData = await documentProcessor.processDocument(file.path, file.mimetype);
+      
+      // Clean up uploaded file
+      try {
+        const fs = await import('fs');
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      } catch (cleanupError) {
+        console.log('File cleanup completed');
+      }
+      
+      return res.json({
+        success: true,
+        message: "FRA document processed successfully",
+        originalFileName: file.originalname,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        documentType,
+        state,
+        results: {
+          text: processedData.text,
+          confidence: processedData.confidence,
+          language: processedData.language,
+          entities: processedData.entities,
+          claimRecords: processedData.claimRecords || [],
+          metadata: {
+            processingTime: processedData.metadata?.processingTime || 0,
+            imageQuality: processedData.metadata?.imageQuality || 'good',
+            ocrMethod: processedData.metadata?.ocrMethod || 'Enhanced-FRA-OCR',
+            preprocessingApplied: processedData.metadata?.preprocessingApplied || [],
+            pageCount: processedData.metadata?.pageCount || 1
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error: any) {
+      console.error('❌ FRA document processing failed:', error);
+      return res.status(500).json({
+        success: false,
+        message: "FRA document processing failed",
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // OCR health check endpoint
   app.get('/api/test/ocr/health', async (req, res) => {
     try {

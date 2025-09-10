@@ -30,6 +30,8 @@ export default function OCRProcessor() {
     try {
       const formData = new FormData();
       formData.append('document', selectedFile);
+      formData.append('documentType', 'individual_forest_rights');
+      formData.append('state', 'all_states');
 
       // Simulate upload progress
       const progressInterval = setInterval(() => {
@@ -42,7 +44,8 @@ export default function OCRProcessor() {
         });
       }, 500);
 
-      const response = await fetch('/api/test/ocr/process', {
+      // Use enhanced FRA processing endpoint
+      const response = await fetch('/api/fra/process', {
         method: 'POST',
         body: formData,
       });
@@ -54,15 +57,16 @@ export default function OCRProcessor() {
         const result = await response.json();
         setOcrResult(result);
       } else {
-        console.error('OCR processing failed');
+        const errorResult = await response.json();
+        console.error('FRA OCR processing failed:', errorResult);
         setOcrResult({
-          error: 'OCR processing failed. Please try again.',
+          error: errorResult.message || 'FRA OCR processing failed. Please try again.',
           text: '',
           confidence: 0
         });
       }
     } catch (error) {
-      console.error('Error processing document:', error);
+      console.error('Error processing FRA document:', error);
       setOcrResult({
         error: 'Network error. Please check your connection.',
         text: '',
