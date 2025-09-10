@@ -59,12 +59,15 @@ export class HybridOCRService {
       
       for (let i = 0; i < workerCount; i++) {
         const worker = await createWorker('eng+hin+ben+ori+tel+guj+mar+kan+tam+mal+pan+urd');
+        // Tesseract 5 LSTM optimal configuration for FRA documents
         await worker.setParameters({
           preserve_interword_spaces: '1',
-          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?()-/\\@#$%^&*+=[]{}"\' ।।०१२३४५६७८९ाैेीोूंँ',
           tessjs_create_hocr: '1',
           tessjs_create_tsv: '1',
-          tessjs_create_box: '1'
+          tessjs_create_box: '1',
+          tessjs_create_unlv: '1',
+          tessjs_create_osd: '1',
+          tessjs_minimum_confidence: '60'
         });
         
         this.workers.push(worker);
