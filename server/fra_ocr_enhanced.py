@@ -57,34 +57,78 @@ class EnhancedFRAOCR:
         # Enhanced FRA document types with processing strategies
         self.fra_document_types = {
             'individual_forest_rights': {
+                'keywords': [
+                    'individual forest rights', 'ifr', 'individual rights', 'व्यक्तिगत वन अधिकार', 
+                    'পৃথক বন অধিকার', 'ବ୍ୟକ୍ତିଗତ ବନ ଅଧିକାର', 'వ్యక్తిగత అటవీ హక్కులు',
+                    'form a', 'schedule i', 'individual patta'
+                ],
                 'psm': 6,
                 'preprocessing': 'government_form',
-                'entity_focus': ['patta_holders', 'survey_numbers', 'coordinates']
+                'entity_focus': ['patta_holders', 'survey_numbers', 'coordinates', 'village_names', 'claim_numbers'],
+                'lang_priority': ['hin', 'eng']
+            },
+            'community_forest_resource_rights': {
+                'keywords': [
+                    'community forest resource rights', 'cfr', 'community forest rights',
+                    'सामुदायिक वन संसाधन अधिकार', 'সামাজিক বন সম্পদ অধিকার', 
+                    'ସାମୁଦାୟିକ ବନ ସମ୍ପଦ ଅଧିକାର', 'సామాజిక అటవీ వనరుల హక్కులు',
+                    'form b', 'schedule ii', 'community forest'
+                ],
+                'psm': 4,
+                'preprocessing': 'community_document',
+                'entity_focus': ['village_names', 'coordinates', 'boundaries', 'survey_numbers', 'forest_areas'],
+                'lang_priority': ['hin', 'eng']
             },
             'community_rights': {
+                'keywords': [
+                    'community rights', 'cr', 'community use rights', 'सामुदायिक अधिकार', 
+                    'সামাজিক অধিকার', 'ସାମୁଦାୟିକ ଅଧିକାର', 'సామాజిక హక్కులు',
+                    'form c', 'schedule iii', 'community patta'
+                ],
                 'psm': 4,
                 'preprocessing': 'government_form',
-                'entity_focus': ['village_names', 'community_leaders', 'forest_areas']
-            },
-            'community_forest_resource': {
-                'psm': 3,
-                'preprocessing': 'mixed_content',
-                'entity_focus': ['forest_areas', 'boundaries', 'management_committee']
+                'entity_focus': ['village_names', 'coordinates', 'boundaries', 'survey_numbers', 'claim_numbers'],
+                'lang_priority': ['hin', 'eng']
             },
             'patta_document': {
+                'keywords': [
+                    'patta', 'title deed', 'ownership document', 'पट्टा', 'পাট্টা', 'ପଟ୍ଟା', 'పట్టా',
+                    'land title', 'forest rights patta', 'अधिकार पट्टा'
+                ],
                 'psm': 6,
                 'preprocessing': 'official_document',
-                'entity_focus': ['patta_numbers', 'patta_holders', 'survey_numbers']
+                'entity_focus': ['patta_holders', 'survey_numbers', 'coordinates', 'village_names', 'officer_names'],
+                'lang_priority': ['hin', 'eng']
             },
             'verification_report': {
+                'keywords': [
+                    'verification', 'report', 'inspection', 'सत्यापन', 'যাচাই', 'ଯାଞ୍ଚ', 'ధృవీకరణ',
+                    'verification report', 'field verification', 'survey report'
+                ],
                 'psm': 3,
                 'preprocessing': 'mixed_content',
-                'entity_focus': ['verification_dates', 'verification_officers', 'recommendations']
+                'entity_focus': ['patta_holders', 'village_names', 'coordinates', 'survey_numbers', 'officer_names'],
+                'lang_priority': ['eng', 'hin']
             },
             'gram_sabha_resolution': {
+                'keywords': [
+                    'gram sabha', 'resolution', 'meeting', 'ग्राम सभा', 'গ্রাম সভা', 'ଗ୍ରାମ ସଭା', 'గ్రామ సభ',
+                    'village assembly', 'sabha resolution', 'प्रस्ताव'
+                ],
                 'psm': 4,
                 'preprocessing': 'government_form',
-                'entity_focus': ['resolution_numbers', 'village_names', 'meeting_dates']
+                'entity_focus': ['village_names', 'dates', 'boundaries', 'patta_holders'],
+                'lang_priority': ['hin', 'eng']
+            },
+            'claim_application': {
+                'keywords': [
+                    'claim application', 'application form', 'दावा आवेदन', 'দাবি আবেদন', 
+                    'ଦାବି ଆବେଦନ', 'దావా దరఖాస్తు', 'forest rights claim'
+                ],
+                'psm': 6,
+                'preprocessing': 'government_form',
+                'entity_focus': ['patta_holders', 'village_names', 'coordinates', 'survey_numbers', 'claim_numbers'],
+                'lang_priority': ['hin', 'eng']
             }
         }
         
