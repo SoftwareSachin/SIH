@@ -783,6 +783,7 @@ class EnhancedFRAOCR:
                 'type': 'fra_single',
                 'text': text.strip(),
                 'confidence': round(avg_confidence, 2),
+                'quality_score': quality_assessment['overall_score'],  # FIX: Add quality_score field
                 'quality_assessment': quality_assessment,
                 'language': language,
                 'document_type': document_type,

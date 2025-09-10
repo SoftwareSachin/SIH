@@ -95,10 +95,12 @@ export class PythonOCRClient {
           average_confidence: ocrResult.average_quality_score
         };
       } else if (ocrResult.type === 'fra_single') {
-        console.log(`✅ FRA OCR completed: ${ocrResult.quality_score}% quality, ${ocrResult.method}`);
+        // FIX: Ensure quality_score is properly used as confidence
+        const qualityScore = ocrResult.quality_score || ocrResult.confidence || 0;
+        console.log(`✅ FRA OCR completed: ${qualityScore}% quality, ${ocrResult.method}`);
         return {
           text: ocrResult.text,
-          confidence: ocrResult.quality_score,
+          confidence: Math.round(qualityScore), // Ensure it's a proper number
           language: ocrResult.language,
           processing_time: ocrResult.processing_time,
           method: ocrResult.method,

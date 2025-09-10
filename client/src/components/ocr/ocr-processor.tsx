@@ -237,7 +237,9 @@ export default function OCRProcessor() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Confidence Score:</span>
                       <Badge variant={ocrResult.confidence > 80 ? 'default' : ocrResult.confidence > 60 ? 'secondary' : 'destructive'}>
-                        {ocrResult.confidence}%
+                        {ocrResult.confidence !== undefined && ocrResult.confidence !== null && !isNaN(ocrResult.confidence) 
+                          ? `${Math.round(ocrResult.confidence)}%` 
+                          : 'Processing...'}
                       </Badge>
                     </div>
 
