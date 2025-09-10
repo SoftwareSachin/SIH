@@ -55,7 +55,7 @@ export default function OCRProcessor() {
 
       if (response.ok) {
         const result = await response.json();
-        // FIX: Handle nested results structure for FRA API response
+        // Handle nested results structure for FRA API response
         if (result.results) {
           // Flatten the results structure for the UI
           setOcrResult({
@@ -250,11 +250,9 @@ export default function OCRProcessor() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Confidence Score:</span>
                       <Badge variant={(ocrResult.confidence || 0) > 80 ? 'default' : (ocrResult.confidence || 0) > 60 ? 'secondary' : 'destructive'}>
-                        {ocrResult.confidence !== undefined && ocrResult.confidence !== null && !isNaN(ocrResult.confidence) && ocrResult.confidence > 0
-                          ? `${Math.round(ocrResult.confidence)}%` 
-                          : ocrResult.confidence === 0 
-                            ? '0%' 
-                            : 'Processing...'}
+{ocrResult.confidence !== undefined && ocrResult.confidence !== null && !isNaN(Number(ocrResult.confidence))
+                          ? `${Math.round(Number(ocrResult.confidence))}%`
+                          : 'Processing...'}
                       </Badge>
                     </div>
 
