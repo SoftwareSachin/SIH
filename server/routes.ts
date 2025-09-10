@@ -721,6 +721,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test improved FRA OCR with uploaded image
+  app.post('/api/test/ocr/fra', upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image file uploaded' });
+      }
+
+      console.log(`🧪 Testing improved FRA OCR with: ${req.file.originalname}`);
+      
+      // Use the new optimized FRA OCR function
+      const { optimizedTesseractEngine } = await import('./services/optimizedTesseractEngine');
+      const result = await optimizedTesseractEngine.processFRADocument(req.file.path);
+      
+      // Clean up uploaded file
+      try {
+        const fs = await import('fs');
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (cleanupError) {
+        console.log('File cleanup skipped:', cleanupError);
+      }
+      
+      res.json({
+        success: true,
+        fileName: req.file.originalname,
+        ocrResults: {
+          text: result.text,
+          confidence: result.confidence,
+          method: result.method,
+          processingTime: result.processingTime,
+          tokens: result.tokens.length
+        },
+        improvements: [
+          'English-focused language model',
+          'Form-optimized page segmentation (PSM 6)',
+          'Character whitelist for FRA documents',
+          'Enhanced text cleaning and normalization'
+        ]
+      });
+      
+    } catch (error) {
+      console.error('FRA OCR test error:', error);
+      res.status(500).json({ 
+        error: 'FRA OCR test failed', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
   // Test NER extraction with sample FRA text
   app.post('/api/test/ner', async (req, res) => {
     try {

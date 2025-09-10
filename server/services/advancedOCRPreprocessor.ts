@@ -174,7 +174,7 @@ export class AdvancedOCRPreprocessor {
       image = image.grayscale();
 
       // Step 4: Adaptive thresholding simulation using gamma correction
-      image = image.gamma(0.8); // Adjust gamma for better thresholding
+      image = image.gamma(1.2); // Adjust gamma for better thresholding (valid range 1.0-3.0)
 
       await image.png({ quality: 100, compressionLevel: 0 }).toFile(outputPath);
 
