@@ -88,12 +88,18 @@ class EnhancedFRAOCR:
             }
         }
         
-        # Enhanced FRA entity patterns
+        # Enhanced FRA entity patterns with state-specific variations
         self.fra_patterns = {
             'patta_holders': [
-                r'(?:name|नाम|নাম|ନାମ|పేరు)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+)',
-                r'(?:patta\s+holder|पट्टा\s+धारक)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+)',
-                r'(?:applicant|आवेदक|আবেদনকারী|ଆବେଦନକାରୀ|దరఖాస్తుదారు)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+)'
+                # Universal patterns
+                r'(?:name|नाम|নাম|ନାମ|పేరు)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{3,50})',
+                r'(?:patta\s+holder|पट्टा\s+धारक|পাট্টা\s+ধারক|ପାଟ୍ଟା\s+ଧାରୀ|పట్టా\s+దారు)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{3,50})',
+                r'(?:applicant|आवेदक|আবেদনকারী|ଆବେଦନକାରୀ|దరఖాస్తుదారు)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{3,50})',
+                # State-specific patterns
+                r'(?:श्री|श्रीमती|शिव|राम|प्रकाश|कुमार)\s+([A-Za-z\u0900-\u097F\s]{3,40})',  # MP common prefixes
+                r'(?:মোঃ|শ্রী|শ্রীমতী)\s+([A-Za-z\u0980-\u09FF\s]{3,40})',  # Tripura Bengali patterns
+                r'(?:ଶ୍ରୀ|ଶ୍ରୀମତୀ)\s+([A-Za-z\u0B00-\u0B7F\s]{3,40})',  # Odisha Odia patterns
+                r'(?:శ్రీ|శ్రీమతి)\s+([A-Za-z\u0C00-\u0C7F\s]{3,40})'  # Telangana Telugu patterns
             ],
             'village_names': [
                 r'(?:village|गांव|গ্রাম|ଗାଁ|గ్రామం)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+)',
@@ -112,9 +118,18 @@ class EnhancedFRAOCR:
                 r'(?:area|क्षेत्रफल|এলাকা|କ୍ଷେତ୍ର|వైశాల్యం)\s*:?\s*(\d+(?:\.\d+)?)\s*(?:hectare|acre|ha|ac)'
             ],
             'coordinates': [
-                r'(\d{1,2}[°\s]*\d{1,2}[\'\s]*\d{0,2}["\s]*[NSnsEWew]?)',
+                # Enhanced coordinate patterns for FRA target states
+                r'(\d{1,2}[°\s]*\d{1,2}[\'\s′]*\d{0,2}["\s″]*[NSnsEWew]?)',
                 r'(?:lat|latitude|अक्षांश|অক্ষাংশ|ଅକ୍ଷାଂଶ|అక్షాంశం)\s*:?\s*([\d°\'"NSEWnsew\s.-]+)',
-                r'(?:long|longitude|देशांतर|দ্রাঘিমাংশ|ଦ୍ରାଘିମା|రేఖాంశం)\s*:?\s*([\d°\'"NSEWnsew\s.-]+)'
+                r'(?:long|longitude|देशांतर|দ্রাঘিমাংশ|ଦ୍ରାଘିମା|రేఖాంశం)\s*:?\s*([\d°\'"NSEWnsew\s.-]+)',
+                # GPS coordinate patterns for mobile surveys
+                r'GPS\s*:?\s*(\d{1,2}\.\d+)[,\s]+(\d{1,3}\.\d+)',
+                r'(?:N|North)\s*(\d{1,2}[°\s]*\d{1,2}[\'\s]*\d{0,2}["\s]*)\s*(?:E|East)\s*(\d{1,3}[°\s]*\d{1,2}[\'\s]*\d{0,2}["\s]*)',
+                # Decimal degree patterns
+                r'(\d{1,2}\.\d{4,6})[,\s]*(\d{1,3}\.\d{4,6})',
+                # State-specific coordinate ranges for validation
+                # MP: 21°-26°N, 74°-82°E | Tripura: 22°-25°N, 91°-93°E | Odisha: 17°-22°N, 81°-87°E | Telangana: 15°-20°N, 77°-81°E
+                r'(?:2[1-6]|1[7-9])[°\s]*\d{1,2}[\'\s]*\d{0,2}["\s]*[Nn]?\s*[,\s]*(?:7[4-9]|8[0-7]|9[1-3])[°\s]*\d{1,2}[\'\s]*\d{0,2}["\s]*[Ee]?'
             ],
             'claim_numbers': [
                 r'(?:claim|application|दावा|আবেদন|ଦାବି|దావా)\s*(?:no|number)?\s*:?\s*([A-Z0-9/-]+)',
@@ -133,8 +148,149 @@ class EnhancedFRAOCR:
             ]
         }
         
+        # Verify critical dependencies on initialization
+        self._verify_dependencies()
+        
         print("✅ Enhanced FRA OCR Engine initialized with advanced capabilities", file=sys.stderr)
         print(f"✅ OpenCV support: {'Yes' if HAS_OPENCV else 'No (fallback mode)'}", file=sys.stderr)
+
+    def _verify_dependencies(self):
+        """
+        Verify critical dependencies and provide actionable error messages
+        """
+        issues = []
+        
+        # Check Tesseract
+        try:
+            import pytesseract
+            pytesseract.get_tesseract_version()
+            print("✅ Tesseract OCR engine verified", file=sys.stderr)
+        except Exception as e:
+            issues.append("❌ Tesseract not found. Install with: sudo apt-get install tesseract-ocr")
+            issues.append(f"   Tesseract error: {e}")
+        
+        # Check language data for target states
+        try:
+            available_langs = pytesseract.get_languages()
+            required_langs = ['eng', 'hin', 'ben', 'ori', 'tel']
+            missing_langs = [lang for lang in required_langs if lang not in available_langs]
+            
+            if missing_langs:
+                issues.append(f"❌ Missing language data: {missing_langs}")
+                issues.append("   Install with: sudo apt-get install tesseract-ocr-hin tesseract-ocr-ben tesseract-ocr-ori tesseract-ocr-tel")
+            else:
+                print(f"✅ All required languages available: {required_langs}", file=sys.stderr)
+        except:
+            issues.append("❌ Could not verify Tesseract language data")
+        
+        # Check PDF processing capability
+        try:
+            from pdf2image import convert_from_path
+            # Test with a minimal check (no actual conversion)
+            print("✅ PDF processing (pdf2image) available", file=sys.stderr)
+        except ImportError:
+            issues.append("❌ pdf2image not found. Install with: pip install pdf2image")
+        except Exception as e:
+            if "poppler" in str(e).lower():
+                issues.append("❌ Poppler not found. Install with: sudo apt-get install poppler-utils")
+            else:
+                issues.append(f"❌ PDF processing issue: {e}")
+        
+        # Report any critical issues
+        if issues:
+            print("\n".join(issues), file=sys.stderr)
+            print("⚠️  Some dependencies missing - functionality may be limited", file=sys.stderr)
+        else:
+            print("✅ All critical dependencies verified", file=sys.stderr)
+
+    def parse_coordinate(self, coord_str: str) -> tuple:
+        """
+        Parse coordinate string to decimal degrees, handling DMS, DM, and decimal formats
+        """
+        try:
+            coord_str = coord_str.strip()
+            
+            # DMS format: 21°15'30"N or 21° 15' 30" N
+            dms_pattern = r'(\d{1,3})[°\s]*(\d{1,2})[\'\′\s]*(\d{0,2})["\″\s]*([NSEWnsew]?)'
+            dms_match = re.search(dms_pattern, coord_str)
+            
+            if dms_match:
+                degrees = float(dms_match.group(1))
+                minutes = float(dms_match.group(2)) if dms_match.group(2) else 0
+                seconds = float(dms_match.group(3)) if dms_match.group(3) else 0
+                direction = dms_match.group(4).upper() if dms_match.group(4) else ''
+                
+                # Convert to decimal degrees
+                decimal = degrees + minutes/60 + seconds/3600
+                
+                # Apply direction
+                if direction in ['S', 'W']:
+                    decimal = -decimal
+                    
+                return decimal, True
+            
+            # Decimal degrees format: 21.2567
+            decimal_pattern = r'(\d{1,3}\.\d+)'
+            decimal_match = re.search(decimal_pattern, coord_str)
+            
+            if decimal_match:
+                return float(decimal_match.group(1)), True
+                
+            return 0.0, False
+            
+        except Exception:
+            return 0.0, False
+
+    def validate_coordinates(self, coord_str: str) -> bool:
+        """
+        Validate if extracted coordinates are within FRA target state boundaries
+        """
+        try:
+            # Handle different coordinate formats and extract lat/lon pairs
+            patterns = [
+                # Decimal: 21.5, 74.8 or 21.5 74.8
+                r'(\d{1,2}\.\d+)[,\s]+(\d{1,3}\.\d+)',
+                # DMS pairs: 21°15'N 74°30'E
+                r'(\d{1,2}[°\s]*\d{1,2}[\'\s]*\d{0,2}["\s]*[NSns]?)[,\s]*(\d{1,3}[°\s]*\d{1,2}[\'\s]*\d{0,2}["\s]*[EWew]?)',
+                # Separated by keywords: Lat: 21.5 Lon: 74.8
+                r'(?:lat|latitude)[:\s]*(\d{1,2}(?:\.\d+)?)[,\s]*(?:lon|longitude)[:\s]*(\d{1,3}(?:\.\d+)?)'
+            ]
+            
+            lat, lon = 0.0, 0.0
+            found_valid_pair = False
+            
+            for pattern in patterns:
+                matches = re.search(pattern, coord_str, re.IGNORECASE)
+                if matches:
+                    lat_str, lon_str = matches.groups()
+                    lat, lat_valid = self.parse_coordinate(lat_str)
+                    lon, lon_valid = self.parse_coordinate(lon_str)
+                    
+                    if lat_valid and lon_valid:
+                        found_valid_pair = True
+                        break
+            
+            if not found_valid_pair:
+                return False
+                
+            # Define precise state boundaries for FRA target states
+            boundaries = {
+                'madhya_pradesh': {'lat': (21.0, 26.5), 'lon': (74.0, 82.0)},
+                'tripura': {'lat': (22.5, 25.0), 'lon': (91.0, 93.0)},
+                'odisha': {'lat': (17.5, 22.5), 'lon': (81.0, 87.5)},
+                'telangana': {'lat': (15.5, 20.0), 'lon': (77.0, 81.5)}
+            }
+            
+            # Check if coordinates fall within any target state
+            for state, bounds in boundaries.items():
+                if (bounds['lat'][0] <= lat <= bounds['lat'][1] and 
+                    bounds['lon'][0] <= lon <= bounds['lon'][1]):
+                    return True
+                    
+            return False
+            
+        except Exception:
+            return False
 
     def detect_fra_document_type(self, text: str) -> str:
         """
@@ -157,7 +313,15 @@ class EnhancedFRAOCR:
             scores[doc_type] = score
         
         # Return the document type with highest score, or default
-        return max(scores, key=scores.get) if scores and max(scores.values()) > 0 else 'individual_forest_rights'
+        # Enhanced scoring with context awareness
+        detected_type = max(scores, key=scores.get) if scores and max(scores.values()) > 0 else 'individual_forest_rights'
+        
+        # Secondary validation using document structure
+        if 'table' in text.lower() or 'list' in text.lower():
+            if detected_type == 'individual_forest_rights':
+                detected_type = 'community_rights'  # Likely community list
+                
+        return detected_type
 
     def detect_document_language(self, image: Image.Image) -> str:
         """
@@ -305,8 +469,25 @@ class EnhancedFRAOCR:
                     for pattern in self.fra_patterns[entity_type]:
                         matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
                         if matches:
-                            # Clean and deduplicate matches
-                            clean_matches = [match.strip() for match in matches if len(match.strip()) > 1]
+                            # Handle both string matches and tuple matches safely
+                            clean_matches = []
+                            for match in matches:
+                                if isinstance(match, tuple):
+                                    # For coordinate patterns that return tuples (lat, lon)
+                                    if entity_type == 'coordinates':
+                                        # Join coordinate tuples meaningfully
+                                        coord_str = ', '.join(str(m).strip() for m in match if str(m).strip())
+                                        if len(coord_str) > 3:  # Minimum meaningful length
+                                            clean_matches.append(coord_str)
+                                    else:
+                                        # For other patterns, take the first non-empty group
+                                        for group in match:
+                                            if isinstance(group, str) and len(group.strip()) > 1:
+                                                clean_matches.append(group.strip())
+                                                break
+                                elif isinstance(match, str) and len(match.strip()) > 1:
+                                    clean_matches.append(match.strip())
+                            
                             entities[entity_type].extend(clean_matches)
             
             # Deduplicate and limit results
@@ -365,31 +546,90 @@ class EnhancedFRAOCR:
         
         return advanced_entities
 
-    def assess_fra_quality(self, text: str, confidence: float, entities: Dict) -> int:
+    def assess_fra_quality(self, text: str, confidence: float, entities: Dict) -> Dict[str, Any]:
         """
-        Assess the quality of FRA document OCR
+        Comprehensive quality assessment for FRA documents with detailed scoring
         """
-        quality_score = 0
+        assessment = {
+            'overall_score': 0,
+            'confidence_score': 0,
+            'entity_score': 0,
+            'structure_score': 0,
+            'content_score': 0,
+            'validation_score': 0,
+            'recommendations': [],
+            'requires_manual_review': False
+        }
         
-        # Base score from OCR confidence
-        quality_score += min(confidence, 100) * 0.4
+        # 1. Base confidence assessment (40% weight)
+        confidence_score = min(confidence, 100) * 0.4
+        assessment['confidence_score'] = round(confidence_score, 2)
         
-        # Entity detection bonus
-        entity_count = sum(len(entity_list) for entity_list in entities.values())
-        quality_score += min(entity_count * 5, 30)
+        # 2. Entity extraction quality (25% weight)
+        critical_entities = ['patta_holders', 'village_names', 'survey_numbers', 'coordinates']
+        found_critical = sum(1 for entity in critical_entities if entities.get(entity))
+        entity_score = (found_critical / len(critical_entities)) * 25
+        assessment['entity_score'] = round(entity_score, 2)
         
-        # Text length and structure assessment
-        if len(text) > 100:
-            quality_score += 10
-        if len(text) > 500:
-            quality_score += 10
+        # 3. Document structure assessment (15% weight)
+        structure_indicators = {
+            'has_headers': any(word in text.upper() for word in ['FOREST RIGHTS', 'PATTA', 'CLAIM']),
+            'has_colon_fields': ':' in text,
+            'has_numbers': bool(re.search(r'\d+', text)),
+            'proper_length': 100 < len(text) < 5000
+        }
+        structure_score = sum(structure_indicators.values()) / len(structure_indicators) * 15
+        assessment['structure_score'] = round(structure_score, 2)
         
-        # Keyword presence for FRA documents
-        fra_keywords = ['forest', 'rights', 'act', 'patta', 'claim', 'verification']
-        keyword_score = sum(5 for keyword in fra_keywords if keyword.lower() in text.lower())
-        quality_score += min(keyword_score, 20)
+        # 4. FRA-specific content validation (10% weight)
+        fra_terms = {
+            'hindi': ['वन अधिकार', 'पट्टा', 'दावा', 'सर्वे'],
+            'bengali': ['বন অধিকার', 'পাট্টা', 'দাবি'],
+            'odia': ['ବନ ଅଧିକାର', 'ପଟ୍ଟା', 'ଦାବି'],
+            'telugu': ['అటవీ హక్కులు', 'పట్టా', 'దావా'],
+            'english': ['forest rights', 'patta', 'claim', 'survey', 'hectare']
+        }
         
-        return min(int(quality_score), 100)
+        content_matches = 0
+        for lang_terms in fra_terms.values():
+            content_matches += sum(1 for term in lang_terms if term.lower() in text.lower())
+        
+        content_score = min(content_matches * 2, 10)
+        assessment['content_score'] = round(content_score, 2)
+        
+        # 5. Coordinate validation (10% weight)
+        validation_score = 0
+        if entities.get('coordinates'):
+            valid_coords = sum(1 for coord in entities['coordinates'] if self.validate_coordinates(coord))
+            if valid_coords > 0:
+                validation_score = 10
+            elif entities['coordinates']:
+                validation_score = 5  # Coordinates found but not validated
+                assessment['recommendations'].append('Coordinates found but outside expected state boundaries')
+        
+        assessment['validation_score'] = validation_score
+        
+        # Calculate overall score
+        overall = (assessment['confidence_score'] + assessment['entity_score'] + 
+                  assessment['structure_score'] + assessment['content_score'] + 
+                  assessment['validation_score'])
+        assessment['overall_score'] = round(overall, 2)
+        
+        # Generate recommendations and review flags
+        if assessment['overall_score'] < 60:
+            assessment['requires_manual_review'] = True
+            assessment['recommendations'].append('Low quality OCR - manual review recommended')
+        
+        if assessment['confidence_score'] < 30:
+            assessment['recommendations'].append('Poor OCR confidence - consider image preprocessing')
+        
+        if assessment['entity_score'] < 15:
+            assessment['recommendations'].append('Few critical entities found - check document type')
+        
+        if not any(entities.get(entity) for entity in critical_entities):
+            assessment['recommendations'].append('No critical FRA entities detected - verify document relevance')
+        
+        return assessment
 
     def process_fra_document(self, file_path: str) -> Dict[str, Any]:
         """
@@ -462,8 +702,8 @@ class EnhancedFRAOCR:
             # Extract FRA entities
             entities = self.extract_enhanced_fra_entities(text, document_type)
             
-            # Assess quality
-            quality_score = self.assess_fra_quality(text, avg_confidence, entities)
+            # Comprehensive quality assessment
+            quality_assessment = self.assess_fra_quality(text, avg_confidence, entities)
             
             processing_time = time.time() - start_time
             
@@ -471,7 +711,7 @@ class EnhancedFRAOCR:
                 'type': 'fra_single',
                 'text': text.strip(),
                 'confidence': round(avg_confidence, 2),
-                'quality_score': quality_score,
+                'quality_assessment': quality_assessment,
                 'language': language,
                 'document_type': document_type,
                 'entities': entities,
@@ -566,29 +806,210 @@ class EnhancedFRAOCR:
                 'timestamp': time.time()
             }
 
+    def process_fra_batch(self, file_paths: list, max_workers: int = 3) -> dict:
+        """
+        Process multiple FRA documents efficiently using multiprocessing for legacy archive digitization
+        """
+        try:
+            import multiprocessing as mp
+            import concurrent.futures
+            from functools import partial
+            
+            start_time = time.time()
+            results = []
+            failed_files = []
+            stats = {
+                'total_files': len(file_paths),
+                'processed': 0,
+                'failed': 0,
+                'total_pages': 0,
+                'avg_confidence': 0,
+                'processing_time': 0
+            }
+            
+            print(f"Starting parallel batch processing of {len(file_paths)} FRA documents with {max_workers} workers", file=sys.stderr)
+            
+            # Use ProcessPoolExecutor for true parallel processing
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all files for processing
+                future_to_file = {
+                    executor.submit(self._process_file_standalone, fp): fp 
+                    for fp in file_paths
+                }
+                
+                # Process completed futures as they finish
+                for future in concurrent.futures.as_completed(future_to_file):
+                    file_path = future_to_file[future]
+                    try:
+                        result = future.result()
+                        if result.get('type') == 'error':
+                            failed_files.append({
+                                'file': file_path, 
+                                'error': result.get('error', 'Unknown error')
+                            })
+                            stats['failed'] += 1
+                        else:
+                            results.append(result)
+                            stats['processed'] += 1
+                            # Count pages properly
+                            if result.get('total_pages'):
+                                stats['total_pages'] += result['total_pages']
+                            elif result.get('type') == 'fra_batch':
+                                stats['total_pages'] += result.get('total_pages', 1)
+                            else:
+                                stats['total_pages'] += 1
+                        
+                        # Progress reporting
+                        completed = stats['processed'] + stats['failed']
+                        print(f"Progress: {completed}/{stats['total_files']} files processed", file=sys.stderr)
+                        
+                    except Exception as e:
+                        failed_files.append({'file': file_path, 'error': str(e)})
+                        stats['failed'] += 1
+                        print(f"Error processing {file_path}: {e}", file=sys.stderr)
+            
+            # Calculate statistics
+            if results:
+                confidences = []
+                for r in results:
+                    if r.get('confidence') is not None:
+                        confidences.append(r['confidence'])
+                    elif r.get('average_confidence') is not None:
+                        confidences.append(r['average_confidence'])
+                
+                if confidences:
+                    stats['avg_confidence'] = round(sum(confidences) / len(confidences), 2)
+            
+            stats['processing_time'] = round(time.time() - start_time, 2)
+            
+            # Generate batch summary
+            batch_summary = {
+                'type': 'fra_batch_archive',
+                'statistics': stats,
+                'results': results,
+                'failed_files': failed_files,
+                'batch_quality': self._assess_batch_quality(results),
+                'processing_method': 'multiprocessing',
+                'timestamp': time.time()
+            }
+            
+            print(f"Batch processing completed: {stats['processed']}/{stats['total_files']} files processed in {stats['processing_time']}s", file=sys.stderr)
+            return batch_summary
+            
+        except Exception as e:
+            print(f"Batch processing error: {e}", file=sys.stderr)
+            return {
+                'type': 'batch_error',
+                'error': str(e),
+                'timestamp': time.time()
+            }
+    
+    @staticmethod
+    def _process_file_standalone(file_path: str) -> dict:
+        """
+        Standalone method for multiprocessing - creates its own OCR engine instance
+        """
+        try:
+            # Create fresh OCR engine instance for this process
+            ocr_engine = EnhancedFRAOCR()
+            result = ocr_engine.process_fra_document(file_path)
+            return result
+        except Exception as e:
+            return {
+                'type': 'error',
+                'error': f'Failed to process {file_path}: {str(e)}',
+                'file_path': file_path,
+                'timestamp': time.time()
+            }
+    
+    def _assess_batch_quality(self, results: list) -> dict:
+        """
+        Assess overall quality of batch processing
+        """
+        if not results:
+            return {'overall_grade': 'F', 'summary': 'No documents processed successfully'}
+        
+        # Aggregate quality metrics
+        confidences = [r.get('confidence', 0) for r in results if 'confidence' in r]
+        avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+        
+        high_quality = sum(1 for c in confidences if c >= 80)
+        medium_quality = sum(1 for c in confidences if 60 <= c < 80)
+        low_quality = sum(1 for c in confidences if c < 60)
+        
+        # Calculate grade
+        if avg_confidence >= 85:
+            grade = 'A'
+        elif avg_confidence >= 75:
+            grade = 'B'
+        elif avg_confidence >= 65:
+            grade = 'C'
+        elif avg_confidence >= 50:
+            grade = 'D'
+        else:
+            grade = 'F'
+        
+        return {
+            'overall_grade': grade,
+            'average_confidence': round(avg_confidence, 2),
+            'quality_distribution': {
+                'high_quality': high_quality,
+                'medium_quality': medium_quality,
+                'low_quality': low_quality
+            },
+            'total_documents': len(results),
+            'recommendations': self._generate_batch_recommendations(avg_confidence, low_quality, len(results))
+        }
+    
+    def _generate_batch_recommendations(self, avg_confidence: float, low_quality_count: int, total_count: int) -> list:
+        """
+        Generate recommendations for batch processing improvement
+        """
+        recommendations = []
+        
+        if avg_confidence < 70:
+            recommendations.append("Consider improving source document quality or scanning resolution")
+        
+        if low_quality_count > total_count * 0.3:
+            recommendations.append("High number of low-quality results - review preprocessing settings")
+        
+        if avg_confidence < 50:
+            recommendations.append("Critical: Very low OCR accuracy - manual review required for most documents")
+        
+        if avg_confidence >= 85:
+            recommendations.append("Excellent batch quality - suitable for automated processing")
+        
+        return recommendations
+
 # Main execution
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print(json.dumps({
             'type': 'error',
-            'error': 'Usage: python fra_ocr_enhanced.py <file_path>'
+            'error': 'Usage: python fra_ocr_enhanced.py <file_path> [file_path2] [file_path3] ...'
         }))
         sys.exit(1)
     
-    file_path = sys.argv[1]
+    file_paths = sys.argv[1:]
     
-    if not os.path.exists(file_path):
-        print(json.dumps({
-            'type': 'error',
-            'error': f'File not found: {file_path}'
-        }))
-        sys.exit(1)
+    # Check if all files exist
+    for file_path in file_paths:
+        if not os.path.exists(file_path):
+            print(json.dumps({
+                'type': 'error',
+                'error': f'File not found: {file_path}'
+            }))
+            sys.exit(1)
     
     # Initialize enhanced FRA OCR engine
     ocr_engine = EnhancedFRAOCR()
     
-    # Process the document
-    result = ocr_engine.process_fra_document(file_path)
+    if len(file_paths) == 1:
+        # Single file processing
+        result = ocr_engine.process_fra_document(file_paths[0])
+    else:
+        # Batch processing for legacy archives
+        result = ocr_engine.process_fra_batch(file_paths)
     
     # Output JSON result
     print(json.dumps(result, ensure_ascii=False, indent=2))
