@@ -16,6 +16,7 @@ export interface TesseractResult {
   processingTime: number;
   tokens: Token[];
   fieldResults?: FieldResult[];
+  structuredData?: any;
 }
 
 export interface Token {
@@ -406,11 +407,14 @@ export class OptimizedTesseractEngine {
     }
 
     try {
-      // Optimized settings specifically for FRA documents
-      const recognizeOptions = {
-        lang: 'eng', // Focus on English for clear typed documents
+      // Enhanced multi-pass processing for FRA documents
+      const results: TesseractResult[] = [];
+      
+      // Pass 1: High-quality standard OCR with expanded character set
+      const standardOptions = {
+        lang: 'eng+hin+ben+tel+guj+ori', // Multiple languages for mixed text
         options: {
-          tessedit_pageseg_mode: '6', // Uniform block of text - better for forms
+          tessedit_pageseg_mode: '3', // Fully automatic - better for mixed layouts
           tessedit_ocr_engine_mode: '1', // LSTM only
           preserve_interword_spaces: '1',
           tessjs_create_hocr: '1',
@@ -419,37 +423,110 @@ export class OptimizedTesseractEngine {
           // Enhanced accuracy settings
           tessedit_enable_bigram_correction: '1',
           tessedit_enable_dict_correction: '1',
+          tessjs_minimum_confidence: '60', // Lower threshold for more text
+          // Expanded character whitelist for multilingual FRA documents
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:-/()[]{}\u0900-\u097F\u0980-\u09FF\u0A80-\u0AFF\u0C00-\u0C7F',
+          // Quality optimization
+          textord_really_old_xheight: '1',
+          textord_heavy_nr: '1',
+          load_system_dawg: '1',
+          load_freq_dawg: '1',
+          load_unambig_dawg: '1'
+        }
+      };
+      
+      const result1 = await this.scheduler.addJob('recognize', imagePath, standardOptions);
+      results.push({
+        text: result1.data.text || '',
+        confidence: result1.data.confidence || 0,
+        method: 'fra-standard-multilang',
+        hocr: result1.data.hocr || '',
+        tsv: result1.data.tsv || '',
+        processingTime: 0,
+        tokens: this.parseTSV(result1.data.tsv || '')
+      });
+      
+      // Pass 2: Form-specific processing with tighter constraints
+      const formOptions = {
+        lang: 'eng', // English-focused for printed forms
+        options: {
+          tessedit_pageseg_mode: '6', // Uniform block of text - better for forms
+          tessedit_ocr_engine_mode: '1',
+          preserve_interword_spaces: '1',
+          tessjs_create_hocr: '1',
+          tessjs_create_tsv: '1',
+          user_defined_dpi: '300',
+          tessedit_enable_bigram_correction: '1',
+          tessedit_enable_dict_correction: '1',
           tessjs_minimum_confidence: '70',
-          // Character whitelist for FRA documents
+          // Focused character set for cleaner results
           tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:-/()',
-          // Additional quality settings
-          tessedit_write_images: '0',
-          textord_debug_tabfind: '0',
-          classify_enable_learning: '0'
+          // Form-specific settings
+          textord_tabfind_show_vlines: '1',
+          textord_use_cjk_fp_model: '0'
         }
       };
 
-      const result = await this.scheduler.addJob('recognize', imagePath, recognizeOptions);
+      const result2 = await this.scheduler.addJob('recognize', imagePath, formOptions);
+      results.push({
+        text: result2.data.text || '',
+        confidence: result2.data.confidence || 0,
+        method: 'fra-form-focused',
+        hocr: result2.data.hocr || '',
+        tsv: result2.data.tsv || '',
+        processingTime: 0,
+        tokens: this.parseTSV(result2.data.tsv || '')
+      });
       
-      // Parse TSV for detailed token information
-      const tokens = this.parseTSV(result.data.tsv || '');
+      // Pass 3: Single-line processing for field extraction
+      const lineOptions = {
+        lang: 'eng+hin',
+        options: {
+          tessedit_pageseg_mode: '7', // Single text line
+          tessedit_ocr_engine_mode: '1',
+          preserve_interword_spaces: '1',
+          tessjs_create_hocr: '1',
+          tessjs_create_tsv: '1',
+          user_defined_dpi: '300',
+          tessjs_minimum_confidence: '50', // Lower for individual fields
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:-/()'
+        }
+      };
       
-      // Clean up the extracted text
-      const cleanedText = this.cleanFRAText(result.data.text || '');
+      const result3 = await this.scheduler.addJob('recognize', imagePath, lineOptions);
+      results.push({
+        text: result3.data.text || '',
+        confidence: result3.data.confidence || 0,
+        method: 'fra-line-focused',
+        hocr: result3.data.hocr || '',
+        tsv: result3.data.tsv || '',
+        processingTime: 0,
+        tokens: this.parseTSV(result3.data.tsv || '')
+      });
+      
+      // Select the best result using enhanced scoring
+      const bestResult = this.selectBestFRAResult(results);
+      
+      // Enhanced text cleaning and structuring
+      const cleanedText = this.enhancedFRATextCleaning(bestResult.text);
+      const structuredData = this.extractFRAFields(cleanedText, bestResult.hocr);
 
       const processingTime = Date.now() - startTime;
 
-      console.log(`📋 FRA document processed in ${processingTime}ms with ${result.data.confidence}% confidence`);
-      console.log(`📝 Extracted text: ${cleanedText.substring(0, 100)}...`);
+      console.log(`📋 FRA document processed in ${processingTime}ms`);
+      console.log(`🏆 Best method: ${bestResult.method} (${bestResult.confidence}% confidence)`);
+      console.log(`📝 Extracted ${cleanedText.split('\n').length} lines of text`);
+      console.log(`🏗️ Structured fields: ${Object.keys(structuredData).length}`);
 
       return {
         text: cleanedText,
-        confidence: result.data.confidence || 0,
-        method: 'fra-optimized-tesseract',
-        hocr: result.data.hocr || '',
-        tsv: result.data.tsv || '',
+        confidence: bestResult.confidence,
+        method: `enhanced-${bestResult.method}`,
+        hocr: bestResult.hocr,
+        tsv: bestResult.tsv,
         processingTime,
-        tokens
+        tokens: bestResult.tokens,
+        structuredData
       };
 
     } catch (error) {
@@ -467,28 +544,180 @@ export class OptimizedTesseractEngine {
   }
 
   /**
-   * Clean and structure FRA document text
+   * Select best result specifically for FRA documents
    */
-  private cleanFRAText(rawText: string): string {
+  private selectBestFRAResult(results: TesseractResult[]): TesseractResult {
+    if (results.length === 0) {
+      return {
+        text: '',
+        confidence: 0,
+        method: 'no-results',
+        hocr: '',
+        tsv: '',
+        processingTime: 0,
+        tokens: []
+      };
+    }
+
+    // Enhanced scoring for FRA documents
+    const scoredResults = results.map(result => ({
+      result,
+      score: this.scoreFRAResult(result)
+    }));
+
+    scoredResults.sort((a, b) => b.score - a.score);
+    return scoredResults[0].result;
+  }
+
+  /**
+   * Score FRA result with domain-specific criteria
+   */
+  private scoreFRAResult(result: TesseractResult): number {
+    let score = result.confidence;
+
+    const text = result.text.toLowerCase();
+    
+    // High bonus for FRA-specific terms
+    if (/forest\s+rights\s+act|वन\s+अधिकार/i.test(text)) score += 20;
+    if (/claimant|दावेदार/i.test(text)) score += 15;
+    if (/village|गांव|गाँव/i.test(text)) score += 10;
+    if (/state|राज्य/i.test(text)) score += 10;
+    if (/patta\s+number|पट्टा\s+संख्या/i.test(text)) score += 15;
+    if (/name:|नाम:/i.test(text)) score += 8;
+    if (/date|दिनांक/i.test(text)) score += 8;
+    if (/survey|सर्वेक्षण/i.test(text)) score += 5;
+    
+    // Structured data bonus
+    if (/\d{4}-\d{2}-\d{2}/.test(text)) score += 10; // Date format
+    if (/\d+\/\d+/.test(text)) score += 8; // Patta number format
+    if (text.includes(':')) score += 5; // Field labels
+    
+    // Text quality indicators
+    const words = text.split(/\s+/).filter(w => w.length > 2);
+    if (words.length > 10) score += 5;
+    if (words.length > 20) score += 10;
+    
+    // Penalize poor quality indicators
+    if (result.text.length < 30) score -= 15;
+    if (/[|\\]{3,}/.test(text)) score -= 10; // OCR artifacts
+    if (words.length < 5) score -= 20;
+    
+    return score;
+  }
+
+  /**
+   * Enhanced text cleaning for FRA documents
+   */
+  private enhancedFRATextCleaning(rawText: string): string {
     let cleaned = rawText
-      // Remove multiple spaces and normalize whitespace
+      // Normalize whitespace first
       .replace(/\s+/g, ' ')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      
       // Fix common OCR errors in FRA documents
       .replace(/FOREST\s+RIGHTS\s+ACT/gi, 'FOREST RIGHTS ACT')
-      .replace(/CLAIMANT:/gi, 'CLAIMANT:')
-      .replace(/Name:/gi, 'Name:')
-      .replace(/Village:/gi, 'Village:')
-      .replace(/State:/gi, 'State:')
-      .replace(/Patta\s+Number:/gi, 'Patta Number:')
-      .replace(/Rights\s+Claimed:/gi, 'Rights Claimed:')
-      .replace(/Date:/gi, 'Date:')
-      // Remove noise characters
-      .replace(/[\|\\]/g, '')
-      // Normalize line breaks
-      .replace(/\n\s*\n/g, '\n')
+      .replace(/वन\s+अधिकार\s+अधिनियम/gi, 'वन अधिकार अधिनियम')
+      .replace(/CLAIMANT\s*:/gi, 'CLAIMANT:')
+      .replace(/दावेदार\s*:/gi, 'दावेदार:')
+      .replace(/Name\s*:/gi, 'Name:')
+      .replace(/नाम\s*:/gi, 'नाम:')
+      .replace(/Village\s*:/gi, 'Village:')
+      .replace(/गांव\s*:|गाँव\s*:/gi, 'गांव:')
+      .replace(/State\s*:/gi, 'State:')
+      .replace(/राज्य\s*:/gi, 'राज्य:')
+      .replace(/Patta\s+Number\s*:/gi, 'Patta Number:')
+      .replace(/पट्टा\s+संख्या\s*:/gi, 'पट्टा संख्या:')
+      .replace(/Rights\s+Claimed\s*:/gi, 'Rights Claimed:')
+      .replace(/दावा\s+किए\s+गए\s+अधिकार\s*:/gi, 'दावा किए गए अधिकार:')
+      .replace(/Date\s*:/gi, 'Date:')
+      .replace(/दिनांक\s*:/gi, 'दिनांक:')
+      .replace(/Survey\s+Number\s*:/gi, 'Survey Number:')
+      .replace(/सर्वेक्षण\s+संख्या\s*:/gi, 'सर्वेक्षण संख्या:')
+      
+      // Fix date formats
+      .replace(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/g, '$3-$2-$1')
+      .replace(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/g, '$1-$2-$3')
+      
+      // Clean up noise and artifacts
+      .replace(/[|\\]{2,}/g, ' ')
+      .replace(/[_]{3,}/g, ' ')
+      .replace(/[.]{3,}/g, '...')
+      .replace(/[-]{3,}/g, '-')
+      
+      // Remove standalone punctuation lines
+      .replace(/^[\s\-_.]+$/gm, '')
+      
+      // Normalize line breaks and spacing
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .replace(/^\s+|\s+$/gm, '')
       .trim();
     
     return cleaned;
+  }
+
+  /**
+   * Extract structured fields from FRA documents
+   */
+  private extractFRAFields(text: string, hocr: string): any {
+    const fields: any = {};
+    const lines = text.split('\n');
+    
+    for (const line of lines) {
+      const normalizedLine = line.trim();
+      
+      // Extract common FRA fields
+      if (/name\s*:|नाम\s*:/i.test(normalizedLine)) {
+        const match = normalizedLine.match(/(?:name|नाम)\s*:\s*(.+)/i);
+        if (match) fields.claimantName = match[1].trim();
+      }
+      
+      if (/village\s*:|गांव\s*:|गाँव\s*:/i.test(normalizedLine)) {
+        const match = normalizedLine.match(/(?:village|गांव|गाँव)\s*:\s*(.+)/i);
+        if (match) fields.village = match[1].trim();
+      }
+      
+      if (/state\s*:|राज्य\s*:/i.test(normalizedLine)) {
+        const match = normalizedLine.match(/(?:state|राज्य)\s*:\s*(.+)/i);
+        if (match) fields.state = match[1].trim();
+      }
+      
+      if (/patta\s+number\s*:|पट्टा\s+संख्या\s*:/i.test(normalizedLine)) {
+        const match = normalizedLine.match(/(?:patta\s+number|पट्टा\s+संख्या)\s*:\s*(.+)/i);
+        if (match) fields.pattaNumber = match[1].trim();
+      }
+      
+      if (/date\s*:|दिनांक\s*:/i.test(normalizedLine)) {
+        const match = normalizedLine.match(/(?:date|दिनांक)\s*:\s*(.+)/i);
+        if (match) fields.date = match[1].trim();
+      }
+      
+      if (/rights\s+claimed\s*:|दावा\s+किए\s+गए\s+अधिकार\s*:/i.test(normalizedLine)) {
+        const match = normalizedLine.match(/(?:rights\s+claimed|दावा\s+किए\s+गए\s+अधिकार)\s*:\s*(.+)/i);
+        if (match) fields.rightsClaimed = match[1].trim();
+      }
+    }
+    
+    // Extract any dates found in the text
+    const dateMatches = text.match(/\d{4}-\d{2}-\d{2}/g);
+    if (dateMatches && !fields.date) {
+      fields.date = dateMatches[0];
+    }
+    
+    // Extract any reference numbers
+    const refMatches = text.match(/\d+\/\d+[-\/]\d+/g);
+    if (refMatches && !fields.pattaNumber) {
+      fields.pattaNumber = refMatches[0];
+    }
+    
+    return fields;
+  }
+
+  /**
+   * Clean and structure FRA document text (legacy method for compatibility)
+   */
+  private cleanFRAText(rawText: string): string {
+    return this.enhancedFRATextCleaning(rawText);
   }
 
   /**

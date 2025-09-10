@@ -162,19 +162,21 @@ export class AdvancedOCRPreprocessor {
         console.log(`📈 Upscaling image by ${scaleFactor}x for better OCR`);
       }
 
-      // Step 2: Advanced denoising and contrast enhancement
+      // Step 2: Enhanced denoising and contrast enhancement for better text clarity
       image = image
-        .median(3) // Remove salt-and-pepper noise
-        .blur(0.3) // Slight blur to reduce noise (guide recommendation)
-        .sharpen({ sigma: 1.0, m1: 0.8, m2: 3, x1: 2, y2: 10, y3: 20 }) // Unsharp mask
-        .normalize() // Contrast stretch 
-        .linear(1.2, -(128 * 1.2) + 128); // Additional contrast enhancement
+        .median(2) // Gentle noise removal to preserve text details
+        .modulate({ brightness: 1.1, saturation: 0.8 }) // Improve contrast while reducing color noise
+        .sharpen({ sigma: 0.8, m1: 1.0, m2: 2, x1: 2, y2: 8, y3: 15 }) // Optimized unsharp mask for text
+        .normalize() // Contrast stretch to full dynamic range
+        .linear(1.3, -(128 * 1.3) + 128); // Enhanced contrast for better text separation
 
-      // Step 3: Convert to grayscale with optimal channel weighting
+      // Step 3: Convert to grayscale with optimal channel weighting for text
       image = image.grayscale();
 
-      // Step 4: Adaptive thresholding simulation using gamma correction
-      image = image.gamma(1.2); // Adjust gamma for better thresholding (valid range 1.0-3.0)
+      // Step 4: Improved adaptive thresholding preparation
+      image = image
+        .gamma(1.1) // Subtle gamma adjustment for better thresholding
+        .linear(1.1, -15); // Additional contrast boost with slight darkening
 
       await image.png({ quality: 100, compressionLevel: 0 }).toFile(outputPath);
 
@@ -298,7 +300,7 @@ export class AdvancedOCRPreprocessor {
   }
 
   /**
-   * Get FRA document field templates for cropping
+   * Get improved FRA document field templates for cropping based on standard layouts
    */
   private getFRAFieldTemplates(width: number, height: number, documentType: string): Array<{
     id: string;
@@ -308,46 +310,72 @@ export class AdvancedOCRPreprocessor {
     recommendedLanguage: string;
     whitelist?: string;
   }> {
-    // These templates should be calibrated based on your specific FRA document layouts
+    // Enhanced templates based on common FRA document layouts
     const templates = [
+      // Header section
+      {
+        id: 'document_title',
+        fieldType: 'document-title',
+        bbox: { x: Math.round(width * 0.15), y: Math.round(height * 0.08), width: Math.round(width * 0.7), height: Math.round(height * 0.12) },
+        recommendedPSM: '6', // Uniform block of text
+        recommendedLanguage: 'eng+hin'
+      },
+      // Claimant details section
       {
         id: 'claimant_name',
         fieldType: 'claimant-name',
-        bbox: { x: Math.round(width * 0.2), y: Math.round(height * 0.25), width: Math.round(width * 0.6), height: Math.round(height * 0.05) },
+        bbox: { x: Math.round(width * 0.15), y: Math.round(height * 0.22), width: Math.round(width * 0.7), height: Math.round(height * 0.06) },
         recommendedPSM: '7', // Single text line
         recommendedLanguage: 'eng+hin',
-        whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz \''
+        whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .'
       },
       {
         id: 'village_name',
         fieldType: 'village',
-        bbox: { x: Math.round(width * 0.2), y: Math.round(height * 0.35), width: Math.round(width * 0.5), height: Math.round(height * 0.04) },
+        bbox: { x: Math.round(width * 0.15), y: Math.round(height * 0.30), width: Math.round(width * 0.7), height: Math.round(height * 0.06) },
         recommendedPSM: '7',
-        recommendedLanguage: 'eng+hin'
+        recommendedLanguage: 'eng+hin',
+        whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .'
       },
       {
-        id: 'reference_number',
-        fieldType: 'reference-number',
-        bbox: { x: Math.round(width * 0.6), y: Math.round(height * 0.15), width: Math.round(width * 0.3), height: Math.round(height * 0.04) },
+        id: 'state_name',
+        fieldType: 'state',
+        bbox: { x: Math.round(width * 0.15), y: Math.round(height * 0.38), width: Math.round(width * 0.7), height: Math.round(height * 0.06) },
+        recommendedPSM: '7',
+        recommendedLanguage: 'eng+hin',
+        whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .'
+      },
+      // Claim details section
+      {
+        id: 'patta_number',
+        fieldType: 'patta-number',
+        bbox: { x: Math.round(width * 0.15), y: Math.round(height * 0.48), width: Math.round(width * 0.7), height: Math.round(height * 0.06) },
         recommendedPSM: '7',
         recommendedLanguage: 'eng',
         whitelist: '0123456789/-'
       },
       {
-        id: 'survey_number',
-        fieldType: 'survey-number',
-        bbox: { x: Math.round(width * 0.2), y: Math.round(height * 0.45), width: Math.round(width * 0.3), height: Math.round(height * 0.04) },
+        id: 'rights_claimed',
+        fieldType: 'rights-claimed',
+        bbox: { x: Math.round(width * 0.15), y: Math.round(height * 0.56), width: Math.round(width * 0.7), height: Math.round(height * 0.08) },
+        recommendedPSM: '6', // Multiple lines possible
+        recommendedLanguage: 'eng+hin'
+      },
+      // Date and signature section
+      {
+        id: 'date',
+        fieldType: 'date',
+        bbox: { x: Math.round(width * 0.15), y: Math.round(height * 0.75), width: Math.round(width * 0.4), height: Math.round(height * 0.06) },
         recommendedPSM: '7',
         recommendedLanguage: 'eng',
-        whitelist: '0123456789/-.'
+        whitelist: '0123456789-/'
       },
       {
-        id: 'area',
-        fieldType: 'area',
-        bbox: { x: Math.round(width * 0.6), y: Math.round(height * 0.45), width: Math.round(width * 0.3), height: Math.round(height * 0.04) },
-        recommendedPSM: '7',
-        recommendedLanguage: 'eng',
-        whitelist: '0123456789. acre hectare bigha'
+        id: 'signature_area',
+        fieldType: 'signature',
+        bbox: { x: Math.round(width * 0.6), y: Math.round(height * 0.75), width: Math.round(width * 0.3), height: Math.round(width * 0.15) },
+        recommendedPSM: '11', // Sparse text for handwritten signatures
+        recommendedLanguage: 'eng'
       }
     ];
 
