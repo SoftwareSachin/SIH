@@ -6,9 +6,16 @@ Real CNN Processing Service - Handles stdin input from Node.js
 
 import sys
 import json
-import numpy as np
-from typing import Dict
 import os
+from typing import Dict
+
+# Handle missing dependencies gracefully
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+    print("Warning: numpy not available, using fallback implementation", file=sys.stderr)
 
 class RealCNNProcessor:
     """Real CNN processor for authentic land-use classification"""
@@ -91,10 +98,16 @@ class RealCNNProcessor:
             spectral_indices = data['spectral_indices']
             
             # Extract real satellite bands
-            red = np.array(bands_data.get('red', [[0.1]]))
-            green = np.array(bands_data.get('green', [[0.1]]))
-            blue = np.array(bands_data.get('blue', [[0.1]]))
-            nir = np.array(bands_data.get('nir', [[0.4]]))
+            if NUMPY_AVAILABLE:
+                red = np.array(bands_data.get('red', [[0.1]]))
+                green = np.array(bands_data.get('green', [[0.1]]))
+                blue = np.array(bands_data.get('blue', [[0.1]]))
+                nir = np.array(bands_data.get('nir', [[0.4]]))
+            else:
+                red = bands_data.get('red', [[0.1]])
+                green = bands_data.get('green', [[0.1]])
+                blue = bands_data.get('blue', [[0.1]])
+                nir = bands_data.get('nir', [[0.4]])
             
             # Calculate authentic spectral features
             features = self._calculate_real_features(red, green, blue, nir, spectral_indices)
@@ -125,22 +138,47 @@ class RealCNNProcessor:
         """Calculate authentic remote sensing features"""
         
         # Get spectral index values
-        ndvi = np.array(spectral_indices.get('ndvi', [[0.5]]))
-        ndwi = np.array(spectral_indices.get('ndwi', [[0.0]]))
-        ndbi = np.array(spectral_indices.get('ndbi', [[0.0]]))
-        savi = np.array(spectral_indices.get('savi', [[0.3]]))
-        
-        # Calculate mean values for feature vector
-        features = {
-            'red_mean': float(np.mean(red)),
-            'green_mean': float(np.mean(green)),
-            'blue_mean': float(np.mean(blue)),
-            'nir_mean': float(np.mean(nir)),
-            'ndvi_mean': float(np.mean(ndvi)),
-            'ndwi_mean': float(np.mean(ndwi)),
-            'ndbi_mean': float(np.mean(ndbi)),
-            'savi_mean': float(np.mean(savi))
-        }
+        if NUMPY_AVAILABLE:
+            ndvi = np.array(spectral_indices.get('ndvi', [[0.5]]))
+            ndwi = np.array(spectral_indices.get('ndwi', [[0.0]]))
+            ndbi = np.array(spectral_indices.get('ndbi', [[0.0]]))
+            savi = np.array(spectral_indices.get('savi', [[0.3]]))
+            
+            # Calculate mean values for feature vector
+            features = {
+                'red_mean': float(np.mean(red)),
+                'green_mean': float(np.mean(green)),
+                'blue_mean': float(np.mean(blue)),
+                'nir_mean': float(np.mean(nir)),
+                'ndvi_mean': float(np.mean(ndvi)),
+                'ndwi_mean': float(np.mean(ndwi)),
+                'ndbi_mean': float(np.mean(ndbi)),
+                'savi_mean': float(np.mean(savi))
+            }
+        else:
+            # Fallback without numpy
+            ndvi_val = spectral_indices.get('ndvi', [[0.5]])
+            ndwi_val = spectral_indices.get('ndwi', [[0.0]])
+            ndbi_val = spectral_indices.get('ndbi', [[0.0]])
+            savi_val = spectral_indices.get('savi', [[0.3]])
+            
+            # Simple mean calculation without numpy
+            def simple_mean(data):
+                if isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
+                    flat = [item for sublist in data for item in sublist]
+                    return sum(flat) / len(flat) if flat else 0
+                return 0
+            
+            features = {
+                'red_mean': simple_mean(red),
+                'green_mean': simple_mean(green),
+                'blue_mean': simple_mean(blue),
+                'nir_mean': simple_mean(nir),
+                'ndvi_mean': simple_mean(ndvi_val),
+                'ndwi_mean': simple_mean(ndwi_val),
+                'ndbi_mean': simple_mean(ndbi_val),
+                'savi_mean': simple_mean(savi_val)
+            }
         
         return features
     
