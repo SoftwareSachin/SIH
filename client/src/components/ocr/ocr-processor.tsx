@@ -54,11 +54,30 @@ interface OCRResult {
   };
 }
 
+interface FRAOCRResult {
+  success: boolean;
+  fileName: string;
+  ocrResults: {
+    text: string;
+    confidence: number;
+    method: string;
+    processingTime: number;
+    tokens: number;
+  };
+  improvements: string[];
+}
+
 export default function OCRProcessor() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedClaimId, setSelectedClaimId] = useState<string>('');
   const [dragOver, setDragOver] = useState(false);
   const [ocrResult, setOcrResult] = useState<OCRResult | null>(null);
+  
+  // FRA OCR test state
+  const [fraTestFile, setFraTestFile] = useState<File | null>(null);
+  const [fraTestDragOver, setFraTestDragOver] = useState(false);
+  const [fraOcrResult, setFraOcrResult] = useState<FRAOCRResult | null>(null);
+  
   const { toast } = useToast();
 
   const { data: claims } = useQuery({
@@ -106,6 +125,41 @@ export default function OCRProcessor() {
     },
   });
 
+  const processFRAOCRMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/test/ocr/fra', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: FRA OCR test failed`);
+      }
+
+      return response.json();
+    },
+    onSuccess: (result: FRAOCRResult) => {
+      setFraOcrResult(result);
+      toast({
+        title: "Improved FRA OCR Complete",
+        description: `Document processed with ${result.ocrResults.confidence}% confidence using optimized settings`,
+      });
+    },
+    onError: (error) => {
+      console.error("FRA OCR test failed:", error);
+      toast({
+        title: "FRA OCR Test Failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFileSelect = useCallback((newFiles: FileList | null) => {
     if (!newFiles || newFiles.length === 0) return;
     
@@ -135,6 +189,35 @@ export default function OCRProcessor() {
     setOcrResult(null);
   }, [toast]);
 
+  const handleFRAFileSelect = useCallback((newFiles: FileList | null) => {
+    if (!newFiles || newFiles.length === 0) return;
+    
+    const file = newFiles[0];
+    const validTypes = ['image/jpeg', 'image/png', 'image/tiff', 'application/pdf'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload JPEG, PNG, TIFF, or PDF files only.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > maxSize) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload files smaller than 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFraTestFile(file);
+    setFraOcrResult(null);
+  }, [toast]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -151,6 +234,23 @@ export default function OCRProcessor() {
     setDragOver(false);
   }, []);
 
+  // FRA test drag handlers
+  const handleFRADrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setFraTestDragOver(false);
+    handleFRAFileSelect(e.dataTransfer.files);
+  }, [handleFRAFileSelect]);
+
+  const handleFRADragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setFraTestDragOver(true);
+  }, []);
+
+  const handleFRADragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setFraTestDragOver(false);
+  }, []);
+
   const processDocument = () => {
     if (!selectedFile || !selectedClaimId) {
       toast({
@@ -162,6 +262,19 @@ export default function OCRProcessor() {
     }
 
     processOCRMutation.mutate({ file: selectedFile, claimId: selectedClaimId });
+  };
+
+  const processFRADocument = () => {
+    if (!fraTestFile) {
+      toast({
+        title: "No File Selected",
+        description: "Please select a file before processing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    processFRAOCRMutation.mutate(fraTestFile);
   };
 
   const getFileIcon = (file: File) => {
@@ -351,6 +464,202 @@ export default function OCRProcessor() {
           )}
         </CardContent>
       </Card>
+
+      {/* Improved FRA OCR Test */}
+      <Card className="border-2 border-blue-200 dark:border-blue-800">
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <CardTitle className="text-blue-600 dark:text-blue-400">
+              🧪 Improved FRA OCR Test
+            </CardTitle>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Test your document with optimized FRA OCR settings for better accuracy
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-start space-x-3">
+              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs">✨</span>
+              </div>
+              <div className="text-sm">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">OCR Improvements</h4>
+                <ul className="text-blue-700 dark:text-blue-200 text-xs space-y-1 list-disc ml-4">
+                  <li>English-focused language model for clearer text</li>
+                  <li>Form-optimized page segmentation (PSM 6)</li>
+                  <li>Character whitelist for FRA documents</li>
+                  <li>Enhanced text cleaning and normalization</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* File Upload for FRA Test */}
+          <div
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+              fraTestDragOver 
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
+                : 'border-border hover:border-blue-500/50'
+            }`}
+            onDrop={handleFRADrop}
+            onDragOver={handleFRADragOver}
+            onDragLeave={handleFRADragLeave}
+          >
+            <Upload className="h-10 w-10 text-blue-500 mx-auto mb-4" />
+            <div className="space-y-2">
+              <p className="font-medium text-blue-600 dark:text-blue-400">
+                Test Improved FRA OCR
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Upload your FRA document to test improved OCR accuracy
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Supports JPEG, PNG, TIFF, PDF files up to 10MB
+              </p>
+            </div>
+            <Input
+              type="file"
+              accept=".jpg,.jpeg,.png,.tiff,.pdf"
+              onChange={(e) => handleFRAFileSelect(e.target.files)}
+              className="hidden"
+              data-testid="input-fra-test-file"
+              id="fra-test-upload"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4 border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+              onClick={() => document.getElementById('fra-test-upload')?.click()}
+              data-testid="button-select-fra-file"
+            >
+              Select FRA Document
+            </Button>
+          </div>
+
+          {/* Selected FRA Test File */}
+          {fraTestFile && (
+            <Card className="border-blue-200 dark:border-blue-800">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-4">
+                  {getFileIcon(fraTestFile)}
+                  <div className="flex-1">
+                    <h4 className="font-medium">{fraTestFile.name}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {(fraTestFile.size / 1024 / 1024).toFixed(2)} MB • {fraTestFile.type}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={processFRADocument}
+                    disabled={processFRAOCRMutation.isPending}
+                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                    data-testid="button-process-fra-ocr"
+                  >
+                    {processFRAOCRMutation.isPending ? "Testing..." : "Test FRA OCR"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* FRA OCR Processing Progress */}
+          {processFRAOCRMutation.isPending && (
+            <Card className="border-blue-200 dark:border-blue-800">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+                  <div className="flex-1">
+                    <p className="font-medium text-blue-600 dark:text-blue-400">Testing Improved FRA OCR</p>
+                    <p className="text-sm text-muted-foreground">
+                      Applying optimized preprocessing and English-focused OCR...
+                    </p>
+                  </div>
+                </div>
+                <Progress value={undefined} className="mt-4" />
+              </CardContent>
+            </Card>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* FRA OCR Test Results */}
+      {fraOcrResult && (
+        <Card className="border-2 border-green-200 dark:border-green-800">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-green-600 dark:text-green-400">
+              <CheckCircle className="h-5 w-5" />
+              <span>Improved FRA OCR Results</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="results" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="results">Results</TabsTrigger>
+                <TabsTrigger value="text">Extracted Text</TabsTrigger>
+                <TabsTrigger value="improvements">Improvements</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="results" className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 border rounded-lg border-green-200 dark:border-green-800">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {fraOcrResult.ocrResults.confidence}%
+                    </div>
+                    <p className="text-sm text-muted-foreground">Confidence</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-2xl font-bold">
+                      {fraOcrResult.ocrResults.processingTime}ms
+                    </div>
+                    <p className="text-sm text-muted-foreground">Processing Time</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-2xl font-bold">
+                      {fraOcrResult.ocrResults.tokens}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Tokens Found</p>
+                  </div>
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-xl font-bold capitalize">
+                      {fraOcrResult.ocrResults.method.split('-')[0]}
+                    </div>
+                    <p className="text-sm text-muted-foreground">OCR Method</p>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="text" className="space-y-4">
+                <div className="bg-muted p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">Extracted Text</h4>
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                      {fraOcrResult.ocrResults.text.split(' ').length} words
+                    </Badge>
+                  </div>
+                  <div className="text-sm max-h-64 overflow-y-auto whitespace-pre-wrap font-mono">
+                    {fraOcrResult.ocrResults.text || 'No text extracted'}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="improvements" className="space-y-4">
+                <div className="space-y-3">
+                  <h4 className="font-medium">Applied Improvements:</h4>
+                  <div className="grid gap-3">
+                    {fraOcrResult.improvements.map((improvement, index) => (
+                      <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                        <span className="text-sm">{improvement}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      )}
 
       {/* OCR Results */}
       {ocrResult && (
