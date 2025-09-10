@@ -28,7 +28,7 @@ export class PythonOCRClient {
 
   constructor() {
     this.pythonPath = 'python3';
-    this.scriptPath = path.join(process.cwd(), 'server', 'fra_ocr_engine.py');
+    this.scriptPath = path.join(process.cwd(), 'server', 'fra_ocr_engine_simple.py');
     this.timeout = 120000; // 2 minutes timeout for complex FRA documents
   }
 
