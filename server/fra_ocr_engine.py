@@ -21,9 +21,21 @@ import numpy as np
 import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageDraw, ImageFont
 from pdf2image import convert_from_path
-import scipy
-from scipy import ndimage
-from skimage import morphology, segmentation, filters, feature, measure
+# Note: Some advanced libraries may not be available in all environments
+try:
+    import scipy
+    from scipy import ndimage
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+    print("Warning: SciPy not available, using basic processing", file=sys.stderr)
+
+try:
+    from skimage import morphology, segmentation, filters, feature, measure
+    HAS_SKIMAGE = True
+except ImportError:
+    HAS_SKIMAGE = False
+    print("Warning: scikit-image not available, using OpenCV alternatives", file=sys.stderr)
 
 class FRADocumentOCR:
     """
@@ -271,6 +283,12 @@ class FRADocumentOCR:
     def _enhance_government_document_contrast(self, image: np.ndarray) -> np.ndarray:
         """Multi-stage contrast enhancement for government documents"""
         try:
+            # Ensure image is single channel uint8
+            if len(image.shape) > 2:
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            if image.dtype != np.uint8:
+                image = image.astype(np.uint8)
+            
             # Stage 1: Histogram equalization
             equalized = cv2.equalizeHist(image)
             
@@ -825,20 +843,10 @@ class FRADocumentOCR:
             # Configure Tesseract for FRA documents
             custom_config = f'--oem 1 --psm {psm} -l {language}'
             
-            # Enhanced character whitelist for FRA documents (includes common symbols)
-            fra_chars = (
-                'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-                '0123456789.,;:!?()-/\\@#$%^&*+=[]{}"\' '
-                '।॥०१२३४५६७८९'  # Devanagari numbers and punctuation
-                '০১২৩৪৫৬৭৮৯'      # Bengali numbers
-                '୦୧୨୩୪୫୬୭୮୯'      # Odia numbers  
-                '౦౧౨౩౪౫౬౭౮౯'      # Telugu numbers
-            )
-            
-            # Primary OCR extraction
+            # Primary OCR extraction without character whitelist (causing issues)
             text = pytesseract.image_to_string(
                 processed_image, 
-                config=custom_config + f' -c tessedit_char_whitelist={fra_chars}',
+                config=custom_config,
                 lang=language
             )
             
