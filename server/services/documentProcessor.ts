@@ -140,38 +140,67 @@ class DocumentProcessor {
           tsvData = cachedOCR.tsv || '';
           preprocessingApplied.push('cache-hit');
         } else {
-          // Use the new Hybrid OCR Service for better accuracy
+          // Use the enhanced FRA OCR engine for better accuracy
           try {
-            const hybridResult = await hybridOCRService.processDocument(filePath, {
-              documentId,
-              useCloudOCR: false, // Always false for on-premise setup
-              useHandwritingRecognition: true,
-              extractLayout: true,
-              confidenceThreshold: 80
+            console.log('🚀 Using enhanced FRA OCR processing for better accuracy...');
+            
+            // First try advanced preprocessing
+            const { advancedOCRPreprocessor } = await import('./advancedOCRPreprocessor');
+            const preprocessingResult = await advancedOCRPreprocessor.process(filePath, {
+              extractBlueChannel: true,
+              cropFields: true,
+              documentType: 'fra-document'
             });
             
-            text = hybridResult.text;
-            confidence = hybridResult.confidence;
-            detectedLanguage = hybridResult.language || 'mixed';
-            imageQuality = 'hybrid-processed';
-            hocrData = hybridResult.hocr || '';
-            tsvData = hybridResult.tsv || '';
-            preprocessingApplied.push(`hybrid-ocr-${hybridResult.method}`);
+            preprocessingApplied.push(...preprocessingResult.applied);
             
-            // Cache the hybrid OCR result
+            // Use the optimized FRA OCR engine
+            const { optimizedTesseractEngine } = await import('./optimizedTesseractEngine');
+            const fraResult = await optimizedTesseractEngine.processFRADocument(preprocessingResult.processedPath);
+            
+            // If we have field-specific crops, process them too
+            if (preprocessingResult.croppedFields && preprocessingResult.croppedFields.length > 0) {
+              const fieldResult = await optimizedTesseractEngine.processFieldCrops(preprocessingResult.croppedFields);
+              
+              // Combine main result with field results for better accuracy
+              if (fieldResult.confidence > fraResult.confidence) {
+                text = fieldResult.text;
+                confidence = fieldResult.confidence;
+                hocrData = fieldResult.hocr;
+                tsvData = fieldResult.tsv;
+                preprocessingApplied.push('field-specific-processing');
+              } else {
+                text = fraResult.text;
+                confidence = fraResult.confidence;
+                hocrData = fraResult.hocr;
+                tsvData = fraResult.tsv;
+              }
+            } else {
+              text = fraResult.text;
+              confidence = fraResult.confidence;
+              hocrData = fraResult.hocr;
+              tsvData = fraResult.tsv;
+            }
+            
+            detectedLanguage = 'mixed';
+            imageQuality = 'enhanced-fra-processed';
+            preprocessingApplied.push(`enhanced-fra-ocr-${fraResult.method}`);
+            
+            // Cache the enhanced OCR result
             await cacheService.cacheOCRResult(imageHash, {
-              text: hybridResult.text,
-              confidence: hybridResult.confidence,
+              text: text,
+              confidence: confidence,
               language: detectedLanguage,
               quality: imageQuality,
               hocr: hocrData,
               tsv: tsvData
             });
             
-            console.log(`✅ Hybrid OCR completed: ${hybridResult.method} (${hybridResult.confidence}%)`);
+            console.log(`✅ Enhanced FRA OCR completed: ${fraResult.method} (${confidence}%)`);
+            console.log(`📊 Extracted ${text.split('\n').length} lines with ${preprocessingApplied.length} enhancements`);
             
-          } catch (hybridError) {
-            console.warn('Hybrid OCR failed, falling back to original pipeline:', hybridError);
+          } catch (enhancedError) {
+            console.warn('Enhanced FRA OCR failed, falling back to standard pipeline:', enhancedError);
             
             // Fallback to original OCR pipeline
             const cachedProcessedPath = await cacheService.getCachedPreprocessedImage(imageHash);
