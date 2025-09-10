@@ -28,8 +28,8 @@ export class PythonOCRClient {
 
   constructor() {
     this.pythonPath = 'python3';
-    this.scriptPath = path.join(process.cwd(), 'server', 'python_ocr.py');
-    this.timeout = 60000; // 60 seconds timeout
+    this.scriptPath = path.join(process.cwd(), 'server', 'fra_ocr_engine.py');
+    this.timeout = 120000; // 2 minutes timeout for complex FRA documents
   }
 
   async healthCheck(): Promise<boolean> {
@@ -40,11 +40,11 @@ export class PythonOCRClient {
         return false;
       }
 
-      // Test basic Python functionality
-      const result = await this.runPythonScript(['-c', 'import pytesseract; import cv2; import PIL; print("OK")']);
+      // Test FRA OCR functionality
+      const result = await this.runPythonScript(['-c', 'import pytesseract; import cv2; import PIL; import numpy; print("FRA-OCR-Ready")']);
       
-      if (result.success && result.stdout.includes('OK')) {
-        console.log('✅ Python OCR libraries are working');
+      if (result.success && result.stdout.includes('FRA-OCR-Ready')) {
+        console.log('✅ FRA OCR engine is ready');
         return true;
       }
       
@@ -69,9 +69,9 @@ export class PythonOCRClient {
         throw new Error(`File not found: ${filePath}`);
       }
 
-      console.log(`🔄 Processing document with Python OCR: ${path.basename(filePath)}`);
+      console.log(`🔄 Processing FRA document with specialized engine: ${path.basename(filePath)}`);
 
-      // Run Python OCR script
+      // Run FRA OCR engine
       const result = await this.runPythonScript([this.scriptPath, filePath]);
 
       if (!result.success) {
@@ -86,15 +86,27 @@ export class PythonOCRClient {
       }
 
       // Log result summary
-      if (ocrResult.type === 'batch') {
-        console.log(`✅ OCR completed: ${ocrResult.total_pages} pages, avg confidence: ${ocrResult.average_confidence}%`);
+      if (ocrResult.type === 'fra_batch') {
+        console.log(`✅ FRA OCR completed: ${ocrResult.total_pages} pages, quality score: ${ocrResult.average_quality_score}%`);
         return {
           results: ocrResult.results,
           total_pages: ocrResult.total_pages,
           total_processing_time: ocrResult.total_processing_time,
-          average_confidence: ocrResult.average_confidence
+          average_confidence: ocrResult.average_quality_score
+        };
+      } else if (ocrResult.type === 'fra_single') {
+        console.log(`✅ FRA OCR completed: ${ocrResult.quality_score}% quality, ${ocrResult.method}`);
+        return {
+          text: ocrResult.text,
+          confidence: ocrResult.quality_score,
+          language: ocrResult.language,
+          processing_time: ocrResult.processing_time,
+          method: ocrResult.method,
+          page_count: 1,
+          metadata: ocrResult.metadata || {}
         };
       } else {
+        // Fallback for legacy format
         console.log(`✅ OCR completed: ${ocrResult.confidence}% confidence, ${ocrResult.method}`);
         return {
           text: ocrResult.text,
@@ -102,7 +114,7 @@ export class PythonOCRClient {
           language: ocrResult.language,
           processing_time: ocrResult.processing_time,
           method: ocrResult.method,
-          page_count: ocrResult.page_count,
+          page_count: ocrResult.page_count || 1,
           metadata: ocrResult.metadata || {}
         };
       }
@@ -168,52 +180,143 @@ export class PythonOCRClient {
     return ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.webp'];
   }
 
-  // Convert OCR result to application format
-  convertToProcessedDocument(ocrResult: OCRResult | BatchOCRResult, metadata: any = {}): any {
-    if ('results' in ocrResult) {
-      // Batch result (PDF)
-      const combinedText = ocrResult.results.map(r => r.text).join('\n\n');
+  // Convert FRA OCR result to application format
+  convertToProcessedDocument(ocrResult: any, metadata: any = {}): any {
+    if (ocrResult.type === 'fra_batch') {
+      // Multi-page FRA document
+      const combinedText = ocrResult.results.map((r: any) => r.text).join('\n\n');
+      
+      // Extract all FRA entities from aggregated results
+      const fraEntities = this._convertFRAEntities(ocrResult.aggregated_entities || {});
+      
       return {
         text: combinedText,
-        confidence: ocrResult.average_confidence,
-        language: ocrResult.results[0]?.language || 'eng',
-        entities: [], // Will be processed by NER separately
-        claimRecords: [],
+        confidence: ocrResult.average_quality_score,
+        language: ocrResult.results[0]?.language || 'multi',
+        entities: fraEntities,
+        claimRecords: this._extractClaimRecords(ocrResult.results),
         metadata: {
           processingTime: ocrResult.total_processing_time,
-          imageQuality: this._determineQuality(ocrResult.average_confidence),
-          ocrMethod: 'Python-Tesseract-Multi-Engine',
-          preprocessingApplied: ['advanced-preprocessing', 'multi-psm', 'language-detection'],
+          imageQuality: this._determineFRAQuality(ocrResult.average_quality_score),
+          ocrMethod: 'FRA-Specialized-Multi-Strategy',
+          preprocessingApplied: ['fra-government-form', 'multi-language', 'table-extraction'],
           pageCount: ocrResult.total_pages,
-          pages: ocrResult.results.map(r => ({
+          documentClassification: ocrResult.document_classification,
+          fraEntitiesFound: Object.keys(fraEntities).length,
+          pages: ocrResult.results.map((r: any) => ({
             text: r.text,
-            confidence: r.confidence,
-            metadata: r.metadata
+            confidence: r.quality_score,
+            entities: r.entities,
+            tables: r.tables,
+            strategy: r.strategy_used
           })),
           ...metadata
         }
       };
-    } else {
-      // Single result
+    } else if (ocrResult.type === 'fra_single') {
+      // Single FRA document
+      const fraEntities = this._convertFRAEntities(ocrResult.entities || {});
+      
       return {
         text: ocrResult.text,
-        confidence: ocrResult.confidence,
+        confidence: ocrResult.quality_score,
         language: ocrResult.language,
-        entities: [], // Will be processed by NER separately
-        claimRecords: [],
+        entities: fraEntities,
+        claimRecords: this._extractClaimRecords([ocrResult]),
         metadata: {
           processingTime: ocrResult.processing_time,
-          imageQuality: this._determineQuality(ocrResult.confidence),
+          imageQuality: this._determineFRAQuality(ocrResult.quality_score),
           ocrMethod: ocrResult.method,
-          preprocessingApplied: ['advanced-preprocessing', 'multi-psm', 'language-detection'],
-          pageCount: ocrResult.page_count,
-          imageSize: ocrResult.metadata.image_size,
-          wordCount: ocrResult.metadata.word_count,
-          characterCount: ocrResult.metadata.character_count,
+          preprocessingApplied: ['fra-government-form', 'multi-language', 'entity-extraction'],
+          pageCount: 1,
+          documentClassification: ocrResult.document_classification,
+          fraEntitiesFound: Object.keys(fraEntities).length,
+          imageSize: ocrResult.metadata?.image_size,
+          strategyUsed: ocrResult.metadata?.strategy_used,
+          tablesFound: ocrResult.tables?.length || 0,
+          ...metadata
+        }
+      };
+    } else {
+      // Legacy fallback
+      return {
+        text: ocrResult.text || '',
+        confidence: ocrResult.confidence || 0,
+        language: ocrResult.language || 'eng',
+        entities: {},
+        claimRecords: [],
+        metadata: {
+          processingTime: ocrResult.processing_time || 0,
+          imageQuality: 'unknown',
+          ocrMethod: 'Legacy-Fallback',
+          preprocessingApplied: ['basic'],
+          pageCount: 1,
+          error: ocrResult.error,
           ...metadata
         }
       };
     }
+  }
+
+  private _convertFRAEntities(fraEntities: any): any {
+    return {
+      claimantNames: fraEntities.patta_holders || [],
+      villageNames: fraEntities.village_names || [],
+      surveyNumbers: fraEntities.survey_numbers || [],
+      coordinates: fraEntities.coordinates || [],
+      forestAreas: fraEntities.forest_areas || [],
+      claimNumbers: fraEntities.claim_numbers || [],
+      verificationDates: fraEntities.verification_dates || [],
+      boundaries: fraEntities.boundaries || []
+    };
+  }
+
+  private _extractClaimRecords(results: any[]): any[] {
+    const claimRecords: any[] = [];
+    
+    results.forEach((result, index) => {
+      // Extract from tables if available
+      if (result.tables && result.tables.length > 0) {
+        result.tables.forEach((table: any, tableIndex: number) => {
+          if (table.text && table.text.trim()) {
+            claimRecords.push({
+              type: 'table_data',
+              content: table.text.trim(),
+              confidence: table.confidence || 80,
+              source: `page_${index + 1}_table_${tableIndex + 1}`,
+              position: table.position
+            });
+          }
+        });
+      }
+      
+      // Extract from entities
+      if (result.entities) {
+        Object.entries(result.entities).forEach(([entityType, values]: [string, any]) => {
+          if (Array.isArray(values) && values.length > 0) {
+            values.forEach((value: any) => {
+              claimRecords.push({
+                type: 'fra_entity',
+                entityType: entityType,
+                content: value,
+                confidence: 85,
+                source: `page_${index + 1}_entity_extraction`
+              });
+            });
+          }
+        });
+      }
+    });
+    
+    return claimRecords.slice(0, 50); // Limit to 50 records
+  }
+
+  private _determineFRAQuality(qualityScore: number): string {
+    if (qualityScore >= 85) return 'excellent';
+    if (qualityScore >= 70) return 'high';
+    if (qualityScore >= 55) return 'medium';
+    if (qualityScore >= 40) return 'low';
+    return 'very-low';
   }
 
   private _determineQuality(confidence: number): string {
