@@ -237,8 +237,16 @@ Text: ${text.substring(0, 2000)}
     return {
       status: ocrHealthy ? 'healthy' : 'degraded',
       ocr: {
-        service: 'Python-Tesseract',
+        service: 'Enhanced FRA OCR',
         healthy: ocrHealthy,
+        engine: 'Enhanced-FRA-OCR-Engine',
+        features: [
+          'Multi-language support (Hindi, Bengali, Odia, Telugu, English)',
+          'FRA-specific entity extraction',
+          'Graceful OpenCV fallback',
+          'Government form optimization',
+          'Intelligent document type detection'
+        ],
         languages: await this.ocrClient.getSupportedLanguages()
       },
       ai: {
@@ -257,7 +265,7 @@ Text: ${text.substring(0, 2000)}
       totalProcessed: 0,
       averageProcessingTime: 0,
       successRate: 100,
-      service: 'Python-OCR-v2'
+      service: 'Enhanced-FRA-OCR-v3'
     };
   }
 
