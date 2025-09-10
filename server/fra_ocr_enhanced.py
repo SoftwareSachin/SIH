@@ -189,6 +189,22 @@ class EnhancedFRAOCR:
                 r'(?:south|दक्षिण|দক্ষিণ|ଦକ୍ଷିଣ|దక్షిణం)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s,.-]+)',
                 r'(?:east|पूर्व|পূর্ব|ପୂର୍ବ|తూర్పు)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s,.-]+)',
                 r'(?:west|पश्चिम|পশ্চিম|ପଶ୍ଚିମ|పశ్చిమం)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s,.-]+)'
+            ],
+            'claim_status': [
+                # Critical status indicators for FRA claims
+                r'(?:status|स्थिति|অবস্থা|ଅବସ୍ଥା|స్థితి)\s*:?\s*(approved|rejected|pending|under\s+review|granted|declined|स्वीकृत|अस्वीकृत|लंबित|मंजूर)',
+                r'(?:decision|निर्णय|সিদ্ধান্ত|ନିଷ୍ପତ୍ତି|నిర్ణయం)\s*:?\s*(approved|rejected|pending|granted|स्वीकृत|अस्वीकृत)',
+                r'(?:verification|सत्यापन|যাচাই|ଯାଞ୍ଚ|ధృవీకరణ)\s*:?\s*(completed|pending|in\s+progress|done|संपन्न|लंबित|पूर्ण)',
+                r'(?:final\s*decision|अंतिम\s*निर्णय)\s*:?\s*(approved|rejected|granted|स्वीकृत|अस्वीकृत)',
+                # Direct status patterns
+                r'\b(approved|rejected|pending|granted|declined|under\s+review|स्वीकृत|अस्वीकृत|लंबित|मंजूर)\b'
+            ],
+            'forest_areas': [
+                # Enhanced forest area patterns
+                r'(?:forest\s*area|वन\s*क्षेत्र|বন\s*এলাকা|ବନ\s*କ୍ଷେତ୍ର|అటవీ\s*ప్రాంతం)\s*:?\s*(\d+(?:\.\d+)?\s*(?:hectare|acre|हेक्टेयर|एकड़))',
+                r'(?:total\s*area|कुल\s*क्षेत्र|মোট\s*এলাকা|ମୋଟ\s*କ୍ଷେତ୍ର|మొత్తం\s*ప్రాంతం)\s*:?\s*(\d+(?:\.\d+)?\s*(?:hectare|acre|हेक्टेयर))',
+                r'(\d+(?:\.\d+)?\s*(?:hectare|ha|acre|हेक्टेयर|एकड़|হেক্টর|ଏକର|హెక్టార్))',
+                r'(?:area\s*claimed|दावा\s*क्षेत्र)\s*:?\s*(\d+(?:\.\d+)?\s*(?:hectare|acre))'
             ]
         }
         
