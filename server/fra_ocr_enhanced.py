@@ -205,14 +205,22 @@ class EnhancedFRAOCR:
 
     def parse_coordinate(self, coord_str: str) -> tuple:
         """
-        Parse coordinate string to decimal degrees, handling DMS, DM, and decimal formats
+        Parse coordinate string to decimal degrees, handling decimal, DMS, and DM formats
+        Priority: decimal degrees first, then DMS/DM formats
         """
         try:
             coord_str = coord_str.strip()
             
-            # DMS format: 21°15'30"N or 21° 15' 30" N
-            dms_pattern = r'(\d{1,3})[°\s]*(\d{1,2})[\'\′\s]*(\d{0,2})["\″\s]*([NSEWnsew]?)'
-            dms_match = re.search(dms_pattern, coord_str)
+            # First check for decimal degrees format: 21.2567 or 22.5
+            decimal_pattern = r'^(\d{1,3}\.\d+)$'
+            decimal_match = re.match(decimal_pattern, coord_str)
+            
+            if decimal_match:
+                return float(decimal_match.group(1)), True
+            
+            # Check for DMS format with degree symbols: 21°15'30"N or 21° 15' 30" N
+            dms_with_symbols = r'(\d{1,3})[°]\s*(\d{1,2})[\'\′]\s*(\d{0,2})["\″]?\s*([NSEWnsew]?)'
+            dms_match = re.search(dms_with_symbols, coord_str)
             
             if dms_match:
                 degrees = float(dms_match.group(1))
@@ -229,12 +237,12 @@ class EnhancedFRAOCR:
                     
                 return decimal, True
             
-            # Decimal degrees format: 21.2567
-            decimal_pattern = r'(\d{1,3}\.\d+)'
-            decimal_match = re.search(decimal_pattern, coord_str)
+            # Check for simple integer degrees
+            integer_pattern = r'^(\d{1,3})$'
+            integer_match = re.match(integer_pattern, coord_str)
             
-            if decimal_match:
-                return float(decimal_match.group(1)), True
+            if integer_match:
+                return float(integer_match.group(1)), True
                 
             return 0.0, False
             
@@ -248,12 +256,16 @@ class EnhancedFRAOCR:
         try:
             # Handle different coordinate formats and extract lat/lon pairs
             patterns = [
-                # Decimal: 21.5, 74.8 or 21.5 74.8
+                # Decimal with spaces: 21.5 74.8 or 21.5, 74.8
                 r'(\d{1,2}\.\d+)[,\s]+(\d{1,3}\.\d+)',
+                # Simple decimal pairs: 22.5,91.8
+                r'(\d{1,2}\.\d+),\s*(\d{1,3}\.\d+)',
                 # DMS pairs: 21°15'N 74°30'E
                 r'(\d{1,2}[°\s]*\d{1,2}[\'\s]*\d{0,2}["\s]*[NSns]?)[,\s]*(\d{1,3}[°\s]*\d{1,2}[\'\s]*\d{0,2}["\s]*[EWew]?)',
                 # Separated by keywords: Lat: 21.5 Lon: 74.8
-                r'(?:lat|latitude)[:\s]*(\d{1,2}(?:\.\d+)?)[,\s]*(?:lon|longitude)[:\s]*(\d{1,3}(?:\.\d+)?)'
+                r'(?:lat|latitude)[:\s]*(\d{1,2}(?:\.\d+)?)[,\s]*(?:lon|longitude)[:\s]*(\d{1,3}(?:\.\d+)?)',
+                # Space separated decimals: 22.5 91.8
+                r'(\d{1,2}\.\d+)\s+(\d{1,3}\.\d+)'
             ]
             
             lat, lon = 0.0, 0.0
