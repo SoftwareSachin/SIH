@@ -12,6 +12,20 @@
       "corrections": [
         "'village:' → 'Villagee:'"
       ]
+    },
+    {
+      "id": "TeykkeRycde89gpqhQK6i",
+      "imagePath": "/home/runner/workspace/training_data/corrected/TeykkeRycde89gpqhQK6i.png",
+      "groundTruth": "claimant-name: ಕಷ अधिक्तार என்ர Villagee: \\IMANT reference-number: Signature survey-number: ட I Jw area:",
+      "fieldType": "fra-document",
+      "language": "eng+hin",
+      "confidence": 0.8461538461538461,
+      "created": "2025-09-10T13:40:04.167Z",
+      "corrected": true,
+      "corrections": [
+        "'village:' → 'Villagee:'",
+        "'1' → 'I'"
+      ]
     }
   ],
   "trainingSets": []
