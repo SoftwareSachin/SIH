@@ -55,7 +55,20 @@ export default function OCRProcessor() {
 
       if (response.ok) {
         const result = await response.json();
-        setOcrResult(result);
+        // FIX: Handle nested results structure for FRA API response
+        if (result.results) {
+          // Flatten the results structure for the UI
+          setOcrResult({
+            ...result.results,
+            originalFileName: result.originalFileName,
+            documentType: result.documentType,
+            state: result.state,
+            fileSize: result.fileSize,
+            success: result.success
+          });
+        } else {
+          setOcrResult(result);
+        }
       } else {
         const errorResult = await response.json();
         console.error('FRA OCR processing failed:', errorResult);
@@ -236,10 +249,12 @@ export default function OCRProcessor() {
                     {/* Confidence Score */}
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Confidence Score:</span>
-                      <Badge variant={ocrResult.confidence > 80 ? 'default' : ocrResult.confidence > 60 ? 'secondary' : 'destructive'}>
-                        {ocrResult.confidence !== undefined && ocrResult.confidence !== null && !isNaN(ocrResult.confidence) 
+                      <Badge variant={(ocrResult.confidence || 0) > 80 ? 'default' : (ocrResult.confidence || 0) > 60 ? 'secondary' : 'destructive'}>
+                        {ocrResult.confidence !== undefined && ocrResult.confidence !== null && !isNaN(ocrResult.confidence) && ocrResult.confidence > 0
                           ? `${Math.round(ocrResult.confidence)}%` 
-                          : 'Processing...'}
+                          : ocrResult.confidence === 0 
+                            ? '0%' 
+                            : 'Processing...'}
                       </Badge>
                     </div>
 
