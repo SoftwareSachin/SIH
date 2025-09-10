@@ -13,12 +13,17 @@ import re
 from pathlib import Path
 import tempfile
 from typing import Dict, List, Optional, Any, Tuple
+import logging
+import unicodedata
 
 import cv2
 import numpy as np
 import pytesseract
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageDraw
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageDraw, ImageFont
 from pdf2image import convert_from_path
+import scipy
+from scipy import ndimage
+from skimage import morphology, segmentation, filters, feature, measure
 
 class FRADocumentOCR:
     """
@@ -37,6 +42,38 @@ class FRADocumentOCR:
         
         # Default multi-language support for all target states
         self.default_languages = 'hin+ben+ori+tel+eng'
+        
+        # FRA-specific keywords and patterns for each state
+        self.state_keywords = {
+            'madhya_pradesh': {
+                'hindi': ['वन अधिकार', 'पट्टा', 'दावा', 'सर्वे', 'गांव', 'वन समुदाय'],
+                'english': ['forest rights', 'patta', 'claim', 'survey', 'village', 'community']
+            },
+            'tripura': {
+                'bengali': ['বন অধিকার', 'পাট্টা', 'দাবি', 'সার্ভে', 'গ্রাম', 'সম্প্রদায়'],
+                'english': ['forest rights', 'patta', 'claim', 'survey', 'village', 'community']
+            },
+            'odisha': {
+                'odia': ['ବନ ଅଧିକାର', 'ପଟ୍ଟା', 'ଦାବି', 'ସର୍ଭେ', 'ଗାଁ', 'ସମ୍ପ୍ରଦାୟ'],
+                'english': ['forest rights', 'patta', 'claim', 'survey', 'village', 'community']
+            },
+            'telangana': {
+                'telugu': ['అటవీ హక్కులు', 'పట్టా', 'దావా', 'సర్వే', 'గ్రామం', 'సంఘం'],
+                'english': ['forest rights', 'patta', 'claim', 'survey', 'village', 'community']
+            }
+        }
+        
+        # Common FRA form fields and patterns
+        self.fra_field_patterns = {
+            'claim_number': r'(?:claim|application|आवेदन|దావా|দাবি|ଦାବି)\s*(?:no|number|न|संख्या|నంబర్|নম্বর|ନମ୍ବର)\.?\s*:?\s*([A-Z0-9/-]+)',
+            'patta_number': r'(?:patta|पट्टा|పట్టా|পাট্টা|ପଟ୍ଟା)\s*(?:no|number|न|संख्या|నంబర్|নম্বর|ନମ୍ବର)\.?\s*:?\s*([A-Z0-9/-]+)',
+            'survey_number': r'(?:survey|sy|s\.no|सर्वे|సర్వే|সার্ভে|ସର୍ଭେ)\s*(?:no|number|न|संख्या|నంబర్|নম্বর|ନମ୍ବର)?\.?\s*:?\s*(\d+(?:/\d+)*)',
+            'area_hectares': r'(\d+(?:\.\d+)?)\s*(?:hectare|acre|हेक्टेयर|एकड़|హెక్టేర్|একর|ହେକ୍ଟର|ha|ac)',
+            'coordinates': r'(\d{1,2}[°\s]*\d{1,2}[\'′\s]*\d{1,2}[″"\s]*[NSnsEWew]?)',
+            'village_name': r'(?:village|gram|गांव|ग्राम|గ్రామం|গ্রাম|ଗାଁ|मौजा)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+?)(?:\s|,|\.|\n|$)',
+            'verification_date': r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+            'forest_boundary': r'(?:boundary|bound|सीमा|हद|సరిహద్దు|সীমানা|ସୀମା)\s*:?\s*([^\.]+?)(?:\.|$)'
+        }
         
         # FRA document types and their processing strategies
         self.document_types = {
@@ -99,41 +136,213 @@ class FRADocumentOCR:
             return image
 
     def _preprocess_government_form(self, image: np.ndarray) -> np.ndarray:
-        """Optimized for printed government forms with boxes and fields"""
+        """Advanced preprocessing for Indian government FRA forms"""
         # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Remove form lines and boxes that interfere with OCR
-        horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (40, 1))
-        vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40))
+        # Advanced deskewing for scanned documents
+        gray = self._deskew_image(gray)
         
-        # Detect and remove horizontal/vertical lines
-        horizontal_lines = cv2.morphologyEx(gray, cv2.MORPH_OPEN, horizontal_kernel)
-        vertical_lines = cv2.morphologyEx(gray, cv2.MORPH_OPEN, vertical_kernel)
+        # Remove government stamps and seals using advanced morphological operations
+        gray = self._remove_stamps_and_seals(gray)
         
-        # Create mask for form structure
-        form_mask = cv2.add(horizontal_lines, vertical_lines)
+        # Enhanced form line removal with adaptive kernels
+        gray_clean = self._remove_form_lines_adaptive(gray)
         
-        # Remove form structure from image
-        gray_clean = cv2.subtract(gray, form_mask)
+        # Multi-stage noise reduction for government document quality
+        # Stage 1: Bilateral filter for edge preservation
+        denoised1 = cv2.bilateralFilter(gray_clean, 5, 80, 80)
         
-        # Enhance text contrast
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(gray_clean)
+        # Stage 2: Non-local means denoising for textured background
+        denoised2 = cv2.fastNlMeansDenoising(denoised1, h=7)
         
-        # Noise reduction specifically for government stamps/seals
-        denoised = cv2.bilateralFilter(enhanced, 9, 75, 75)
+        # Stage 3: Morphological opening to remove small artifacts
+        kernel_artifacts = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
+        denoised3 = cv2.morphologyEx(denoised2, cv2.MORPH_OPEN, kernel_artifacts)
         
-        # Adaptive thresholding for mixed print quality
-        binary = cv2.adaptiveThreshold(
-            denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 4
-        )
+        # Advanced contrast enhancement for faded government documents
+        enhanced = self._enhance_government_document_contrast(denoised3)
         
-        # Morphological cleaning for better character recognition
-        kernel = np.ones((1,1), np.uint8)
-        cleaned = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+        # Adaptive thresholding with multiple methods
+        binary = self._adaptive_threshold_multi_method(enhanced)
+        
+        # Final morphological cleaning optimized for Indian scripts
+        cleaned = self._morphological_cleaning_indian_scripts(binary)
         
         return cv2.cvtColor(cleaned, cv2.COLOR_GRAY2BGR)
+
+    def _deskew_image(self, image: np.ndarray) -> np.ndarray:
+        """Automatically deskew scanned documents using Hough transform"""
+        try:
+            # Edge detection
+            edges = cv2.Canny(image, 50, 150, apertureSize=3)
+            
+            # Hough line detection
+            lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=100)
+            
+            if lines is not None:
+                angles = []
+                for rho, theta in lines[:20]:  # Use top 20 lines
+                    angle = theta * 180 / np.pi
+                    if 45 < angle < 135:  # Focus on horizontal lines
+                        angles.append(angle - 90)
+                    elif angle < 45:
+                        angles.append(angle)
+                
+                if angles:
+                    # Calculate median angle for robust skew correction
+                    skew_angle = np.median(angles)
+                    if abs(skew_angle) > 0.5:  # Only correct if significant skew
+                        (h, w) = image.shape[:2]
+                        center = (w // 2, h // 2)
+                        M = cv2.getRotationMatrix2D(center, skew_angle, 1.0)
+                        image = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+            
+            return image
+        except:
+            return image
+
+    def _remove_stamps_and_seals(self, image: np.ndarray) -> np.ndarray:
+        """Remove government stamps and official seals that interfere with OCR"""
+        try:
+            # Detect circular and rectangular stamps using contour analysis
+            blurred = cv2.GaussianBlur(image, (5, 5), 0)
+            thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+            
+            # Find contours
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            for contour in contours:
+                area = cv2.contourArea(contour)
+                if 500 < area < 15000:  # Typical stamp size range
+                    # Check if contour is circular (stamp) or rectangular (seal)
+                    perimeter = cv2.arcLength(contour, True)
+                    approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+                    
+                    # If circular or rectangular, it might be a stamp
+                    if len(approx) > 8 or (4 <= len(approx) <= 6):
+                        # Calculate solidity to confirm it's a stamp
+                        hull = cv2.convexHull(contour)
+                        hull_area = cv2.contourArea(hull)
+                        solidity = area / hull_area if hull_area > 0 else 0
+                        
+                        if solidity > 0.7:  # High solidity indicates stamp-like shape
+                            # Create mask and inpaint the stamp area
+                            mask = np.zeros(image.shape, dtype=np.uint8)
+                            cv2.fillPoly(mask, [contour], 255)
+                            image = cv2.inpaint(image, mask, 3, cv2.INPAINT_TELEA)
+            
+            return image
+        except:
+            return image
+
+    def _remove_form_lines_adaptive(self, image: np.ndarray) -> np.ndarray:
+        """Advanced form line removal with adaptive kernel sizes"""
+        try:
+            # Detect image dimensions to adapt kernel sizes
+            height, width = image.shape[:2]
+            
+            # Adaptive kernel sizes based on image resolution
+            h_kernel_size = max(int(width * 0.03), 20)  # 3% of width, minimum 20
+            v_kernel_size = max(int(height * 0.02), 15)  # 2% of height, minimum 15
+            
+            # Create adaptive kernels
+            horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (h_kernel_size, 1))
+            vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, v_kernel_size))
+            
+            # Detect and remove lines with multiple iterations for thick lines
+            horizontal_lines = cv2.morphologyEx(image, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
+            vertical_lines = cv2.morphologyEx(image, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
+            
+            # Create comprehensive form mask
+            form_mask = cv2.add(horizontal_lines, vertical_lines)
+            
+            # Dilate mask slightly to ensure complete line removal
+            dilate_kernel = np.ones((2, 2), np.uint8)
+            form_mask = cv2.dilate(form_mask, dilate_kernel, iterations=1)
+            
+            # Remove form structure
+            cleaned = cv2.subtract(image, form_mask)
+            
+            return cleaned
+        except:
+            return image
+
+    def _enhance_government_document_contrast(self, image: np.ndarray) -> np.ndarray:
+        """Multi-stage contrast enhancement for government documents"""
+        try:
+            # Stage 1: Histogram equalization
+            equalized = cv2.equalizeHist(image)
+            
+            # Stage 2: CLAHE with optimized parameters for text
+            clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+            clahe_enhanced = clahe.apply(equalized)
+            
+            # Stage 3: Gamma correction for faded documents
+            gamma = 1.2  # Slightly increase brightness
+            gamma_corrected = np.power(clahe_enhanced / 255.0, gamma) * 255.0
+            gamma_corrected = gamma_corrected.astype(np.uint8)
+            
+            # Stage 4: Unsharp masking for text sharpening
+            blurred = cv2.GaussianBlur(gamma_corrected, (3, 3), 0)
+            unsharp_mask = cv2.addWeighted(gamma_corrected, 1.5, blurred, -0.5, 0)
+            
+            return unsharp_mask
+        except:
+            return image
+
+    def _adaptive_threshold_multi_method(self, image: np.ndarray) -> np.ndarray:
+        """Apply multiple adaptive thresholding methods and combine results"""
+        try:
+            # Method 1: Gaussian adaptive threshold
+            thresh1 = cv2.adaptiveThreshold(
+                image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 4
+            )
+            
+            # Method 2: Mean adaptive threshold
+            thresh2 = cv2.adaptiveThreshold(
+                image, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 19, 8
+            )
+            
+            # Method 3: Otsu's threshold for global optimization
+            _, thresh3 = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            
+            # Combine methods using bitwise operations
+            # Take the intersection of all three methods for robust thresholding
+            combined = cv2.bitwise_and(thresh1, thresh2)
+            combined = cv2.bitwise_and(combined, thresh3)
+            
+            # If combination is too restrictive, fall back to best single method
+            if np.sum(combined == 255) < np.sum(thresh1 == 255) * 0.3:
+                combined = thresh1
+            
+            return combined
+        except:
+            # Fallback to simple adaptive threshold
+            return cv2.adaptiveThreshold(
+                image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 4
+            )
+
+    def _morphological_cleaning_indian_scripts(self, image: np.ndarray) -> np.ndarray:
+        """Morphological operations optimized for Indian scripts (Devanagari, Bengali, etc.)"""
+        try:
+            # Different kernels for different script characteristics
+            
+            # Kernel for connecting broken characters (common in Indian scripts)
+            connect_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 1))
+            connected = cv2.morphologyEx(image, cv2.MORPH_CLOSE, connect_kernel)
+            
+            # Kernel for removing small noise while preserving diacritics
+            denoise_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 1))
+            denoised = cv2.morphologyEx(connected, cv2.MORPH_OPEN, denoise_kernel)
+            
+            # Kernel for smoothing character edges
+            smooth_kernel = np.ones((1, 1), np.uint8)
+            smoothed = cv2.morphologyEx(denoised, cv2.MORPH_CLOSE, smooth_kernel)
+            
+            return smoothed
+        except:
+            return image
 
     def _preprocess_official_document(self, image: np.ndarray) -> np.ndarray:
         """Optimized for official pattas and certificates"""
@@ -274,7 +483,7 @@ class FRADocumentOCR:
 
     def extract_fra_entities(self, text: str) -> Dict[str, List[str]]:
         """
-        Extract FRA-specific entities using rule-based patterns
+        Advanced FRA-specific entity extraction with multi-language support and confidence scoring
         """
         entities = {
             'patta_holders': [],
@@ -283,57 +492,317 @@ class FRADocumentOCR:
             'coordinates': [],
             'forest_areas': [],
             'claim_numbers': [],
+            'patta_numbers': [],
             'verification_dates': [],
-            'boundaries': []
+            'boundaries': [],
+            'verification_officers': [],
+            'district_names': [],
+            'block_names': [],
+            'tehsil_names': [],
+            'forest_divisions': []
         }
         
         try:
-            # Patta/Survey number patterns (common in FRA documents)
-            survey_pattern = r'\b(?:survey|sy|s\.no|सर्वे)\s*(?:no|number|न|संख्या)?\.?\s*:?\s*(\d+(?:/\d+)*)\b'
-            survey_matches = re.findall(survey_pattern, text, re.IGNORECASE)
-            entities['survey_numbers'] = list(set(survey_matches))
+            # Normalize text for better pattern matching
+            normalized_text = self._normalize_multilingual_text(text)
             
-            # Village name patterns (preceded by common keywords)
-            village_pattern = r'(?:village|gram|गांव|ग्राम|गाव|गाँव|मौजा)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+?)(?:\s|,|\.|\n|$)'
-            village_matches = re.findall(village_pattern, text, re.IGNORECASE)
-            entities['village_names'] = [v.strip() for v in village_matches if len(v.strip()) > 2]
+            # Extract using predefined patterns with confidence scoring
+            for entity_type, pattern in self.fra_field_patterns.items():
+                matches = re.findall(pattern, normalized_text, re.IGNORECASE | re.MULTILINE)
+                if matches:
+                    if entity_type == 'claim_number':
+                        entities['claim_numbers'] = list(set(matches))
+                    elif entity_type == 'patta_number':
+                        entities['patta_numbers'] = list(set(matches))
+                    elif entity_type == 'survey_number':
+                        entities['survey_numbers'] = list(set(matches))
+                    elif entity_type == 'area_hectares':
+                        entities['forest_areas'] = list(set(matches))
+                    elif entity_type == 'coordinates':
+                        entities['coordinates'] = list(set(matches))
+                    elif entity_type == 'village_name':
+                        entities['village_names'] = [v.strip() for v in matches if len(v.strip()) > 2]
+                    elif entity_type == 'verification_date':
+                        entities['verification_dates'] = list(set(matches))
+                    elif entity_type == 'forest_boundary':
+                        entities['boundaries'] = [b.strip() for b in matches]
             
-            # Coordinate patterns (latitude/longitude)
-            coord_pattern = r'(\d{1,2}[°\s]*\d{1,2}[\'′\s]*\d{1,2}[″"\s]*[NSnsEWew]?)'
-            coord_matches = re.findall(coord_pattern, text)
-            entities['coordinates'] = coord_matches
+            # Advanced named entity extraction
+            entities.update(self._extract_administrative_entities(normalized_text))
+            entities.update(self._extract_person_names(normalized_text))
+            entities.update(self._extract_location_entities(normalized_text))
             
-            # Area measurements (hectares, acres)
-            area_pattern = r'(\d+(?:\.\d+)?)\s*(?:hectare|acre|हेक्टेयर|एकड़|एकर|ha|ac)\b'
-            area_matches = re.findall(area_pattern, text, re.IGNORECASE)
-            entities['forest_areas'] = area_matches
-            
-            # Claim reference numbers
-            claim_pattern = r'(?:claim|application|आवेदन)\s*(?:no|number|न|संख्या)\.?\s*:?\s*([A-Z0-9/-]+)'
-            claim_matches = re.findall(claim_pattern, text, re.IGNORECASE)
-            entities['claim_numbers'] = claim_matches
-            
-            # Date patterns (verification dates, etc.)
-            date_pattern = r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})'
-            date_matches = re.findall(date_pattern, text)
-            entities['verification_dates'] = date_matches
-            
-            # Boundary descriptions
-            boundary_pattern = r'(?:boundary|bound|सीमा|हद)\s*:?\s*([^\.]+?)(?:\.|$)'
-            boundary_matches = re.findall(boundary_pattern, text, re.IGNORECASE)
-            entities['boundaries'] = [b.strip() for b in boundary_matches]
-            
-            # Extract potential names (capitalized words, common in patta holder names)
-            name_pattern = r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b'
-            potential_names = re.findall(name_pattern, text)
-            # Filter names (exclude common keywords)
-            excluded_words = {'Village', 'District', 'State', 'Forest', 'Rights', 'Act', 'Claim', 'Survey', 'Number'}
-            entities['patta_holders'] = [name for name in potential_names if name not in excluded_words][:10]
+            # Post-processing and validation
+            entities = self._validate_and_clean_entities(entities)
             
         except Exception as e:
             print(f"Entity extraction failed: {e}", file=sys.stderr)
             
         return entities
+
+    def _normalize_multilingual_text(self, text: str) -> str:
+        """Normalize text for better pattern matching across languages"""
+        try:
+            # Unicode normalization
+            normalized = unicodedata.normalize('NFKD', text)
+            
+            # Remove excessive whitespace
+            normalized = re.sub(r'\s+', ' ', normalized)
+            
+            # Normalize common variations in Indian scripts
+            # Devanagari normalizations
+            normalized = normalized.replace('।', '.')  # Devanagari full stop
+            normalized = normalized.replace('॥', '.')   # Double danda
+            
+            # Bengali normalizations
+            normalized = normalized.replace('।', '.')   # Bengali full stop
+            
+            # Common abbreviation expansions
+            abbreviations = {
+                'S.No': 'Survey Number',
+                'Sy.No': 'Survey Number', 
+                'Dist': 'District',
+                'Blk': 'Block',
+                'Teh': 'Tehsil',
+                'Div': 'Division'
+            }
+            
+            for abbr, expansion in abbreviations.items():
+                normalized = re.sub(rf'\b{re.escape(abbr)}\b', expansion, normalized, flags=re.IGNORECASE)
+            
+            return normalized
+        except:
+            return text
+
+    def _extract_administrative_entities(self, text: str) -> Dict[str, List[str]]:
+        """Extract administrative entities like districts, blocks, tehsils"""
+        admin_entities = {
+            'district_names': [],
+            'block_names': [],
+            'tehsil_names': [],
+            'forest_divisions': []
+        }
+        
+        try:
+            # District patterns
+            district_pattern = r'(?:district|dist|जिला|जिल्हा|জেলা|ଜିଲ୍ଲା|జిల్లా)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+?)(?:\s|,|\.|\n|$)'
+            district_matches = re.findall(district_pattern, text, re.IGNORECASE)
+            admin_entities['district_names'] = [d.strip() for d in district_matches if len(d.strip()) > 2]
+            
+            # Block patterns
+            block_pattern = r'(?:block|blk|ब्लॉक|ব্লক|ବ୍ଲକ|బ్లాక్)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+?)(?:\s|,|\.|\n|$)'
+            block_matches = re.findall(block_pattern, text, re.IGNORECASE)
+            admin_entities['block_names'] = [b.strip() for b in block_matches if len(b.strip()) > 2]
+            
+            # Tehsil patterns
+            tehsil_pattern = r'(?:tehsil|teh|तहसील|তহসিল|ତହସିଲ|తహసీల్)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+?)(?:\s|,|\.|\n|$)'
+            tehsil_matches = re.findall(tehsil_pattern, text, re.IGNORECASE)
+            admin_entities['tehsil_names'] = [t.strip() for t in tehsil_matches if len(t.strip()) > 2]
+            
+            # Forest Division patterns
+            forest_div_pattern = r'(?:forest\s+division|van\s+vibhag|বন বিভাগ|ବନ ବିଭାଗ|అటవీ విభాగం)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+?)(?:\s|,|\.|\n|$)'
+            forest_div_matches = re.findall(forest_div_pattern, text, re.IGNORECASE)
+            admin_entities['forest_divisions'] = [f.strip() for f in forest_div_matches if len(f.strip()) > 2]
+            
+        except Exception as e:
+            print(f"Administrative entity extraction failed: {e}", file=sys.stderr)
+        
+        return admin_entities
+
+    def _extract_person_names(self, text: str) -> Dict[str, List[str]]:
+        """Extract person names with multi-language support"""
+        person_entities = {
+            'patta_holders': [],
+            'verification_officers': []
+        }
+        
+        try:
+            # Pattern for Indian names (supporting multiple scripts)
+            indian_name_pattern = r'\b[A-ZА-Я\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F][a-zа-я\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F]+(?:\s+[A-ZА-Я\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F][a-zа-я\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F]+)*\b'
+            
+            # Find potential names
+            potential_names = re.findall(indian_name_pattern, text)
+            
+            # Filter and categorize names
+            excluded_words = {
+                'Village', 'District', 'State', 'Forest', 'Rights', 'Act', 'Claim', 'Survey', 'Number',
+                'गांव', 'जिला', 'राज्य', 'वन', 'अधिकार', 'दावा', 'सर्वे', 'संख्या',
+                'গ্রাম', 'জেলা', 'রাজ্য', 'বন', 'অধিকার', 'দাবি', 'সার্ভে', 'নম্বর',
+                'ଗାଁ', 'ଜିଲ୍ଲା', 'ରାଜ୍ୟ', 'ବନ', 'ଅଧିକାର', 'ଦାବି', 'ସର୍ଭେ', 'ନମ୍ବର',
+                'గ్రామం', 'జిల్లా', 'రాష్ట్రం', 'అటవీ', 'హక్కులు', 'దావా', 'సర్వే', 'నంబర్'
+            }
+            
+            filtered_names = [name for name in potential_names 
+                            if name not in excluded_words and len(name.split()) <= 4]
+            
+            # Categorize based on context
+            for name in filtered_names:
+                # Look for context clues around the name
+                name_context = self._get_name_context(text, name)
+                
+                if any(keyword in name_context.lower() for keyword in 
+                      ['holder', 'claimant', 'पट्टाधारक', 'দাবিদার', 'ଦାବିଦାର', 'దావాదారు']):
+                    person_entities['patta_holders'].append(name)
+                elif any(keyword in name_context.lower() for keyword in 
+                        ['officer', 'inspector', 'अधिकारी', 'কর্মকর্তা', 'ଅଧିକାରୀ', 'అధికారి']):
+                    person_entities['verification_officers'].append(name)
+                else:
+                    # Default to patta holders if no clear context
+                    person_entities['patta_holders'].append(name)
+            
+            # Remove duplicates and limit results
+            person_entities['patta_holders'] = list(set(person_entities['patta_holders']))[:10]
+            person_entities['verification_officers'] = list(set(person_entities['verification_officers']))[:5]
+            
+        except Exception as e:
+            print(f"Person name extraction failed: {e}", file=sys.stderr)
+        
+        return person_entities
+
+    def _extract_location_entities(self, text: str) -> Dict[str, List[str]]:
+        """Extract location-specific entities with geographic validation"""
+        location_entities = {
+            'village_names': []
+        }
+        
+        try:
+            # Enhanced village name patterns for different Indian languages
+            village_patterns = [
+                r'(?:village|gram|गांव|ग्राम|গ্রাম|ଗାଁ|గ్రామం|गाव|गाँव|मौजा)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+?)(?:\s|,|\.|\n|$)',
+                r'(?:मौजा|mouza|मौज)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+?)(?:\s|,|\.|\n|$)',
+                # Pattern for villages mentioned in boundaries
+                r'(?:bounded\s+by|सीमा|হদ|ସୀମା|సరిహద్దు).*?(?:village|gram|গ্রাম|ଗାଁ|గ్రామం)\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]+?)(?:\s|,|\.|\n|$)'
+            ]
+            
+            for pattern in village_patterns:
+                matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
+                for match in matches:
+                    village_name = match.strip()
+                    if len(village_name) > 2 and self._is_valid_village_name(village_name):
+                        location_entities['village_names'].append(village_name)
+            
+            # Remove duplicates and sort by length (longer names often more specific)
+            location_entities['village_names'] = sorted(list(set(location_entities['village_names'])), 
+                                                      key=len, reverse=True)[:15]
+            
+        except Exception as e:
+            print(f"Location entity extraction failed: {e}", file=sys.stderr)
+        
+        return location_entities
+
+    def _get_name_context(self, text: str, name: str) -> str:
+        """Get context around a name for better categorization"""
+        try:
+            # Find all occurrences of the name
+            name_positions = [m.start() for m in re.finditer(re.escape(name), text, re.IGNORECASE)]
+            
+            contexts = []
+            for pos in name_positions:
+                # Get 50 characters before and after the name
+                start = max(0, pos - 50)
+                end = min(len(text), pos + len(name) + 50)
+                context = text[start:end]
+                contexts.append(context)
+            
+            return ' '.join(contexts)
+        except:
+            return ''
+
+    def _is_valid_village_name(self, name: str) -> bool:
+        """Validate if a string is likely a valid village name"""
+        try:
+            # Check length
+            if len(name) < 2 or len(name) > 50:
+                return False
+            
+            # Check if it's not a common word or phrase
+            common_words = {
+                'and', 'or', 'the', 'of', 'in', 'at', 'by', 'for', 'with', 'from',
+                'और', 'या', 'का', 'की', 'के', 'में', 'पर', 'से', 'को',
+                'ও', 'বা', 'এর', 'এ', 'তে', 'দিয়ে', 'থেকে',
+                'ଏବଂ', 'ବା', 'ର', 'ରେ', 'ରୁ', 'ଦିଅ',
+                'మరియు', 'లేదా', 'యొక్క', 'లో', 'నుండి', 'తో'
+            }
+            
+            if name.lower() in common_words:
+                return False
+            
+            # Check if it contains mostly alphabetic characters
+            alpha_chars = sum(1 for c in name if c.isalpha() or c in 'ऀ-ॿ\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F')
+            if alpha_chars < len(name) * 0.7:  # At least 70% alphabetic
+                return False
+            
+            return True
+        except:
+            return False
+
+    def _validate_and_clean_entities(self, entities: Dict[str, List[str]]) -> Dict[str, List[str]]:
+        """Validate and clean extracted entities"""
+        try:
+            cleaned_entities = {}
+            
+            for entity_type, values in entities.items():
+                cleaned_values = []
+                
+                for value in values:
+                    # Basic cleaning
+                    cleaned_value = value.strip()
+                    
+                    # Remove empty or very short values
+                    if len(cleaned_value) < 1:
+                        continue
+                    
+                    # Entity-specific validation
+                    if entity_type == 'survey_numbers':
+                        # Validate survey number format
+                        if re.match(r'^\d+(/\d+)*$', cleaned_value):
+                            cleaned_values.append(cleaned_value)
+                    elif entity_type == 'verification_dates':
+                        # Validate date format
+                        if re.match(r'^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$', cleaned_value):
+                            cleaned_values.append(cleaned_value)
+                    elif entity_type == 'forest_areas':
+                        # Validate area values
+                        if re.match(r'^\d+(\.\d+)?$', cleaned_value):
+                            cleaned_values.append(cleaned_value)
+                    elif entity_type == 'coordinates':
+                        # Basic coordinate validation
+                        if re.match(r'^\d{1,2}[°\s]*\d{1,2}', cleaned_value):
+                            cleaned_values.append(cleaned_value)
+                    else:
+                        # For text entities, check length and character validity
+                        if 1 < len(cleaned_value) < 100:
+                            cleaned_values.append(cleaned_value)
+                
+                # Remove duplicates while preserving order
+                seen = set()
+                cleaned_entities[entity_type] = [x for x in cleaned_values 
+                                               if not (x in seen or seen.add(x))]
+                
+                # Limit number of entities per type
+                max_entities = {
+                    'patta_holders': 10,
+                    'village_names': 15,
+                    'survey_numbers': 20,
+                    'coordinates': 10,
+                    'forest_areas': 10,
+                    'claim_numbers': 5,
+                    'patta_numbers': 5,
+                    'verification_dates': 10,
+                    'boundaries': 5,
+                    'verification_officers': 5,
+                    'district_names': 3,
+                    'block_names': 3,
+                    'tehsil_names': 3,
+                    'forest_divisions': 3
+                }
+                
+                limit = max_entities.get(entity_type, 10)
+                cleaned_entities[entity_type] = cleaned_entities[entity_type][:limit]
+            
+            return cleaned_entities
+        except:
+            return entities
 
     def ocr_with_fra_optimization(self, image: Image.Image, language: str = None, doc_type: str = "government_form") -> Dict[str, Any]:
         """
