@@ -151,7 +151,11 @@ export class OptimizedTesseractEngine {
           preserve_interword_spaces: '1',
           tessjs_create_hocr: '1',
           tessjs_create_tsv: '1',
-          user_defined_dpi: '300'
+          user_defined_dpi: '300',
+          // Enhanced settings for better accuracy
+          tessedit_enable_bigram_correction: '1',
+          tessedit_enable_dict_correction: '1',
+          tessjs_minimum_confidence: '60'
         }
       };
 
@@ -387,6 +391,104 @@ export class OptimizedTesseractEngine {
       '11': 'handwriting'
     };
     return psmMap[psm] || 'document';
+  }
+
+  /**
+   * Process FRA documents with optimized settings
+   */
+  async processFRADocument(imagePath: string): Promise<TesseractResult> {
+    console.log('🏛️ Processing FRA document with optimized settings...');
+    
+    const startTime = Date.now();
+    
+    if (!this.initialized) {
+      await this.initializeEngine();
+    }
+
+    try {
+      // Optimized settings specifically for FRA documents
+      const recognizeOptions = {
+        lang: 'eng', // Focus on English for clear typed documents
+        options: {
+          tessedit_pageseg_mode: '6', // Uniform block of text - better for forms
+          tessedit_ocr_engine_mode: '1', // LSTM only
+          preserve_interword_spaces: '1',
+          tessjs_create_hocr: '1',
+          tessjs_create_tsv: '1',
+          user_defined_dpi: '300',
+          // Enhanced accuracy settings
+          tessedit_enable_bigram_correction: '1',
+          tessedit_enable_dict_correction: '1',
+          tessjs_minimum_confidence: '70',
+          // Character whitelist for FRA documents
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:-/()',
+          // Additional quality settings
+          tessedit_write_images: '0',
+          textord_debug_tabfind: '0',
+          classify_enable_learning: '0'
+        }
+      };
+
+      const result = await this.scheduler.addJob('recognize', imagePath, recognizeOptions);
+      
+      // Parse TSV for detailed token information
+      const tokens = this.parseTSV(result.data.tsv || '');
+      
+      // Clean up the extracted text
+      const cleanedText = this.cleanFRAText(result.data.text || '');
+
+      const processingTime = Date.now() - startTime;
+
+      console.log(`📋 FRA document processed in ${processingTime}ms with ${result.data.confidence}% confidence`);
+      console.log(`📝 Extracted text: ${cleanedText.substring(0, 100)}...`);
+
+      return {
+        text: cleanedText,
+        confidence: result.data.confidence || 0,
+        method: 'fra-optimized-tesseract',
+        hocr: result.data.hocr || '',
+        tsv: result.data.tsv || '',
+        processingTime,
+        tokens
+      };
+
+    } catch (error) {
+      console.error('❌ FRA document processing failed:', error);
+      return {
+        text: '',
+        confidence: 0,
+        method: 'failed',
+        hocr: '',
+        tsv: '',
+        processingTime: Date.now() - startTime,
+        tokens: []
+      };
+    }
+  }
+
+  /**
+   * Clean and structure FRA document text
+   */
+  private cleanFRAText(rawText: string): string {
+    let cleaned = rawText
+      // Remove multiple spaces and normalize whitespace
+      .replace(/\s+/g, ' ')
+      // Fix common OCR errors in FRA documents
+      .replace(/FOREST\s+RIGHTS\s+ACT/gi, 'FOREST RIGHTS ACT')
+      .replace(/CLAIMANT:/gi, 'CLAIMANT:')
+      .replace(/Name:/gi, 'Name:')
+      .replace(/Village:/gi, 'Village:')
+      .replace(/State:/gi, 'State:')
+      .replace(/Patta\s+Number:/gi, 'Patta Number:')
+      .replace(/Rights\s+Claimed:/gi, 'Rights Claimed:')
+      .replace(/Date:/gi, 'Date:')
+      // Remove noise characters
+      .replace(/[\|\\]/g, '')
+      // Normalize line breaks
+      .replace(/\n\s*\n/g, '\n')
+      .trim();
+    
+    return cleaned;
   }
 
   /**
