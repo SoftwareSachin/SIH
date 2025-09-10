@@ -1,5 +1,4 @@
-import FormData from 'form-data';
-import fetch from 'node-fetch';
+import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -23,29 +22,36 @@ interface BatchOCRResult {
 }
 
 export class PythonOCRClient {
-  private baseUrl: string;
+  private pythonPath: string;
+  private scriptPath: string;
   private timeout: number;
 
   constructor() {
-    this.baseUrl = `http://localhost:${process.env.OCR_PORT || 8001}`;
+    this.pythonPath = 'python3';
+    this.scriptPath = path.join(process.cwd(), 'server', 'python_ocr.py');
     this.timeout = 60000; // 60 seconds timeout
   }
 
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/health`, {
-        method: 'GET',
-        timeout: 5000
-      });
+      // Check if Python script exists
+      if (!fs.existsSync(this.scriptPath)) {
+        console.error('❌ Python OCR script not found:', this.scriptPath);
+        return false;
+      }
+
+      // Test basic Python functionality
+      const result = await this.runPythonScript(['-c', 'import pytesseract; import cv2; import PIL; print("OK")']);
       
-      if (response.ok) {
-        const health = await response.json();
-        console.log('✅ Python OCR Service is healthy:', health.status);
+      if (result.success && result.stdout.includes('OK')) {
+        console.log('✅ Python OCR libraries are working');
         return true;
       }
+      
+      console.error('❌ Python OCR libraries test failed:', result.stderr);
       return false;
     } catch (error) {
-      console.error('❌ Python OCR Service health check failed:', error);
+      console.error('❌ Python OCR health check failed:', error);
       return false;
     }
   }
@@ -63,37 +69,43 @@ export class PythonOCRClient {
         throw new Error(`File not found: ${filePath}`);
       }
 
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', fs.createReadStream(filePath));
-      formData.append('auto_language', String(options.autoLanguage ?? true));
-      formData.append('content_type', options.contentType ?? 'document');
+      console.log(`🔄 Processing document with Python OCR: ${path.basename(filePath)}`);
 
-      // Make request to Python OCR service
-      const response = await fetch(`${this.baseUrl}/ocr/process`, {
-        method: 'POST',
-        body: formData,
-        timeout: this.timeout,
-        headers: formData.getHeaders()
-      });
+      // Run Python OCR script
+      const result = await this.runPythonScript([this.scriptPath, filePath]);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OCR service error: ${response.status} - ${errorText}`);
+      if (!result.success) {
+        throw new Error(`Python OCR failed: ${result.stderr}`);
       }
 
-      const result = await response.json();
-      
+      // Parse JSON result
+      const ocrResult = JSON.parse(result.stdout);
+
+      if (ocrResult.type === 'error') {
+        throw new Error(`OCR error: ${ocrResult.error}`);
+      }
+
       // Log result summary
-      if ('results' in result) {
-        // Batch result (PDF)
-        console.log(`✅ OCR completed: ${result.total_pages} pages, avg confidence: ${result.average_confidence}%`);
+      if (ocrResult.type === 'batch') {
+        console.log(`✅ OCR completed: ${ocrResult.total_pages} pages, avg confidence: ${ocrResult.average_confidence}%`);
+        return {
+          results: ocrResult.results,
+          total_pages: ocrResult.total_pages,
+          total_processing_time: ocrResult.total_processing_time,
+          average_confidence: ocrResult.average_confidence
+        };
       } else {
-        // Single result
-        console.log(`✅ OCR completed: ${result.confidence}% confidence, ${result.method}`);
+        console.log(`✅ OCR completed: ${ocrResult.confidence}% confidence, ${ocrResult.method}`);
+        return {
+          text: ocrResult.text,
+          confidence: ocrResult.confidence,
+          language: ocrResult.language,
+          processing_time: ocrResult.processing_time,
+          method: ocrResult.method,
+          page_count: ocrResult.page_count,
+          metadata: ocrResult.metadata || {}
+        };
       }
-
-      return result;
 
     } catch (error: any) {
       console.error('❌ Python OCR processing failed:', error);
@@ -101,32 +113,59 @@ export class PythonOCRClient {
     }
   }
 
+  private async runPythonScript(args: string[]): Promise<{success: boolean, stdout: string, stderr: string}> {
+    return new Promise((resolve) => {
+      const process = spawn(this.pythonPath, args);
+      let stdout = '';
+      let stderr = '';
+
+      process.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      process.on('close', (code) => {
+        resolve({
+          success: code === 0,
+          stdout: stdout.trim(),
+          stderr: stderr.trim()
+        });
+      });
+
+      // Timeout handling
+      setTimeout(() => {
+        process.kill();
+        resolve({
+          success: false,
+          stdout: '',
+          stderr: 'Process timeout'
+        });
+      }, this.timeout);
+    });
+  }
+
   async getSupportedLanguages(): Promise<{ [key: string]: string }> {
-    try {
-      const response = await fetch(`${this.baseUrl}/ocr/languages`);
-      if (response.ok) {
-        const data = await response.json();
-        return data.languages;
-      }
-      return {};
-    } catch (error) {
-      console.error('Failed to get supported languages:', error);
-      return {};
-    }
+    return {
+      'eng': 'English',
+      'hin': 'Hindi', 
+      'ben': 'Bengali',
+      'ori': 'Odia',
+      'tel': 'Telugu',
+      'tam': 'Tamil',
+      'guj': 'Gujarati',
+      'mar': 'Marathi',
+      'kan': 'Kannada',
+      'mal': 'Malayalam',
+      'pan': 'Punjabi',
+      'urd': 'Urdu'
+    };
   }
 
   async getSupportedFormats(): Promise<string[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/ocr/formats`);
-      if (response.ok) {
-        const data = await response.json();
-        return data.formats;
-      }
-      return [];
-    } catch (error) {
-      console.error('Failed to get supported formats:', error);
-      return [];
-    }
+    return ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.webp'];
   }
 
   // Convert OCR result to application format
