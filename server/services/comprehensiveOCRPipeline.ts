@@ -299,17 +299,23 @@ export class ComprehensiveOCRPipeline {
         preprocessingResult.handwritingDetected
       );
       
-      // Choose language based on script detection
-      const language = this.mapScriptToLanguage(preprocessingResult.scriptType);
+      // For FRA documents, always use English to prevent script mixing
+      const language = 'eng'; // Force English-only for clear text recognition
       
-      results.mainResult = await optimizedTesseractEngine.processWithOptimalPSM(
-        preprocessingResult.processedPath,
-        {
-          language,
-          contentType,
-          confidence: 80
-        }
-      );
+      // Check if this is an FRA document and use optimized processing
+      if (preprocessingResult.documentType === 'fra-document') {
+        console.log('🏛️ Using specialized FRA document processing...');
+        results.mainResult = await optimizedTesseractEngine.processFRADocument(preprocessingResult.processedPath);
+      } else {
+        results.mainResult = await optimizedTesseractEngine.processWithOptimalPSM(
+          preprocessingResult.processedPath,
+          {
+            language,
+            contentType,
+            confidence: 80
+          }
+        );
+      }
     }
 
     return results;
@@ -339,25 +345,26 @@ export class ComprehensiveOCRPipeline {
   }
 
   /**
-   * Map script type to language codes
+   * Map script type to language codes - optimized for FRA documents
    */
   private mapScriptToLanguage(scriptType: string): string {
+    // For FRA documents, prioritize English-only processing to prevent script mixing
     const languageMap: Record<string, string> = {
-      'devanagari': 'hin+mar',
-      'bengali': 'ben',
-      'gujarati': 'guj',
-      'telugu': 'tel',
-      'tamil': 'tam',
-      'kannada': 'kan',
-      'malayalam': 'mal',
-      'odia': 'ori',
-      'urdu': 'urd',
+      'devanagari': 'eng', // Use English instead of 'hin+mar' to prevent mixing
+      'bengali': 'eng',    // Use English instead of 'ben' to prevent mixing
+      'gujarati': 'eng',   // Use English instead of 'guj' to prevent mixing
+      'telugu': 'eng',     // Use English instead of 'tel' to prevent mixing
+      'tamil': 'eng',      // Use English instead of 'tam' to prevent mixing
+      'kannada': 'eng',    // Use English instead of 'kan' to prevent mixing
+      'malayalam': 'eng',  // Use English instead of 'mal' to prevent mixing
+      'odia': 'eng',       // Use English instead of 'ori' to prevent mixing
+      'urdu': 'eng',       // Use English instead of 'urd' to prevent mixing
       'latin': 'eng',
-      'mixed': 'eng+hin',
-      'unknown': 'eng+hin'
+      'mixed': 'eng',      // Use English instead of 'eng+hin' to prevent mixing
+      'unknown': 'eng'     // Use English instead of 'eng+hin' to prevent mixing
     };
     
-    return languageMap[scriptType] || 'eng+hin';
+    return languageMap[scriptType] || 'eng';
   }
 
   /**
