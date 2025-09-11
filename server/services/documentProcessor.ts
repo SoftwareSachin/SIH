@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PythonOCRClient } from './pythonOCRClient';
 import path from 'path';
 import fs from 'fs';
+import { createWorker, PSM, OEM } from 'tesseract.js';
 
 interface ProcessedDocument {
   text: string;
@@ -67,29 +68,38 @@ export class DocumentProcessor {
         throw new Error(`File not found: ${filePath}`);
       }
 
-      // Check if OCR service is available
-      if (!this.isOCRServiceRunning) {
-        await this.checkOCRService();
-        if (!this.isOCRServiceRunning) {
-          throw new Error('Python OCR Service is not available');
-        }
-      }
-
       // Determine content type based on file type
       const contentType = this.determineContentType(fileType);
 
-      // Process with Python OCR service
-      const ocrResult = await this.ocrClient.processDocument(filePath, {
-        autoLanguage: true,
-        contentType
-      });
+      let processedDoc: ProcessedDocument;
 
-      // Convert OCR result to application format
-      const processedDoc = this.ocrClient.convertToProcessedDocument(ocrResult, {
-        documentId,
-        fileType,
-        originalPath: filePath
-      });
+      // Try Python OCR service first, then fallback to Tesseract.js
+      if (!this.isOCRServiceRunning) {
+        await this.checkOCRService();
+      }
+
+      if (this.isOCRServiceRunning) {
+        try {
+          // Process with Python OCR service
+          const ocrResult = await this.ocrClient.processDocument(filePath, {
+            autoLanguage: true,
+            contentType
+          });
+
+          // Convert OCR result to application format
+          processedDoc = this.ocrClient.convertToProcessedDocument(ocrResult, {
+            documentId,
+            fileType,
+            originalPath: filePath
+          });
+        } catch (error) {
+          console.warn('⚠️  Python OCR failed, using fallback:', error);
+          processedDoc = await this.processWithFallbackOCR(filePath, fileType, documentId);
+        }
+      } else {
+        console.log('🔄 Using fallback OCR (Tesseract.js) - Python service unavailable');
+        processedDoc = await this.processWithFallbackOCR(filePath, fileType, documentId);
+      }
 
       // Extract entities using AI if available
       if (this.genAI && processedDoc.text.trim()) {
@@ -141,6 +151,74 @@ export class DocumentProcessor {
     return 'document';
   }
 
+  private async processWithFallbackOCR(filePath: string, fileType: string, documentId?: string): Promise<ProcessedDocument> {
+    const startTime = Date.now();
+    
+    try {
+      console.log(`🔄 Processing with fallback OCR (Tesseract.js): ${path.basename(filePath)}`);
+      
+      const worker = await createWorker('eng');
+      
+      try {
+        // Set page segmentation mode for better text detection
+        await worker.setParameters({
+          tessedit_pageseg_mode: PSM.UNIFORM_BLOCK, // Uniform block of text
+          tessedit_ocr_engine_mode: OEM.LSTM_ONLY, // Neural nets LSTM engine
+        });
+
+        // Perform OCR
+        const { data } = await worker.recognize(filePath);
+        
+        // Calculate confidence (Tesseract provides confidence per word)
+        const confidence = data.confidence || 0;
+        
+        // Create processed document structure
+        const processedDoc: ProcessedDocument = {
+          text: data.text || '',
+          confidence: Math.round(confidence),
+          language: 'eng',
+          entities: {},
+          claimRecords: [],
+          metadata: {
+            processingTime: Date.now() - startTime,
+            imageQuality: confidence > 60 ? 'good' : confidence > 30 ? 'fair' : 'poor',
+            ocrMethod: 'Tesseract.js-Fallback',
+            preprocessingApplied: ['tesseract_native'],
+            pageCount: 1
+          }
+        };
+
+        await worker.terminate();
+        
+        console.log(`✅ Fallback OCR completed: ${confidence}% confidence`);
+        return processedDoc;
+        
+      } catch (error) {
+        await worker.terminate();
+        throw error;
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Fallback OCR failed:', error);
+      
+      // Return minimal error document
+      return {
+        text: '',
+        confidence: 0,
+        language: 'eng',
+        entities: {},
+        claimRecords: [],
+        metadata: {
+          processingTime: Date.now() - startTime,
+          imageQuality: 'error',
+          ocrMethod: 'Tesseract.js-Failed',
+          preprocessingApplied: [],
+          error: error.message
+        }
+      };
+    }
+  }
+
   private async extractEntitiesWithAI(text: string): Promise<any> {
     if (!this.genAI) throw new Error('AI not available');
 
@@ -189,7 +267,7 @@ Text: ${text.substring(0, 2000)}
     const surveyPattern = /\b\d+\/\d+\b/g;
     const surveyMatches = text.match(surveyPattern);
     if (surveyMatches) {
-      entities.surveyNumbers = [...new Set(surveyMatches)];
+      entities.surveyNumbers = Array.from(new Set(surveyMatches));
     }
 
     // Common forest rights document types
