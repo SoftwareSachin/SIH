@@ -13,7 +13,7 @@ import os
 import re
 from pathlib import Path
 import tempfile
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, cast
 
 # Conditional imports - graceful fallback if OpenCV is not available
 HAS_OPENCV = False
@@ -508,7 +508,9 @@ class EnhancedFRAOCR:
         """
         try:
             # Convert to binary
-            binary = image.point(lambda x: 0 if x < 128 else 255, '1')
+            def threshold_fn(x): 
+                return 0 if cast(float, x) < 128.0 else 255
+            binary = image.point(threshold_fn, '1')
             
             # Count horizontal runs of black pixels
             width, height = binary.size
@@ -603,14 +605,21 @@ class EnhancedFRAOCR:
                     for py in range(center_y1, center_y2):
                         for px in range(center_x1, center_x2):
                             pixel_value = image.getpixel((px, py))
-                            new_value = 0 if pixel_value < threshold else 255
+                            # Handle different return types from getpixel
+                            if isinstance(pixel_value, tuple):
+                                pixel_value = pixel_value[0] if pixel_value else 0
+                            elif pixel_value is None:
+                                pixel_value = 0
+                            new_value = 0 if float(pixel_value) < threshold else 255
                             output.putpixel((px, py), new_value)
             
             return output
             
         except Exception as e:
             print(f"Adaptive threshold failed: {e}. Using simple threshold.", file=sys.stderr)
-            return image.point(lambda x: 0 if x < 128 else 255, 'L')
+            def threshold_simple(x):
+                return 0 if cast(float, x) < 128.0 else 255
+            return image.point(threshold_simple, 'L')
 
     def _morphological_clean_pil(self, image: Image.Image) -> Image.Image:
         """
@@ -735,7 +744,7 @@ class EnhancedFRAOCR:
                         center = (w // 2, h // 2)
                         
                         # Create rotation matrix
-                        M = cv2_local.getRotationMatrix2D(center, median_angle, 1.0)
+                        M = cv2_local.getRotationMatrix2D(center, float(median_angle), 1.0)
                         
                         # Calculate new dimensions to avoid clipping
                         cos_angle = abs(M[0, 0])
@@ -1026,17 +1035,55 @@ class EnhancedFRAOCR:
         
         return advanced_entities
 
+    def get_available_languages(self) -> List[str]:
+        """
+        Get list of available Tesseract languages on this system
+        """
+        try:
+            return pytesseract.get_languages()
+        except Exception as e:
+            print(f"Warning: Could not get available languages: {e}", file=sys.stderr)
+            return ['eng']  # Fallback to English only
+
+    def filter_available_languages(self, requested_langs: str) -> str:
+        """
+        Filter requested languages to only those available on the system
+        """
+        available = self.get_available_languages()
+        requested = requested_langs.split('+')
+        
+        # Filter to only available languages
+        filtered = [lang for lang in requested if lang in available]
+        
+        # Always ensure English is included if available
+        if 'eng' in available and 'eng' not in filtered:
+            filtered.append('eng')
+        
+        # If no languages are available, fallback to just English
+        if not filtered:
+            filtered = ['eng']
+        
+        result = '+'.join(filtered)
+        
+        if result != requested_langs:
+            print(f"Language filtering: {requested_langs} -> {result} (available: {available})", file=sys.stderr)
+        
+        return result
+
     def get_optimized_tesseract_config(self, document_type: str, language: str) -> Dict[str, str]:
         """
         Get optimized Tesseract configuration for FRA documents
         """
         doc_config = self.fra_document_types.get(document_type, self.fra_document_types['individual_forest_rights'])
         
+        # Filter requested languages to only available ones
+        filtered_language = self.filter_available_languages(language)
+        
         # Base configuration with OEM 1 (LSTM) for best accuracy
         base_config = {
             'oem': '1',  # LSTM OCR Engine Mode
             'psm': str(doc_config['psm']),  # Page segmentation mode
-            'languages': language,
+            'languages': filtered_language,
             'whitelist': '',
             'blacklist': '',
             'config_string': ''
@@ -1104,7 +1151,7 @@ class EnhancedFRAOCR:
         
         return base_config
 
-    def apply_post_processing_corrections(self, text: str, document_type: str = None) -> str:
+    def apply_post_processing_corrections(self, text: str, document_type: Optional[str] = None) -> str:
         """
         Apply post-processing corrections to improve OCR text quality
         """
@@ -1386,15 +1433,23 @@ class EnhancedFRAOCR:
             image = Image.open(image_path)
             print(f"Processing FRA image: {image.size} pixels", file=sys.stderr)
             
-            # Detect document type from initial OCR
-            initial_text = pytesseract.image_to_string(image, lang='eng')
-            document_type = self.detect_fra_document_type(initial_text)
+            # Detect document type from initial OCR (with error handling)
+            try:
+                initial_text = pytesseract.image_to_string(image, lang='eng')
+                document_type = self.detect_fra_document_type(initial_text)
+            except Exception as e:
+                print(f"⚠️ Initial OCR failed, using default document type: {e}", file=sys.stderr)
+                document_type = 'individual_forest_rights'
             
             # Get processing configuration
             config = self.fra_document_types.get(document_type, self.fra_document_types['individual_forest_rights'])
             
-            # Detect optimal language
-            language = self.detect_document_language(image)
+            # Detect optimal language (with error handling)
+            try:
+                language = self.detect_document_language(image)
+            except Exception as e:
+                print(f"⚠️ Language detection failed, using English: {e}", file=sys.stderr)
+                language = 'eng'
             
             # Preprocess image based on document type
             if HAS_OPENCV:
@@ -1405,23 +1460,57 @@ class EnhancedFRAOCR:
             # Get optimized Tesseract configuration
             tesseract_config = self.get_optimized_tesseract_config(document_type, language)
             
-            # Perform OCR with optimized configuration
-            text = pytesseract.image_to_string(
-                processed_image, 
-                config=tesseract_config['config_string'],
-                lang=tesseract_config['languages']
-            )
+            # Perform OCR with robust error handling and fallback
+            text = None
+            data = None
+            final_language = tesseract_config['languages']
+            ocr_method = f'Enhanced-FRA-{final_language}-PSM{tesseract_config["psm"]}'
             
-            # Apply post-processing corrections
-            text = self.apply_post_processing_corrections(text, document_type)
+            try:
+                # Attempt OCR with optimized configuration
+                print(f"🔄 Attempting OCR with languages: {tesseract_config['languages']}", file=sys.stderr)
+                text = pytesseract.image_to_string(
+                    processed_image, 
+                    config=tesseract_config['config_string'],
+                    lang=tesseract_config['languages']
+                )
+                
+                # Get confidence data with same configuration
+                data = pytesseract.image_to_data(
+                    processed_image, 
+                    config=tesseract_config['config_string'],
+                    lang=tesseract_config['languages'], 
+                    output_type=pytesseract.Output.DICT
+                )
+                
+                print(f"✅ OCR successful with {tesseract_config['languages']}", file=sys.stderr)
+                
+            except Exception as ocr_error:
+                print(f"⚠️ Multi-language OCR failed: {ocr_error}", file=sys.stderr)
+                print(f"🔄 Falling back to English-only OCR", file=sys.stderr)
+                
+                try:
+                    # Fallback to English-only with simpler configuration
+                    simple_config = '--psm 6 --oem 1'
+                    text = pytesseract.image_to_string(processed_image, config=simple_config, lang='eng')
+                    data = pytesseract.image_to_data(processed_image, config=simple_config, lang='eng', output_type=pytesseract.Output.DICT)
+                    final_language = 'eng'
+                    ocr_method = 'Enhanced-FRA-eng-Fallback'
+                    print(f"✅ English fallback OCR successful", file=sys.stderr)
+                    
+                except Exception as fallback_error:
+                    print(f"❌ Even English fallback failed: {fallback_error}", file=sys.stderr)
+                    # Return basic structure with minimal text
+                    text = "OCR_PROCESSING_FAILED"
+                    data = {'conf': [50]}  # Fake minimal confidence data
+                    final_language = 'eng'
+                    ocr_method = 'Enhanced-FRA-Emergency-Fallback'
             
-            # Get confidence data with optimized configuration
-            data = pytesseract.image_to_data(
-                processed_image, 
-                config=tesseract_config['config_string'],
-                lang=tesseract_config['languages'], 
-                output_type=pytesseract.Output.DICT
-            )
+            # Apply post-processing corrections if we have text
+            if text and text != "OCR_PROCESSING_FAILED":
+                text = self.apply_post_processing_corrections(text, document_type)
+            else:
+                text = ""
             
             # Calculate confidence
             confidences = [int(conf) for conf in data['conf'] if int(conf) > 0]
@@ -1437,15 +1526,15 @@ class EnhancedFRAOCR:
             
             return {
                 'type': 'fra_single',
-                'text': text.strip(),
+                'text': text.strip() if text else "",
                 'confidence': round(avg_confidence, 2),
                 'quality_score': quality_assessment['overall_score'],  # FIX: Add quality_score field
                 'quality_assessment': quality_assessment,
-                'language': language,
+                'language': final_language,
                 'document_type': document_type,
                 'entities': entities,
                 'processing_time': round(processing_time, 3),
-                'method': f'Enhanced-FRA-{language}-PSM{config["psm"]}',
+                'method': ocr_method,
                 'image_info': {
                     'size': f"{image.size[0]}x{image.size[1]}",
                     'mode': image.mode,
@@ -1455,10 +1544,31 @@ class EnhancedFRAOCR:
             }
             
         except Exception as e:
+            print(f"❌ Critical error in _process_fra_image: {e}", file=sys.stderr)
+            # Return fra_single structure even on catastrophic failure
             return {
-                'type': 'error',
-                'error': str(e),
-                'file_path': image_path,
+                'type': 'fra_single',
+                'text': "",
+                'confidence': 0.0,
+                'quality_score': 0.0,
+                'quality_assessment': {
+                    'overall_score': 0.0,
+                    'text_score': 0.0,
+                    'confidence_score': 0.0,
+                    'entity_score': 0.0,
+                    'recommendations': ['Critical processing error occurred']
+                },
+                'language': 'eng',
+                'document_type': 'individual_forest_rights',
+                'entities': {},
+                'processing_time': 0.0,
+                'method': 'Enhanced-FRA-Critical-Error',
+                'image_info': {
+                    'size': "0x0",
+                    'mode': "unknown",
+                    'has_opencv': HAS_OPENCV,
+                    'error': str(e)
+                },
                 'timestamp': time.time()
             }
 
