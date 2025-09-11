@@ -26,7 +26,15 @@ except ImportError:
 
 import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageDraw
-from pdf2image import convert_from_path
+
+# PDF processing capability - lazy import to avoid blocking the entire module
+HAS_PDF_SUPPORT = False
+try:
+    from pdf2image import convert_from_path
+    HAS_PDF_SUPPORT = True
+except ImportError:
+    # PDF processing will be disabled but image OCR will still work
+    convert_from_path = None
 
 class EnhancedFRAOCR:
     """
@@ -213,6 +221,7 @@ class EnhancedFRAOCR:
         
         print("✅ Enhanced FRA OCR Engine initialized with advanced capabilities", file=sys.stderr)
         print(f"✅ OpenCV support: {'Yes' if HAS_OPENCV else 'No (fallback mode)'}", file=sys.stderr)
+        print(f"✅ PDF support: {'Yes' if HAS_PDF_SUPPORT else 'No (image-only mode)'}", file=sys.stderr)
 
     def _verify_dependencies(self):
         """
@@ -231,7 +240,9 @@ class EnhancedFRAOCR:
         
         # Check language data for target states
         try:
-            available_langs = pytesseract.get_languages()
+            # Import pytesseract explicitly to avoid type checker issues
+            import pytesseract as tess
+            available_langs = tess.get_languages()
             required_langs = ['eng', 'hin', 'ben', 'ori', 'tel']
             missing_langs = [lang for lang in required_langs if lang not in available_langs]
             
@@ -244,17 +255,11 @@ class EnhancedFRAOCR:
             issues.append("❌ Could not verify Tesseract language data")
         
         # Check PDF processing capability
-        try:
-            from pdf2image import convert_from_path
-            # Test with a minimal check (no actual conversion)
+        if HAS_PDF_SUPPORT:
             print("✅ PDF processing (pdf2image) available", file=sys.stderr)
-        except ImportError:
-            issues.append("❌ pdf2image not found. Install with: pip install pdf2image")
-        except Exception as e:
-            if "poppler" in str(e).lower():
-                issues.append("❌ Poppler not found. Install with: sudo apt-get install poppler-utils")
-            else:
-                issues.append(f"❌ PDF processing issue: {e}")
+        else:
+            print("⚠️  PDF processing not available - install pdf2image and poppler-utils for PDF support", file=sys.stderr)
+            print("   Image processing will work normally", file=sys.stderr)
         
         # Report any critical issues
         if issues:
@@ -386,7 +391,10 @@ class EnhancedFRAOCR:
         
         # Return the document type with highest score, or default
         # Enhanced scoring with context awareness
-        detected_type = max(scores, key=scores.get) if scores and max(scores.values()) > 0 else 'individual_forest_rights'
+        if scores and scores.values() and max(scores.values()) > 0:
+            detected_type = max(scores.items(), key=lambda x: x[1])[0]
+        else:
+            detected_type = 'individual_forest_rights'
         
         # Secondary validation using document structure
         if 'table' in text.lower() or 'list' in text.lower():
@@ -448,7 +456,9 @@ class EnhancedFRAOCR:
                 image = image.convert('L')
                 
                 # 5. Apply threshold to create binary image
-                image = image.point(lambda x: 0 if x < 128 else 255, '1')
+                def threshold_func(pixel_value):
+                    return 0 if pixel_value < 128 else 255
+                image = image.point(threshold_func, '1')
                 image = image.convert('RGB')
                 
             elif enhancement_type == "official_document":
@@ -482,40 +492,48 @@ class EnhancedFRAOCR:
             return self.preprocess_image_pil_only(image, enhancement_type)
         
         try:
+            # Only use OpenCV if properly imported
+            if not HAS_OPENCV or 'cv2' not in globals() or 'np' not in globals():
+                return self.preprocess_image_pil_only(image, enhancement_type)
+                
+            # Import checks for type safety
+            import cv2 as cv2_local
+            import numpy as np_local
+            
             # Convert PIL to OpenCV
-            cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-            gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+            cv_image = cv2_local.cvtColor(np_local.array(image), cv2_local.COLOR_RGB2BGR)
+            gray = cv2_local.cvtColor(cv_image, cv2_local.COLOR_BGR2GRAY)
             
             if enhancement_type == "government_form":
                 # Remove form lines and enhance text
-                horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (40, 1))
-                vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40))
+                horizontal_kernel = cv2_local.getStructuringElement(cv2_local.MORPH_RECT, (40, 1))
+                vertical_kernel = cv2_local.getStructuringElement(cv2_local.MORPH_RECT, (1, 40))
                 
-                horizontal_lines = cv2.morphologyEx(gray, cv2.MORPH_OPEN, horizontal_kernel)
-                vertical_lines = cv2.morphologyEx(gray, cv2.MORPH_OPEN, vertical_kernel)
+                horizontal_lines = cv2_local.morphologyEx(gray, cv2_local.MORPH_OPEN, horizontal_kernel)
+                vertical_lines = cv2_local.morphologyEx(gray, cv2_local.MORPH_OPEN, vertical_kernel)
                 
-                form_mask = cv2.add(horizontal_lines, vertical_lines)
-                gray_clean = cv2.subtract(gray, form_mask)
+                form_mask = cv2_local.add(horizontal_lines, vertical_lines)
+                gray_clean = cv2_local.subtract(gray, form_mask)
                 
                 # CLAHE for contrast enhancement
-                clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+                clahe = cv2_local.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
                 enhanced = clahe.apply(gray_clean)
                 
                 # Bilateral filtering for noise reduction
-                denoised = cv2.bilateralFilter(enhanced, 9, 75, 75)
+                denoised = cv2_local.bilateralFilter(enhanced, 9, 75, 75)
                 
                 # Adaptive thresholding
-                binary = cv2.adaptiveThreshold(
-                    denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 4
+                binary = cv2_local.adaptiveThreshold(
+                    denoised, 255, cv2_local.ADAPTIVE_THRESH_GAUSSIAN_C, cv2_local.THRESH_BINARY, 15, 4
                 )
                 
-                processed = cv2.cvtColor(binary, cv2.COLOR_GRAY2RGB)
+                processed = cv2_local.cvtColor(binary, cv2_local.COLOR_GRAY2RGB)
                 
             else:
                 # Simpler preprocessing for other document types
-                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                clahe = cv2_local.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
                 enhanced = clahe.apply(gray)
-                processed = cv2.cvtColor(enhanced, cv2.COLOR_GRAY2RGB)
+                processed = cv2_local.cvtColor(enhanced, cv2_local.COLOR_GRAY2RGB)
             
             return Image.fromarray(processed)
             
@@ -523,7 +541,7 @@ class EnhancedFRAOCR:
             print(f"OpenCV preprocessing failed: {e}. Using PIL fallback.", file=sys.stderr)
             return self.preprocess_image_pil_only(image, enhancement_type)
 
-    def extract_enhanced_fra_entities(self, text: str, document_type: str = None) -> Dict[str, List[str]]:
+    def extract_enhanced_fra_entities(self, text: str, document_type: Optional[str] = None) -> Dict[str, List[str]]:
         """
         Enhanced FRA entity extraction with multi-language support
         """
@@ -811,6 +829,16 @@ class EnhancedFRAOCR:
         Process multi-page FRA PDF with enhanced capabilities
         """
         try:
+            # Check if PDF processing is available
+            if not HAS_PDF_SUPPORT or convert_from_path is None:
+                return {
+                    'type': 'error',
+                    'error': 'PDF processing not available - pdf2image and poppler-utils required',
+                    'file_path': pdf_path,
+                    'recommendation': 'Install pdf2image: pip install pdf2image',
+                    'timestamp': time.time()
+                }
+            
             start_time = time.time()
             
             # Convert PDF to images
@@ -865,7 +893,7 @@ class EnhancedFRAOCR:
                 'results': results,
                 'aggregated_entities': aggregated_entities,
                 'total_processing_time': round(total_processing_time, 3),
-                'average_confidence': round(avg_confidence, 2),
+                'average_confidence': float(f"{avg_confidence:.2f}"),
                 'average_quality_score': overall_quality,
                 'has_opencv': HAS_OPENCV,
                 'timestamp': time.time()
@@ -951,9 +979,11 @@ class EnhancedFRAOCR:
                         confidences.append(r['average_confidence'])
                 
                 if confidences:
-                    stats['avg_confidence'] = round(sum(confidences) / len(confidences), 2)
+                    avg_val = sum(confidences) / len(confidences)
+                    stats['avg_confidence'] = int(avg_val)
             
-            stats['processing_time'] = round(time.time() - start_time, 2)
+            processing_time = time.time() - start_time
+            stats['processing_time'] = int(processing_time)
             
             # Generate batch summary
             batch_summary = {
@@ -1024,7 +1054,7 @@ class EnhancedFRAOCR:
         
         return {
             'overall_grade': grade,
-            'average_confidence': round(avg_confidence, 2),
+            'average_confidence': float(f"{avg_confidence:.2f}"),
             'quality_distribution': {
                 'high_quality': high_quality,
                 'medium_quality': medium_quality,

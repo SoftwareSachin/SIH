@@ -85,30 +85,18 @@ export class PythonOCRClient {
         throw new Error(`OCR error: ${ocrResult.error}`);
       }
 
-      // Log result summary
+      // Log result summary and return original response for FRA results
       if (ocrResult.type === 'fra_batch') {
         console.log(`✅ FRA OCR completed: ${ocrResult.total_pages} pages, quality score: ${ocrResult.average_quality_score}%`);
-        return {
-          results: ocrResult.results,
-          total_pages: ocrResult.total_pages,
-          total_processing_time: ocrResult.total_processing_time,
-          average_confidence: ocrResult.average_quality_score
-        };
+        // CRITICAL FIX: Return original ocrResult to preserve 'type' field for convertToProcessedDocument
+        return ocrResult;
       } else if (ocrResult.type === 'fra_single') {
-        // FIX: Ensure quality_score is properly used as confidence
         const qualityScore = ocrResult.quality_score || ocrResult.confidence || 0;
         console.log(`✅ FRA OCR completed: ${qualityScore}% quality, ${ocrResult.method}`);
-        return {
-          text: ocrResult.text,
-          confidence: Math.round(qualityScore), // Ensure it's a proper number
-          language: ocrResult.language,
-          processing_time: ocrResult.processing_time,
-          method: ocrResult.method,
-          page_count: 1,
-          metadata: ocrResult.metadata || {}
-        };
+        // CRITICAL FIX: Return original ocrResult to preserve 'type' field and all FRA data
+        return ocrResult;
       } else {
-        // Fallback for legacy format
+        // Fallback for legacy format - only normalize legacy responses
         console.log(`✅ OCR completed: ${ocrResult.confidence}% confidence, ${ocrResult.method}`);
         return {
           text: ocrResult.text,
