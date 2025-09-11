@@ -38,8 +38,8 @@ class SimplifiedFRAOCR:
     """
     
     def __init__(self):
-        # Simple language support for FRA target states
-        self.languages = 'hin+ben+ori+tel+eng'
+        # Optimized language support for faster processing (can be extended)
+        self.languages = 'eng+hin'  # Start with essential languages for better performance
         
         # FRA entity patterns - keep the good patterns but simplify extraction
         self.fra_patterns = {
@@ -108,9 +108,11 @@ class SimplifiedFRAOCR:
             print(f"Preprocessing failed: {e}. Using original image.", file=sys.stderr)
             return image
 
-    def extract_text_simple(self, image: Image.Image) -> Tuple[str, float, str]:
+    def extract_text_dual_pass(self, image: Image.Image) -> Tuple[str, float, str, Dict[str, Any]]:
         """
-        Simple, reliable text extraction using basic Tesseract settings
+        Dual-pass OCR strategy for comprehensive FRA field extraction:
+        Pass 1: PSM 6 for headers/general text
+        Pass 2: PSM 3 for structured tables/forms when entities are missing
         """
         try:
             # Get available languages
@@ -123,40 +125,123 @@ class SimplifiedFRAOCR:
             
             final_lang = '+'.join(filtered_langs)
             
-            # Simple, proven Tesseract configuration
-            config = '--oem 1 --psm 6'  # LSTM engine, uniform block of text
+            print(f"🔍 Dual-pass OCR with language: {final_lang}", file=sys.stderr)
             
-            print(f"🔍 OCR with language: {final_lang}, config: {config}", file=sys.stderr)
+            # PASS 1: PSM 6 for general text and headers
+            config1 = '--oem 1 --psm 6'  # LSTM engine, uniform block of text
             
-            # Extract text with confidence
-            data = pytesseract.image_to_data(image, lang=final_lang, config=config, output_type=pytesseract.Output.DICT)
+            print(f"📋 Pass 1: General text extraction (PSM 6)", file=sys.stderr)
+            text1 = pytesseract.image_to_string(image, lang=final_lang, config=config1).strip()
+            data1 = pytesseract.image_to_data(image, lang=final_lang, config=config1, output_type=pytesseract.Output.DICT)
             
-            # Calculate average confidence
-            confidences = [int(conf) for conf in data['conf'] if int(conf) > 0]
-            avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+            confidences1 = [int(conf) for conf in data1['conf'] if int(conf) > 0]
+            avg_confidence1 = sum(confidences1) / len(confidences1) if confidences1 else 0
             
-            # Extract text
-            text = pytesseract.image_to_string(image, lang=final_lang, config=config)
+            # Quick entity extraction to assess Pass 1 completeness
+            entities1 = self.extract_fra_entities_enhanced(text1)
             
-            print(f"✅ OCR completed, confidence: {avg_confidence:.1f}%", file=sys.stderr)
-            return text.strip(), avg_confidence, final_lang
+            # PASS 2: PSM 3 for structured tables/forms
+            config2 = '--oem 1 --psm 3'  # Fully automatic page segmentation, but no OSD
+            
+            print(f"🗂️ Pass 2: Structured data extraction (PSM 3)", file=sys.stderr)
+            text2 = pytesseract.image_to_string(image, lang=final_lang, config=config2).strip()
+            data2 = pytesseract.image_to_data(image, lang=final_lang, config=config2, output_type=pytesseract.Output.DICT)
+            
+            confidences2 = [int(conf) for conf in data2['conf'] if int(conf) > 0]
+            avg_confidence2 = sum(confidences2) / len(confidences2) if confidences2 else 0
+            
+            # Extract entities from Pass 2
+            entities2 = self.extract_fra_entities_enhanced(text2)
+            
+            # Combine and choose the best result
+            combined_text, final_confidence, final_entities, pass_info = self._choose_best_pass(
+                text1, text2, avg_confidence1, avg_confidence2, entities1, entities2
+            )
+            
+            print(f"✅ Dual-pass OCR completed: {final_confidence:.1f}% confidence", file=sys.stderr)
+            print(f"📊 Used: {pass_info['strategy']}, Entities found: {pass_info['entity_count']}", file=sys.stderr)
+            
+            return combined_text, final_confidence, final_lang, {
+                'pass_info': pass_info,
+                'entities': final_entities,
+                'pass1_confidence': avg_confidence1,
+                'pass2_confidence': avg_confidence2
+            }
             
         except Exception as e:
-            print(f"OCR extraction failed: {e}", file=sys.stderr)
-            # Fallback to English only
+            print(f"Dual-pass OCR failed: {e}", file=sys.stderr)
+            # Fallback to simple extraction
             try:
                 text = pytesseract.image_to_string(image, lang='eng', config='--oem 1 --psm 6')
-                return text.strip(), 50.0, 'eng'  # Assume moderate confidence for fallback
+                return text.strip(), 50.0, 'eng', {'pass_info': {'strategy': 'fallback'}, 'entities': {}}
             except:
-                return "", 0.0, 'eng'
+                return "", 0.0, 'eng', {'pass_info': {'strategy': 'failed'}, 'entities': {}}
 
-    def extract_fra_entities(self, text: str) -> Dict[str, List[str]]:
+    def extract_fra_entities_enhanced(self, text: str) -> Dict[str, List[str]]:
         """
-        Simple entity extraction using FRA patterns
+        Enhanced entity extraction with line-based parsing and field-specific processing
         """
         entities = {}
         
-        for entity_type, patterns in self.fra_patterns.items():
+        # First pass: Use enhanced patterns for better field capture
+        enhanced_patterns = {
+            'patta_holders': [
+                # Enhanced name patterns with better field extraction
+                r'(?:name|claimant|applicant)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s\.]{3,50})',
+                r'(?:patta\s+holder|applicant)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s\.]{3,50})',
+                # Line-based patterns for better field capture
+                r'Name\s*:\s*([^\n\r]+)',
+                r'Claimant\s*:\s*([^\n\r]+)',
+                r'Applicant\s*:\s*([^\n\r]+)',
+                # Common name patterns
+                r'\b([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b',
+            ],
+            'village_names': [
+                r'(?:village|gram)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,50})',
+                r'Village\s*:\s*([^\n\r]+)',
+                r'(?:vill|gram)\s*[:-]\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})',
+                r'(?:of|in)\s+village\s+([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})'
+            ],
+            'survey_numbers': [
+                r'(?:survey|sy|s\.no|plot)\s*(?:no|number)?\s*:?\s*(\d+(?:[/-]\d+)*)',
+                r'Survey\s*No\.?\s*:?\s*(\d+(?:[/-]\d+)*)',
+                r'S\.?\s*No\.?\s*:?\s*(\d+(?:[/-]\d+)*)',
+                r'Plot\s*No\.?\s*:?\s*(\d+(?:[/-]\d+)*)'
+            ],
+            'patta_numbers': [
+                r'(?:patta|title)\s*(?:no|number)?\s*:?\s*([A-Z0-9\/-]{2,20})',
+                r'Patta\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})',
+                r'Title\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})',
+                r'Patta\s*Number\s*:?\s*([A-Z0-9\/-]{2,20})'
+            ],
+            'claim_numbers': [
+                r'(?:claim|application)\s*(?:no|number)?\s*:?\s*([A-Z0-9\/-]{2,20})',
+                r'Claim\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})',
+                r'Application\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})'
+            ],
+            'dates': [
+                r'(?:date)\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+                r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+                r'Date\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})'
+            ],
+            'areas': [
+                r'(\d+(?:\.\d+)?)\s*(?:hectare|acre|ha|ac)',
+                r'(?:area)\s*:?\s*(\d+(?:\.\d+)?)\s*(?:hectare|acre|ha|ac)',
+                r'Area\s*:?\s*(\d+(?:\.\d+)?)\s*(?:hectare|acre|ha|ac)'
+            ],
+            'states': [
+                r'State\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})',
+                r'(?:Madhya\s+Pradesh|Odisha|Jharkhand|Chhattisgarh|Assam|West\s+Bengal|Telangana)'
+            ],
+            'rights_claimed': [
+                r'Rights?\s*Claimed?\s*:?\s*([^\n\r]+)',
+                r'(?:Individual|Community)\s*(?:forest\s*)?(?:dwelling|rights?)\s*\([^)]+\)',
+                r'IFD\s*rights?',
+                r'CFR\s*rights?'
+            ]
+        }
+        
+        for entity_type, patterns in enhanced_patterns.items():
             matches = []
             
             for pattern in patterns:
@@ -192,7 +277,127 @@ class SimplifiedFRAOCR:
             
             entities[entity_type] = clean_matches[:5]  # Limit to top 5 matches
         
+        # Additional line-based processing for missed fields
+        entities = self._enhance_with_line_parsing(text, entities)
+        
         return entities
+
+    def _choose_best_pass(self, text1: str, text2: str, conf1: float, conf2: float, 
+                         entities1: Dict, entities2: Dict) -> Tuple[str, float, Dict, Dict]:
+        """
+        Choose the best OCR pass based on entity completeness and confidence
+        """
+        # Count meaningful entities from each pass
+        entity_count1 = sum(len(entities1.get(key, [])) for key in 
+                           ['patta_holders', 'village_names', 'patta_numbers', 'claim_numbers'])
+        entity_count2 = sum(len(entities2.get(key, [])) for key in 
+                           ['patta_holders', 'village_names', 'patta_numbers', 'claim_numbers'])
+        
+        # Calculate entity coverage score (0-100)
+        key_fields = ['patta_holders', 'village_names', 'patta_numbers']
+        coverage1 = sum(1 for field in key_fields if entities1.get(field, []))
+        coverage2 = sum(1 for field in key_fields if entities2.get(field, []))
+        
+        # Decision logic: prioritize entity completeness over confidence
+        if entity_count2 > entity_count1 + 1:  # Pass 2 significantly better
+            return text2, conf2, entities2, {
+                'strategy': 'pass2_structured', 
+                'entity_count': entity_count2,
+                'coverage': coverage2,
+                'reason': f'Pass 2 found {entity_count2} vs {entity_count1} entities'
+            }
+        elif entity_count1 > entity_count2 + 1:  # Pass 1 significantly better
+            return text1, conf1, entities1, {
+                'strategy': 'pass1_general',
+                'entity_count': entity_count1, 
+                'coverage': coverage1,
+                'reason': f'Pass 1 found {entity_count1} vs {entity_count2} entities'
+            }
+        elif coverage2 > coverage1:  # Pass 2 covers more key fields
+            return text2, conf2, entities2, {
+                'strategy': 'pass2_coverage',
+                'entity_count': entity_count2,
+                'coverage': coverage2,
+                'reason': f'Pass 2 covers {coverage2} vs {coverage1} key fields'
+            }
+        elif conf1 > conf2 + 10:  # Pass 1 much more confident
+            return text1, conf1, entities1, {
+                'strategy': 'pass1_confidence',
+                'entity_count': entity_count1,
+                'coverage': coverage1,
+                'reason': f'Pass 1 confidence {conf1:.1f}% vs {conf2:.1f}%'
+            }
+        else:  # Default to Pass 1
+            return text1, conf1, entities1, {
+                'strategy': 'pass1_default',
+                'entity_count': entity_count1,
+                'coverage': coverage1,
+                'reason': 'Default to general text extraction'
+            }
+
+    def _enhance_with_line_parsing(self, text: str, entities: Dict) -> Dict:
+        """
+        Enhanced line-based parsing around matched headers to capture missed field values
+        """
+        lines = text.split('\\n')
+        enhanced_entities = entities.copy()
+        
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Look for field labels and extract values from same line or next line
+            if re.search(r'(?i)name\\s*:', line):
+                # Extract name from same line or next line
+                name_match = re.search(r'(?i)name\\s*:?\\s*(.+)', line)
+                if name_match and name_match.group(1).strip():
+                    name = name_match.group(1).strip()
+                    if len(name) > 2 and name not in enhanced_entities.get('patta_holders', []):
+                        enhanced_entities.setdefault('patta_holders', []).append(name)
+                elif i + 1 < len(lines):  # Check next line
+                    next_line = lines[i + 1].strip()
+                    if next_line and len(next_line) > 2:
+                        enhanced_entities.setdefault('patta_holders', []).append(next_line)
+            
+            elif re.search(r'(?i)village\\s*:', line):
+                village_match = re.search(r'(?i)village\\s*:?\\s*(.+)', line)
+                if village_match and village_match.group(1).strip():
+                    village = village_match.group(1).strip()
+                    if len(village) > 2 and village not in enhanced_entities.get('village_names', []):
+                        enhanced_entities.setdefault('village_names', []).append(village)
+                elif i + 1 < len(lines):
+                    next_line = lines[i + 1].strip()
+                    if next_line and len(next_line) > 2:
+                        enhanced_entities.setdefault('village_names', []).append(next_line)
+            
+            elif re.search(r'(?i)patta\\s*(?:no|number)', line):
+                patta_match = re.search(r'(?i)patta\\s*(?:no|number)\\s*:?\\s*([A-Z0-9\\/-]+)', line)
+                if patta_match and patta_match.group(1).strip():
+                    patta = patta_match.group(1).strip()
+                    if len(patta) > 1 and patta not in enhanced_entities.get('patta_numbers', []):
+                        enhanced_entities.setdefault('patta_numbers', []).append(patta)
+                elif i + 1 < len(lines):
+                    next_line = lines[i + 1].strip()
+                    patta_match_next = re.search(r'^([A-Z0-9\\/-]{2,20})$', next_line)
+                    if patta_match_next:
+                        enhanced_entities.setdefault('patta_numbers', []).append(patta_match_next.group(1))
+            
+            elif re.search(r'(?i)claim\\s*(?:no|number)', line):
+                claim_match = re.search(r'(?i)claim\\s*(?:no|number)\\s*:?\\s*([A-Z0-9\\/-]+)', line)
+                if claim_match and claim_match.group(1).strip():
+                    claim = claim_match.group(1).strip()
+                    if len(claim) > 1 and claim not in enhanced_entities.get('claim_numbers', []):
+                        enhanced_entities.setdefault('claim_numbers', []).append(claim)
+            
+            elif re.search(r'(?i)state\\s*:', line):
+                state_match = re.search(r'(?i)state\\s*:?\\s*(.+)', line)
+                if state_match and state_match.group(1).strip():
+                    state = state_match.group(1).strip()
+                    if len(state) > 2 and state not in enhanced_entities.get('states', []):
+                        enhanced_entities.setdefault('states', []).append(state)
+        
+        return enhanced_entities
 
     def basic_text_cleanup(self, text: str) -> str:
         """
@@ -253,14 +458,14 @@ class SimplifiedFRAOCR:
             # Basic preprocessing
             processed_image = self.basic_preprocessing(image)
             
-            # Extract text
-            text, confidence, final_lang = self.extract_text_simple(processed_image)
+            # Extract text using dual-pass OCR approach
+            text, confidence, final_lang, ocr_metadata = self.extract_text_dual_pass(processed_image)
             
             # Basic cleanup
             cleaned_text = self.basic_text_cleanup(text)
             
-            # Extract entities
-            entities = self.extract_fra_entities(cleaned_text)
+            # Extract entities (already done in dual-pass but extract again from cleaned text)
+            entities = self.extract_fra_entities_enhanced(cleaned_text)
             
             processing_time = time.time() - start_time
             
@@ -278,7 +483,7 @@ class SimplifiedFRAOCR:
                 'quality_score': round(confidence, 2),
                 'processing_time': round(processing_time, 2),
                 'language': final_lang,
-                'method': 'Simplified-FRA-OCR-Engine',
+                'method': 'Dual-Pass-Enhanced-FRA-OCR',
                 'document_classification': 'forest_rights_document' if has_fra_content else 'unknown',
                 'has_fra_content': has_fra_content,
                 'word_count': len(cleaned_text.split()),
@@ -287,13 +492,19 @@ class SimplifiedFRAOCR:
                     'image_size': f"{image.width}x{image.height}",
                     'processed_size': f"{processed_image.width}x{processed_image.height}",
                     'languages_used': self.languages,
-                    'strategy_used': 'simplified_processing'
+                    'strategy_used': 'dual_pass_enhanced',
+                    'ocr_strategy': ocr_metadata.get('pass_info', {}).get('strategy', 'unknown'),
+                    'pass1_confidence': ocr_metadata.get('pass1_confidence', 0),
+                    'pass2_confidence': ocr_metadata.get('pass2_confidence', 0),
+                    'entity_coverage': ocr_metadata.get('pass_info', {}).get('coverage', 0)
                 }
             }
             
-            print(f"✅ Processing completed in {processing_time:.2f}s", file=sys.stderr)
+            print(f"✅ Dual-pass OCR completed in {processing_time:.2f}s", file=sys.stderr)
+            print(f"✅ Strategy: {ocr_metadata.get('pass_info', {}).get('strategy', 'unknown')}", file=sys.stderr)
             print(f"✅ Confidence: {confidence:.1f}%, Words: {len(cleaned_text.split())}", file=sys.stderr)
             print(f"✅ Entities found: {sum(len(entities[k]) for k in entities)}", file=sys.stderr)
+            print(f"✅ Key fields coverage: {ocr_metadata.get('pass_info', {}).get('coverage', 0)}/3", file=sys.stderr)
             
             return result
             
