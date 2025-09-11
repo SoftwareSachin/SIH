@@ -213,7 +213,7 @@ export class DocumentProcessor {
         },
         {
           name: 'Uniform Block',
-          psm: PSM.SINGLE_UNIFORM_BLOCK,
+          psm: PSM.SINGLE_BLOCK_VERT_TEXT,
           params: {
             tessedit_write_images: '0',
             user_defined_dpi: '300'
@@ -255,7 +255,7 @@ export class DocumentProcessor {
           
           await worker.terminate();
           
-        } catch (error) {
+        } catch (error: any) {
           console.warn(`   ${config.name} failed:`, error.message);
           if (worker) {
             try { await worker.terminate(); } catch (e) {}
@@ -358,32 +358,96 @@ Text: ${text.substring(0, 2000)}
       claimTypes: [],
       documentTypes: [],
       surveyNumbers: [],
-      boundaries: []
+      boundaries: [],
+      villages: [],
+      states: []
     };
 
-    // Basic pattern matching for common entities
-    const surveyPattern = /\b\d+\/\d+\b/g;
-    const surveyMatches = text.match(surveyPattern);
-    if (surveyMatches) {
-      entities.surveyNumbers = Array.from(new Set(surveyMatches));
+    console.log('🔍 Extracting entities from text:', text.substring(0, 300) + '...');
+
+    // Enhanced pattern matching for FRA documents
+    const lines = text.split('\n');
+    
+    for (const line of lines) {
+      const cleanLine = line.trim();
+      const lowerLine = cleanLine.toLowerCase();
+      
+      // Extract claimant names - broader pattern including unicode characters
+      const nameMatch = cleanLine.match(/(?:name|claimant)\s*:?\s*([a-zA-Z\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0C00-\u0C7F\s]+)/i);
+      if (nameMatch && nameMatch[1]) {
+        const name = nameMatch[1].trim();
+        if (name.length > 2 && !entities.claimantNames.includes(name)) {
+          entities.claimantNames.push(name);
+          console.log('   Found name:', name);
+        }
+      }
+      
+      // Extract village names - look for "Village:" pattern
+      const villageMatch = cleanLine.match(/(?:village|vill\.?)\s*:?\s*([a-zA-Z\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0C00-\u0C7F\s]+)/i);
+      if (villageMatch && villageMatch[1]) {
+        const village = villageMatch[1].trim();
+        if (village.length > 2 && !entities.villages.includes(village)) {
+          entities.villages.push(village);
+          entities.boundaries.push(village); // Keep for backward compatibility
+          console.log('   Found village:', village);
+        }
+      }
+      
+      // Extract state names - look for "State:" pattern  
+      const stateMatch = cleanLine.match(/(?:state|ut)\s*:?\s*([a-zA-Z\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0C00-\u0C7F\s]+)/i);
+      if (stateMatch && stateMatch[1]) {
+        const state = stateMatch[1].trim();
+        if (state.length > 2 && !entities.states.includes(state)) {
+          entities.states.push(state);
+          entities.boundaries.push(state); // Keep for backward compatibility
+          console.log('   Found state:', state);
+        }
+      }
+      
+      // Extract patta/survey numbers - enhanced patterns
+      const pattaMatch = cleanLine.match(/(?:patta|khata|survey|plot|ror|case)\s*(?:number|no\.?)\s*:?\s*([\d\/\-]+)/i);
+      if (pattaMatch && pattaMatch[1]) {
+        entities.surveyNumbers.push(pattaMatch[1]);
+        console.log('   Found patta/survey number:', pattaMatch[1]);
+      }
     }
 
-    // Common forest rights document types
-    const docTypes = ['patta', 'survey', 'settlement', 'revenue', 'forest'];
+    // Enhanced survey number extraction
+    const surveyPattern = /\b\d+[\/\-]\d+[\-\d]*\b/g;
+    const surveyMatches = text.match(surveyPattern);
+    if (surveyMatches) {
+      surveyMatches.forEach(match => {
+        if (!entities.surveyNumbers.includes(match)) {
+          entities.surveyNumbers.push(match);
+          console.log('   Found survey number:', match);
+        }
+      });
+    }
+
+    // Enhanced document type detection
+    const docTypes = ['patta', 'forest'];
     docTypes.forEach(type => {
       if (text.toLowerCase().includes(type)) {
-        entities.documentTypes.push(type);
+        if (!entities.documentTypes.includes(type)) {
+          entities.documentTypes.push(type);
+        }
       }
     });
 
-    // Common claim types
-    const claimTypes = ['individual', 'community', 'collective'];
-    claimTypes.forEach(type => {
-      if (text.toLowerCase().includes(type)) {
-        entities.claimTypes.push(type);
-      }
+    // Enhanced claim type detection
+    if (text.toLowerCase().includes('individual') && text.toLowerCase().includes('forest')) {
+      entities.claimTypes.push('individual');
+    }
+    if (text.toLowerCase().includes('community')) {
+      entities.claimTypes.push('community');
+    }
+
+    // Clean up and deduplicate
+    Object.keys(entities).forEach(key => {
+      entities[key] = Array.from(new Set(entities[key])); // Remove duplicates
     });
 
+    console.log('✅ Extracted entities:', entities);
     return entities;
   }
 
@@ -420,9 +484,11 @@ Text: ${text.substring(0, 2000)}
     try {
       console.log('🔄 Advanced preprocessing for structured documents...');
       
-      // Create unique processed path 
+      // Create unique processed path - ensure it's different from input
       const timestamp = Date.now();
-      const processedPath = imagePath.replace(/\.(jpg|jpeg|png)$/i, `_enhanced_${timestamp}.png`);
+      const dir = path.dirname(imagePath);
+      const filename = path.basename(imagePath, path.extname(imagePath));
+      const processedPath = path.join(dir, `${filename}_enhanced_${timestamp}.png`);
       
       // Get image metadata
       const metadata = await sharp(imagePath).metadata();
