@@ -414,12 +414,13 @@ Text: ${text.substring(0, 2000)}
       }
     }
 
-    // Enhanced survey number extraction
+    // Enhanced survey number extraction - exclude dates
     const surveyPattern = /\b\d+[\/\-]\d+[\-\d]*\b/g;
     const surveyMatches = text.match(surveyPattern);
     if (surveyMatches) {
       surveyMatches.forEach(match => {
-        if (!entities.surveyNumbers.includes(match)) {
+        // Skip dates (YYYY-MM-DD pattern)
+        if (!match.match(/\d{4}-\d{2}-\d{2}/) && !entities.surveyNumbers.includes(match)) {
           entities.surveyNumbers.push(match);
           console.log('   Found survey number:', match);
         }
