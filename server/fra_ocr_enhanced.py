@@ -429,64 +429,383 @@ class EnhancedFRAOCR:
             print(f"Language detection fallback: {e}", file=sys.stderr)
             return self.default_languages
 
-    def preprocess_image_pil_only(self, image: Image.Image, enhancement_type: str = "government_form") -> Image.Image:
+    def upscale_image_to_optimal_dpi(self, image: Image.Image, target_dpi: int = 400) -> Image.Image:
         """
-        PIL-only preprocessing for when OpenCV is not available
+        Upscale image to optimal DPI for OCR (300-600 DPI recommended)
         """
         try:
-            # Convert to RGB
+            # Calculate current DPI - default to 72 if not available
+            current_dpi = image.info.get('dpi', (72, 72))
+            if isinstance(current_dpi, tuple):
+                current_dpi = current_dpi[0]
+            
+            print(f"Current DPI: {current_dpi}, Target DPI: {target_dpi}", file=sys.stderr)
+            
+            # Calculate scale factor
+            scale_factor = target_dpi / current_dpi
+            
+            # Only upscale if needed (avoid downscaling)
+            if scale_factor > 1.0:
+                new_width = int(image.width * scale_factor)
+                new_height = int(image.height * scale_factor)
+                
+                # Use LANCZOS for high-quality upscaling
+                upscaled = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                print(f"✅ Upscaled image: {image.size} -> {upscaled.size} (scale: {scale_factor:.2f}x)", file=sys.stderr)
+                return upscaled
+            else:
+                print(f"✅ DPI sufficient, no upscaling needed", file=sys.stderr)
+                return image
+                
+        except Exception as e:
+            print(f"DPI upscaling failed: {e}. Using original.", file=sys.stderr)
+            return image
+
+    def detect_and_correct_skew_pil(self, image: Image.Image) -> Image.Image:
+        """
+        Detect and correct skew using PIL-only methods
+        """
+        try:
+            # Convert to grayscale for analysis
+            gray = image.convert('L')
+            
+            # Apply edge detection using PIL filters
+            edges = gray.filter(ImageFilter.FIND_EDGES)
+            
+            # Simple rotation test - try small angles
+            best_score = 0
+            best_angle = 0
+            
+            for angle in range(-15, 16, 3):  # Test -15 to +15 degrees in 3-degree steps
+                if angle == 0:
+                    test_image = gray
+                else:
+                    test_image = gray.rotate(angle, expand=True, fillcolor=255)
+                
+                # Score based on horizontal line strength
+                score = self._score_horizontal_alignment_pil(test_image)
+                
+                if score > best_score:
+                    best_score = score
+                    best_angle = angle
+            
+            # Apply best rotation if significant improvement
+            if abs(best_angle) > 0 and best_score > 1000:
+                corrected = image.rotate(best_angle, expand=True, fillcolor=255)
+                print(f"✅ Skew corrected: {best_angle}° rotation", file=sys.stderr)
+                return corrected
+            else:
+                print(f"✅ No significant skew detected", file=sys.stderr)
+                return image
+                
+        except Exception as e:
+            print(f"Skew correction failed: {e}. Using original.", file=sys.stderr)
+            return image
+
+    def _score_horizontal_alignment_pil(self, image: Image.Image) -> float:
+        """
+        Score horizontal alignment using PIL - higher score = better alignment
+        """
+        try:
+            # Convert to binary
+            binary = image.point(lambda x: 0 if x < 128 else 255, '1')
+            
+            # Count horizontal runs of black pixels
+            width, height = binary.size
+            score = 0
+            
+            # Sample every 10th row to avoid too much computation
+            for y in range(0, height, 10):
+                row_score = 0
+                consecutive_black = 0
+                
+                for x in range(width):
+                    pixel = binary.getpixel((x, y))
+                    if pixel == 0:  # Black pixel
+                        consecutive_black += 1
+                    else:
+                        if consecutive_black > 5:  # Long horizontal line
+                            row_score += consecutive_black ** 2
+                        consecutive_black = 0
+                
+                score += row_score
+            
+            return score
+            
+        except Exception:
+            return 0
+
+    def apply_advanced_filtering_pil(self, image: Image.Image) -> Image.Image:
+        """
+        Apply advanced filtering using PIL for better text clarity
+        """
+        try:
+            # Convert to grayscale
+            if image.mode != 'L':
+                image = image.convert('L')
+            
+            # 1. Gaussian blur to reduce noise
+            blurred = image.filter(ImageFilter.GaussianBlur(radius=0.5))
+            
+            # 2. Unsharp mask for sharpening
+            sharpened = blurred.filter(ImageFilter.UnsharpMask(radius=1, percent=150, threshold=3))
+            
+            # 3. Enhance contrast
+            enhancer = ImageEnhance.Contrast(sharpened)
+            contrasted = enhancer.enhance(1.8)
+            
+            # 4. Apply adaptive thresholding simulation
+            adaptive = self._adaptive_threshold_pil(contrasted)
+            
+            # 5. Morphological operations to clean up
+            cleaned = self._morphological_clean_pil(adaptive)
+            
+            return cleaned
+            
+        except Exception as e:
+            print(f"Advanced filtering failed: {e}. Using original.", file=sys.stderr)
+            return image
+
+    def _adaptive_threshold_pil(self, image: Image.Image) -> Image.Image:
+        """
+        Simulate adaptive thresholding using PIL
+        """
+        try:
+            width, height = image.size
+            output = Image.new('L', (width, height), 255)
+            
+            # Process in blocks for local thresholding
+            block_size = 31
+            c = 10  # Constant subtracted from mean
+            
+            for y in range(0, height, block_size//2):
+                for x in range(0, width, block_size//2):
+                    # Define block boundaries
+                    x1 = max(0, x - block_size//2)
+                    y1 = max(0, y - block_size//2)
+                    x2 = min(width, x + block_size//2)
+                    y2 = min(height, y + block_size//2)
+                    
+                    # Get block
+                    block = image.crop((x1, y1, x2, y2))
+                    
+                    # Calculate local threshold
+                    pixels = list(block.getdata())
+                    local_mean = sum(pixels) / len(pixels)
+                    threshold = local_mean - c
+                    
+                    # Apply threshold to center area
+                    center_x1 = max(x1, x)
+                    center_y1 = max(y1, y)
+                    center_x2 = min(x2, x + block_size//4)
+                    center_y2 = min(y2, y + block_size//4)
+                    
+                    for py in range(center_y1, center_y2):
+                        for px in range(center_x1, center_x2):
+                            pixel_value = image.getpixel((px, py))
+                            new_value = 0 if pixel_value < threshold else 255
+                            output.putpixel((px, py), new_value)
+            
+            return output
+            
+        except Exception as e:
+            print(f"Adaptive threshold failed: {e}. Using simple threshold.", file=sys.stderr)
+            return image.point(lambda x: 0 if x < 128 else 255, 'L')
+
+    def _morphological_clean_pil(self, image: Image.Image) -> Image.Image:
+        """
+        Simulate morphological operations using PIL filters
+        """
+        try:
+            # Erosion followed by dilation (opening) to remove noise
+            # Using minimum filter for erosion effect
+            eroded = image.filter(ImageFilter.MinFilter(size=3))
+            
+            # Using maximum filter for dilation effect
+            opened = eroded.filter(ImageFilter.MaxFilter(size=3))
+            
+            return opened
+            
+        except Exception:
+            return image
+
+    def preprocess_image_pil_only(self, image: Image.Image, enhancement_type: str = "government_form") -> Image.Image:
+        """
+        Advanced PIL-only preprocessing with comprehensive enhancements
+        """
+        try:
+            print(f"🔄 Starting advanced PIL preprocessing ({enhancement_type})", file=sys.stderr)
+            
+            # Step 1: Upscale to optimal DPI
+            image = self.upscale_image_to_optimal_dpi(image, target_dpi=400)
+            
+            # Step 2: Detect and correct skew
+            image = self.detect_and_correct_skew_pil(image)
+            
+            # Convert to RGB for consistency
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # Apply different enhancement strategies
+            # Step 3: Apply enhancement strategy based on document type
             if enhancement_type == "government_form":
-                # Government form preprocessing
-                # 1. Increase contrast
-                enhancer = ImageEnhance.Contrast(image)
-                image = enhancer.enhance(1.5)
+                # Government form preprocessing with form line removal
+                print(f"📋 Applying government form preprocessing", file=sys.stderr)
                 
-                # 2. Increase sharpness
-                enhancer = ImageEnhance.Sharpness(image)
-                image = enhancer.enhance(1.3)
+                # Convert to grayscale
+                gray = image.convert('L')
                 
-                # 3. Reduce noise
-                image = image.filter(ImageFilter.MedianFilter(size=3))
+                # Apply advanced filtering
+                processed = self.apply_advanced_filtering_pil(gray)
                 
-                # 4. Convert to grayscale for better OCR
-                image = image.convert('L')
-                
-                # 5. Apply threshold to create binary image
-                def threshold_func(pixel_value):
-                    return 0 if pixel_value < 128 else 255
-                image = image.point(threshold_func, '1')
-                image = image.convert('RGB')
+                # Convert back to RGB
+                image = processed.convert('RGB')
                 
             elif enhancement_type == "official_document":
                 # Official document preprocessing
+                print(f"📄 Applying official document preprocessing", file=sys.stderr)
+                
+                # Enhanced contrast and brightness
                 enhancer = ImageEnhance.Contrast(image)
-                image = enhancer.enhance(1.3)
+                image = enhancer.enhance(1.5)
                 
                 enhancer = ImageEnhance.Brightness(image)
                 image = enhancer.enhance(1.1)
                 
+                # Sharpening
                 image = image.filter(ImageFilter.SHARPEN)
+                
+                # Convert to grayscale and apply threshold
+                gray = image.convert('L')
+                processed = self._adaptive_threshold_pil(gray)
+                image = processed.convert('RGB')
                 
             elif enhancement_type == "mixed_content":
                 # Mixed content preprocessing
+                print(f"📝 Applying mixed content preprocessing", file=sys.stderr)
+                
                 enhancer = ImageEnhance.Contrast(image)
-                image = enhancer.enhance(1.2)
+                image = enhancer.enhance(1.3)
                 
-                image = image.filter(ImageFilter.SMOOTH_MORE)
+                # Light denoising
+                image = image.filter(ImageFilter.MedianFilter(size=3))
                 
+            print(f"✅ PIL preprocessing completed successfully", file=sys.stderr)
             return image
             
         except Exception as e:
-            print(f"PIL preprocessing failed: {e}. Using original.", file=sys.stderr)
+            print(f"❌ PIL preprocessing failed: {e}. Using original.", file=sys.stderr)
             return image
+
+    def detect_and_correct_skew_opencv(self, image: Image.Image) -> Image.Image:
+        """
+        Detect and correct skew using OpenCV's advanced methods
+        """
+        if not HAS_OPENCV:
+            return self.detect_and_correct_skew_pil(image)
+            
+        try:
+            import cv2 as cv2_local
+            import numpy as np_local
+            
+            # Convert to OpenCV format
+            cv_image = cv2_local.cvtColor(np_local.array(image), cv2_local.COLOR_RGB2GRAY)
+            
+            # Apply edge detection
+            edges = cv2_local.Canny(cv_image, 50, 150, apertureSize=3)
+            
+            # Use Hough Line Transform to detect lines
+            lines = cv2_local.HoughLines(edges, 1, np_local.pi/180, threshold=100)
+            
+            if lines is not None:
+                angles = []
+                for line in lines:
+                    rho, theta = line[0]
+                    # Convert to degrees and filter for horizontal lines
+                    angle = np_local.degrees(theta) - 90
+                    if abs(angle) < 45:  # Only consider reasonably horizontal lines
+                        angles.append(angle)
+                
+                if angles:
+                    # Calculate median angle for robustness
+                    median_angle = np_local.median(angles)
+                    
+                    if abs(median_angle) > 0.5:  # Only correct if significant skew
+                        # Get image center
+                        h, w = cv_image.shape
+                        center = (w // 2, h // 2)
+                        
+                        # Create rotation matrix
+                        M = cv2_local.getRotationMatrix2D(center, median_angle, 1.0)
+                        
+                        # Calculate new dimensions to avoid clipping
+                        cos_angle = abs(M[0, 0])
+                        sin_angle = abs(M[0, 1])
+                        new_w = int((h * sin_angle) + (w * cos_angle))
+                        new_h = int((h * cos_angle) + (w * sin_angle))
+                        
+                        # Adjust translation
+                        M[0, 2] += (new_w / 2) - center[0]
+                        M[1, 2] += (new_h / 2) - center[1]
+                        
+                        # Apply rotation to original color image
+                        cv_color = cv2_local.cvtColor(np_local.array(image), cv2_local.COLOR_RGB2BGR)
+                        rotated = cv2_local.warpAffine(cv_color, M, (new_w, new_h), flags=cv2_local.INTER_CUBIC, borderValue=(255, 255, 255))
+                        
+                        # Convert back to PIL
+                        corrected = Image.fromarray(cv2_local.cvtColor(rotated, cv2_local.COLOR_BGR2RGB))
+                        print(f"✅ Skew corrected with OpenCV: {median_angle:.2f}° rotation", file=sys.stderr)
+                        return corrected
+            
+            print(f"✅ No significant skew detected with OpenCV", file=sys.stderr)
+            return image
+            
+        except Exception as e:
+            print(f"OpenCV skew correction failed: {e}. Using PIL fallback.", file=sys.stderr)
+            return self.detect_and_correct_skew_pil(image)
+
+    def upscale_image_opencv(self, image: Image.Image, target_dpi: int = 400) -> Image.Image:
+        """
+        Upscale image using OpenCV's advanced interpolation
+        """
+        if not HAS_OPENCV:
+            return self.upscale_image_to_optimal_dpi(image, target_dpi)
+            
+        try:
+            import cv2 as cv2_local
+            import numpy as np_local
+            
+            # Calculate current DPI and scale factor
+            current_dpi = image.info.get('dpi', (72, 72))
+            if isinstance(current_dpi, tuple):
+                current_dpi = current_dpi[0]
+            
+            scale_factor = target_dpi / current_dpi
+            
+            if scale_factor > 1.0:
+                # Convert to OpenCV
+                cv_image = cv2_local.cvtColor(np_local.array(image), cv2_local.COLOR_RGB2BGR)
+                
+                # Calculate new dimensions
+                new_width = int(image.width * scale_factor)
+                new_height = int(image.height * scale_factor)
+                
+                # Use CUBIC interpolation for high-quality upscaling
+                upscaled = cv2_local.resize(cv_image, (new_width, new_height), interpolation=cv2_local.INTER_CUBIC)
+                
+                # Convert back to PIL
+                result = Image.fromarray(cv2_local.cvtColor(upscaled, cv2_local.COLOR_BGR2RGB))
+                print(f"✅ Upscaled with OpenCV: {image.size} -> {result.size} (scale: {scale_factor:.2f}x)", file=sys.stderr)
+                return result
+            else:
+                return image
+                
+        except Exception as e:
+            print(f"OpenCV upscaling failed: {e}. Using PIL fallback.", file=sys.stderr)
+            return self.upscale_image_to_optimal_dpi(image, target_dpi)
 
     def preprocess_image_opencv(self, image: Image.Image, enhancement_type: str = "government_form") -> Image.Image:
         """
-        OpenCV-based preprocessing for advanced image enhancement
+        Advanced OpenCV-based preprocessing with comprehensive enhancements
         """
         if not HAS_OPENCV:
             return self.preprocess_image_pil_only(image, enhancement_type)
@@ -496,49 +815,120 @@ class EnhancedFRAOCR:
             if not HAS_OPENCV or 'cv2' not in globals() or 'np' not in globals():
                 return self.preprocess_image_pil_only(image, enhancement_type)
                 
+            print(f"🔄 Starting advanced OpenCV preprocessing ({enhancement_type})", file=sys.stderr)
+            
             # Import checks for type safety
             import cv2 as cv2_local
             import numpy as np_local
+            
+            # Step 1: Upscale to optimal DPI
+            image = self.upscale_image_opencv(image, target_dpi=400)
+            
+            # Step 2: Detect and correct skew
+            image = self.detect_and_correct_skew_opencv(image)
             
             # Convert PIL to OpenCV
             cv_image = cv2_local.cvtColor(np_local.array(image), cv2_local.COLOR_RGB2BGR)
             gray = cv2_local.cvtColor(cv_image, cv2_local.COLOR_BGR2GRAY)
             
             if enhancement_type == "government_form":
-                # Remove form lines and enhance text
-                horizontal_kernel = cv2_local.getStructuringElement(cv2_local.MORPH_RECT, (40, 1))
-                vertical_kernel = cv2_local.getStructuringElement(cv2_local.MORPH_RECT, (1, 40))
+                print(f"📋 Applying advanced government form preprocessing", file=sys.stderr)
+                
+                # Step 3: Remove form lines with enhanced detection
+                horizontal_kernel = cv2_local.getStructuringElement(cv2_local.MORPH_RECT, (50, 1))
+                vertical_kernel = cv2_local.getStructuringElement(cv2_local.MORPH_RECT, (1, 50))
                 
                 horizontal_lines = cv2_local.morphologyEx(gray, cv2_local.MORPH_OPEN, horizontal_kernel)
                 vertical_lines = cv2_local.morphologyEx(gray, cv2_local.MORPH_OPEN, vertical_kernel)
                 
+                # Create stronger form mask
                 form_mask = cv2_local.add(horizontal_lines, vertical_lines)
+                
+                # Dilate the mask to ensure complete line removal
+                kernel = cv2_local.getStructuringElement(cv2_local.MORPH_RECT, (3, 3))
+                form_mask = cv2_local.dilate(form_mask, kernel, iterations=1)
+                
+                # Subtract form lines from original
                 gray_clean = cv2_local.subtract(gray, form_mask)
                 
-                # CLAHE for contrast enhancement
-                clahe = cv2_local.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
-                enhanced = clahe.apply(gray_clean)
+                # Step 4: Advanced noise reduction
+                # Gaussian blur to reduce noise
+                blurred = cv2_local.GaussianBlur(gray_clean, (3, 3), 0)
                 
-                # Bilateral filtering for noise reduction
-                denoised = cv2_local.bilateralFilter(enhanced, 9, 75, 75)
+                # Step 5: CLAHE for adaptive contrast enhancement
+                clahe = cv2_local.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
+                enhanced = clahe.apply(blurred)
+                
+                # Step 6: Advanced denoising
+                denoised = cv2_local.fastNlMeansDenoising(enhanced, None, 10, 7, 21)
+                
+                # Step 7: Advanced adaptive thresholding
+                binary = cv2_local.adaptiveThreshold(
+                    denoised, 255, cv2_local.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                    cv2_local.THRESH_BINARY, 11, 2
+                )
+                
+                # Step 8: Morphological operations to clean up text
+                # Remove small noise
+                kernel = cv2_local.getStructuringElement(cv2_local.MORPH_ELLIPSE, (2, 2))
+                cleaned = cv2_local.morphologyEx(binary, cv2_local.MORPH_OPEN, kernel)
+                
+                # Close gaps in text
+                kernel = cv2_local.getStructuringElement(cv2_local.MORPH_RECT, (2, 1))
+                final = cv2_local.morphologyEx(cleaned, cv2_local.MORPH_CLOSE, kernel)
+                
+                processed = cv2_local.cvtColor(final, cv2_local.COLOR_GRAY2RGB)
+                
+            elif enhancement_type == "official_document":
+                print(f"📄 Applying advanced official document preprocessing", file=sys.stderr)
+                
+                # Enhanced contrast with CLAHE
+                clahe = cv2_local.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+                enhanced = clahe.apply(gray)
+                
+                # Advanced denoising
+                denoised = cv2_local.fastNlMeansDenoising(enhanced, None, 8, 7, 21)
+                
+                # Sharpening kernel
+                kernel = np_local.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+                sharpened = cv2_local.filter2D(denoised, -1, kernel)
                 
                 # Adaptive thresholding
                 binary = cv2_local.adaptiveThreshold(
-                    denoised, 255, cv2_local.ADAPTIVE_THRESH_GAUSSIAN_C, cv2_local.THRESH_BINARY, 15, 4
+                    sharpened, 255, cv2_local.ADAPTIVE_THRESH_MEAN_C, 
+                    cv2_local.THRESH_BINARY, 13, 4
                 )
                 
                 processed = cv2_local.cvtColor(binary, cv2_local.COLOR_GRAY2RGB)
                 
+            elif enhancement_type == "mixed_content":
+                print(f"📝 Applying advanced mixed content preprocessing", file=sys.stderr)
+                
+                # Moderate enhancement for mixed content
+                clahe = cv2_local.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+                enhanced = clahe.apply(gray)
+                
+                # Light denoising
+                denoised = cv2_local.medianBlur(enhanced, 3)
+                
+                # Gentle sharpening
+                kernel = np_local.array([[0,-1,0], [-1,5,-1], [0,-1,0]])
+                sharpened = cv2_local.filter2D(denoised, -1, kernel)
+                
+                processed = cv2_local.cvtColor(sharpened, cv2_local.COLOR_GRAY2RGB)
+                
             else:
-                # Simpler preprocessing for other document types
-                clahe = cv2_local.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                # Default processing
+                clahe = cv2_local.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
                 enhanced = clahe.apply(gray)
                 processed = cv2_local.cvtColor(enhanced, cv2_local.COLOR_GRAY2RGB)
             
-            return Image.fromarray(processed)
+            result = Image.fromarray(processed)
+            print(f"✅ OpenCV preprocessing completed successfully", file=sys.stderr)
+            return result
             
         except Exception as e:
-            print(f"OpenCV preprocessing failed: {e}. Using PIL fallback.", file=sys.stderr)
+            print(f"❌ OpenCV preprocessing failed: {e}. Using PIL fallback.", file=sys.stderr)
             return self.preprocess_image_pil_only(image, enhancement_type)
 
     def extract_enhanced_fra_entities(self, text: str, document_type: Optional[str] = None) -> Dict[str, List[str]]:
@@ -635,6 +1025,247 @@ class EnhancedFRAOCR:
             print(f"Advanced entity extraction failed: {e}", file=sys.stderr)
         
         return advanced_entities
+
+    def get_optimized_tesseract_config(self, document_type: str, language: str) -> Dict[str, str]:
+        """
+        Get optimized Tesseract configuration for FRA documents
+        """
+        doc_config = self.fra_document_types.get(document_type, self.fra_document_types['individual_forest_rights'])
+        
+        # Base configuration with OEM 1 (LSTM) for best accuracy
+        base_config = {
+            'oem': '1',  # LSTM OCR Engine Mode
+            'psm': str(doc_config['psm']),  # Page segmentation mode
+            'languages': language,
+            'whitelist': '',
+            'blacklist': '',
+            'config_string': ''
+        }
+        
+        # FRA-specific character whitelist (English + Hindi + common symbols)
+        fra_whitelist = (
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+            '0123456789'
+            '.,;:()[]{}/-_=+*&%$#@!?"\''
+            ' \t\n\r'
+            'ऀ-ॿ'  # Devanagari (Hindi)
+            'ঀ-৿'  # Bengali
+            '଀-୿'  # Odia
+            'ఀ-౿'  # Telugu
+        )
+        
+        if document_type == 'government_form' or document_type == 'individual_forest_rights':
+            # For forms, use PSM 6 (uniform block of text) and strict whitelist
+            base_config.update({
+                'psm': '6',
+                'whitelist': fra_whitelist,
+                'blacklist': '~`\\|<>\u00a0\u2000-\u200f\u2028-\u202f'  # Remove problematic chars
+            })
+        elif document_type == 'verification_report':
+            # For reports, use PSM 3 (fully automatic) for mixed layout
+            base_config.update({
+                'psm': '3',
+                'whitelist': fra_whitelist
+            })
+        elif document_type == 'patta_document':
+            # For patta documents, use PSM 6 with focus on structured text
+            base_config.update({
+                'psm': '6',
+                'whitelist': fra_whitelist
+            })
+        
+        # Build final configuration string
+        config_parts = []
+        config_parts.append(f'--oem {base_config["oem"]}')
+        config_parts.append(f'--psm {base_config["psm"]}')
+        
+        if base_config['whitelist']:
+            # Note: Tesseract whitelist with Unicode can be tricky, so we'll use it selectively
+            basic_whitelist = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:()[]{}/-_=+*&%$#@!?"\' \t\n\r'
+            config_parts.append(f'-c tessedit_char_whitelist={basic_whitelist}')
+        
+        if base_config['blacklist']:
+            config_parts.append(f'-c tessedit_char_blacklist=~`\\|<>')
+        
+        # Additional optimization parameters
+        config_parts.extend([
+            '-c preserve_interword_spaces=1',
+            '-c tessedit_do_invert=0',
+            '-c textord_old_xheight=0',
+            '-c textord_min_xheight=10',
+            '-c enable_new_segsearch=0',
+            '-c language_model_ngram_on=0',
+            '-c textord_really_old_xheight=1'
+        ])
+        
+        base_config['config_string'] = ' '.join(config_parts)
+        
+        print(f"⚙️ Tesseract config for {document_type}: {base_config['config_string']}", file=sys.stderr)
+        
+        return base_config
+
+    def apply_post_processing_corrections(self, text: str, document_type: str = None) -> str:
+        """
+        Apply post-processing corrections to improve OCR text quality
+        """
+        try:
+            print(f"🔧 Applying post-processing corrections", file=sys.stderr)
+            
+            # Step 1: Basic cleanup
+            corrected = text.strip()
+            
+            # Step 2: Remove excessive whitespace and normalize
+            corrected = re.sub(r'\s+', ' ', corrected)  # Multiple spaces to single
+            corrected = re.sub(r'\n\s*\n', '\n', corrected)  # Multiple newlines to single
+            
+            # Step 3: FRA-specific header corrections
+            fra_headers = {
+                r'(?i)\b(?:WREST|WORES[T]?|FOR[ES]+T|FORE[ST]+)\s*(?:YE|YE-"B|RIGHT[S]?|RIGH[TS]?)\s*(?:LE|ACT?)\b': 'FOREST RIGHTS ACT',
+                r'(?i)\b(?:FORE[ST]+|FOR[ES]+T)\s*(?:RIGHT[S]?|RIGH[TS]?)\s*(?:ACT?|AT)\b': 'FOREST RIGHTS ACT',
+                r'(?i)\bFORE[ST]+\s*RIGH[TS]?\s*ACT\b': 'FOREST RIGHTS ACT',
+                r'(?i)\bCLAIMANT[S]?\s*:?': 'CLAIMANT:',
+                r'(?i)\bNAME\s*:?': 'Name:',
+                r'(?i)\bVILLAGE\s*:?': 'Village:',
+                r'(?i)\bSTATE\s*:?': 'State:',
+                r'(?i)\bDISTRICT\s*:?': 'District:',
+                r'(?i)\bPATTA\s*(?:NO|NUMBER)\s*:?': 'Patta Number:',
+                r'(?i)\bSURVEY\s*(?:NO|NUMBER)\s*:?': 'Survey Number:',
+                r'(?i)\bCLAIM\s*(?:NO|NUMBER)\s*:?': 'Claim Number:',
+                r'(?i)\bVERIFICATION\s*:?': 'Verification:',
+                r'(?i)\bSTATUS\s*:?': 'Status:'
+            }
+            
+            for pattern, replacement in fra_headers.items():
+                corrected = re.sub(pattern, replacement, corrected)
+            
+            # Step 4: Common OCR character corrections
+            char_corrections = {
+                r'\b(?:0|O)(?=\d)': '0',  # O to 0 when followed by digit
+                r'(?<=\d)(?:O|o)(?=\d)': '0',  # o/O to 0 between digits
+                r'\b(?:1|l|I)(?=\d{2,})': '1',  # l/I to 1 in number context
+                r'(?<=\d)(?:l|I)(?=\d)': '1',  # l/I to 1 between digits
+                r'(?<=\w)(?:rn|m)(?=\w)': 'n',  # rn/m to n in middle of words
+                r'\b(?:S|5)(?=[A-Za-z])': 'S',  # 5 to S at start of words
+                r'(?<=[A-Za-z])(?:5)(?=[A-Za-z])': 'S',  # 5 to S in middle of words
+                r'\b(?:6|G)(?=[A-Za-z])': 'G',  # 6 to G at start of words
+                r'(?<=\w)(?:®|©|@)(?=\w)': 'a',  # Special chars to 'a'
+                r'\|°|\u00b0': '',  # Remove degree symbols and pipes
+                r'[\u201c\u201d]': '"',  # Smart quotes to regular quotes
+                r'[\u2018\u2019]': "'",  # Smart apostrophes
+                r'[\u2013\u2014]': '-',  # Em/en dashes to regular dash
+                r'\u2026': '...',  # Ellipsis
+                r'(?<=\w)[.,]{2,}': '.',  # Multiple dots to single
+                r'(?<=:)\s*[.,;]': '',  # Remove punctuation after colons
+            }
+            
+            for pattern, replacement in char_corrections.items():
+                corrected = re.sub(pattern, replacement, corrected)
+            
+            # Step 5: FRA-specific field cleaning
+            corrected = self.clean_fra_specific_fields(corrected)
+            
+            # Step 6: Language-specific corrections
+            corrected = self.apply_language_specific_corrections(corrected)
+            
+            # Step 7: Final cleanup
+            corrected = re.sub(r'\s+', ' ', corrected)  # Final space normalization
+            corrected = corrected.strip()
+            
+            print(f"✅ Post-processing corrections applied", file=sys.stderr)
+            return corrected
+            
+        except Exception as e:
+            print(f"❌ Post-processing failed: {e}. Using original text.", file=sys.stderr)
+            return text
+
+    def clean_fra_specific_fields(self, text: str) -> str:
+        """
+        Clean FRA-specific fields with targeted corrections
+        """
+        try:
+            # Clean names - remove common OCR artifacts from Indian names
+            name_pattern = r'(?:Name|नाम|নাম|ନାମ|పేరు)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{3,50})'
+            
+            def clean_name(match):
+                label = match.group(0).split(':')[0] + ':'
+                name = match.group(1).strip()
+                
+                # Common name corrections
+                name = re.sub(r'\b(?:5h|Sh|5H)(?=ri)\b', 'Shr', name)  # Shri corrections
+                name = re.sub(r'\b(?:Ram|Rarn|Rams?)\b', 'Ram', name)  # Ram corrections
+                name = re.sub(r'\b(?:Singh|5ingh|Sinqh)\b', 'Singh', name)  # Singh corrections
+                name = re.sub(r'\b(?:Kumar|Kurnar|Kunar)\b', 'Kumar', name)  # Kumar corrections
+                name = re.sub(r'\b(?:Devi|Devl|Dev1)\b', 'Devi', name)  # Devi corrections
+                name = re.sub(r'[0-9]+', '', name)  # Remove numbers from names
+                name = re.sub(r'\s+', ' ', name).strip()  # Clean spaces
+                
+                return f'{label} {name}'
+            
+            text = re.sub(name_pattern, clean_name, text, flags=re.IGNORECASE)
+            
+            # Clean village names
+            village_pattern = r'(?:Village|गांव|গ্রাম|ଗାଁ|గ్రామం)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})'
+            
+            def clean_village(match):
+                label = match.group(0).split(':')[0] + ':'
+                village = match.group(1).strip()
+                
+                # Remove numbers and common artifacts
+                village = re.sub(r'[0-9]+', '', village)
+                village = re.sub(r'[^A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]', '', village)
+                village = re.sub(r'\s+', ' ', village).strip()
+                
+                return f'{label} {village}'
+            
+            text = re.sub(village_pattern, clean_village, text, flags=re.IGNORECASE)
+            
+            # Clean patta/survey numbers
+            number_patterns = [
+                r'(?:Patta\s*Number|पट्टा\s*संख्या)\s*:?\s*([A-Z0-9/-]{3,20})',
+                r'(?:Survey\s*Number|सर्वे\s*संख्या)\s*:?\s*([0-9/-]{1,15})',
+                r'(?:Claim\s*Number|दावा\s*संख्या)\s*:?\s*([A-Z0-9/-]{3,20})'
+            ]
+            
+            for pattern in number_patterns:
+                def clean_number(match):
+                    label = match.group(0).split(':')[0] + ':'
+                    number = match.group(1).strip()
+                    
+                    # Clean number format
+                    number = re.sub(r'[^A-Z0-9/-]', '', number.upper())
+                    
+                    return f'{label} {number}'
+                
+                text = re.sub(pattern, clean_number, text, flags=re.IGNORECASE)
+            
+            return text
+            
+        except Exception as e:
+            print(f"FRA field cleaning failed: {e}", file=sys.stderr)
+            return text
+
+    def apply_language_specific_corrections(self, text: str) -> str:
+        """
+        Apply language-specific corrections for Hindi/Bengali/Odia/Telugu
+        """
+        try:
+            # Hindi corrections
+            hindi_corrections = {
+                r'\u0926\u093F\u0928\u093E\u0902\u0915': 'दिनांक',  # Date
+                r'\u0917\u093E\u0902\u0935': 'गांव',  # Village
+                r'\u092A\u091F\u094D\u091F\u093E': 'पट्टा',  # Patta
+                r'\u0935\u0928': 'वन',  # Forest
+                r'\u0905\u0927\u093F\u0915\u093E\u0930': 'अधिकार'  # Rights
+            }
+            
+            for pattern, replacement in hindi_corrections.items():
+                text = re.sub(pattern, replacement, text)
+            
+            return text
+            
+        except Exception as e:
+            print(f"Language-specific corrections failed: {e}", file=sys.stderr)
+            return text
 
     def assess_fra_quality(self, text: str, confidence: float, entities: Dict) -> Dict[str, Any]:
         """
@@ -771,17 +1402,24 @@ class EnhancedFRAOCR:
             else:
                 processed_image = self.preprocess_image_pil_only(image, config['preprocessing'])
             
-            # Configure Tesseract for FRA documents
-            custom_config = f'--oem 1 --psm {config["psm"]} -l {language}'
+            # Get optimized Tesseract configuration
+            tesseract_config = self.get_optimized_tesseract_config(document_type, language)
             
-            # Perform OCR
-            text = pytesseract.image_to_string(processed_image, config=custom_config, lang=language)
+            # Perform OCR with optimized configuration
+            text = pytesseract.image_to_string(
+                processed_image, 
+                config=tesseract_config['config_string'],
+                lang=tesseract_config['languages']
+            )
             
-            # Get confidence data
+            # Apply post-processing corrections
+            text = self.apply_post_processing_corrections(text, document_type)
+            
+            # Get confidence data with optimized configuration
             data = pytesseract.image_to_data(
                 processed_image, 
-                config=custom_config,
-                lang=language, 
+                config=tesseract_config['config_string'],
+                lang=tesseract_config['languages'], 
                 output_type=pytesseract.Output.DICT
             )
             
