@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PythonOCRClient } from './pythonOCRClient';
 import path from 'path';
 import fs from 'fs';
-import { createWorker, PSM, OEM } from 'tesseract.js';
+import { createWorker } from 'tesseract.js';
 
 interface ProcessedDocument {
   text: string;
@@ -162,8 +162,8 @@ export class DocumentProcessor {
       try {
         // Set page segmentation mode for better text detection
         await worker.setParameters({
-          tessedit_pageseg_mode: PSM.UNIFORM_BLOCK, // Uniform block of text
-          tessedit_ocr_engine_mode: OEM.LSTM_ONLY, // Neural nets LSTM engine
+          tessedit_pageseg_mode: 6, // Uniform block of text
+          tessedit_ocr_engine_mode: 1, // Neural nets LSTM engine
         });
 
         // Perform OCR
