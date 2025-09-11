@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "glibcLocales", "gobject-introspection", "gtk3", "hdf5", "imagemagick", "jq", "lcms2", "libGL", "libGLU", "libimagequant", "libjpeg", "libjpeg_turbo", "libpng", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pkg-config", "poppler", "poppler-utils", "poppler_utils", "qhull", "tcl", "tesseract", "tk", "which", "xsimd", "zlib"]
+packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "glibcLocales", "gobject-introspection", "gtk3", "hdf5", "imagemagick", "jq", "lcms2", "libGL", "libGLU", "libimagequant", "libjpeg", "libjpeg_turbo", "libpng", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pkg-config", "poppler", "poppler-utils", "poppler_utils", "python311", "qhull", "tcl", "tesseract", "tk", "which", "xsimd", "zlib"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -26,6 +26,10 @@ externalPort = 3000
 [[ports]]
 localPort = 34491
 externalPort = 3001
+
+[[ports]]
+localPort = 36821
+externalPort = 3003
 
 [[ports]]
 localPort = 40389
