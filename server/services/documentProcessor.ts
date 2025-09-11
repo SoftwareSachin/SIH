@@ -190,69 +190,106 @@ export class DocumentProcessor {
         imagePaths = [processedImagePath];
       }
 
-      // Initialize Tesseract worker with multi-language support
-      console.log('🔄 Initializing Tesseract worker with multi-language support...');
-      const worker = await createWorker('eng');
+      // Try multiple OCR approaches for best results
+      console.log('🔄 Multi-approach OCR processing for structured documents...');
       
-      try {
-        
-        // Configure for structured document processing
-        await worker.setParameters({
-          tessedit_pageseg_mode: PSM.AUTO, // Fully automatic page segmentation
-          tessedit_ocr_engine_mode: OEM.LSTM_ONLY, // Neural nets LSTM engine
-          tessedit_write_images: '0',
-          user_defined_dpi: '300',
-          // Remove character whitelist to support Indian scripts
-        });
-
-        // Process all pages and combine results
-        let allText = '';
-        let totalConfidence = 0;
-        let pageCount = 0;
-
-        for (const imagePath of imagePaths) {
-          console.log(`🔄 Processing page ${pageCount + 1}/${imagePaths.length}`);
-          const { data } = await worker.recognize(imagePath);
-          
-          if (data.text && data.text.trim()) {
-            allText += data.text + '\n\n';
-            totalConfidence += data.confidence || 0;
-            pageCount++;
+      const ocrConfigs = [
+        {
+          name: 'Form Processing',
+          psm: PSM.SINGLE_BLOCK,
+          params: {
+            tessedit_write_images: '0',
+            user_defined_dpi: '300',
+            preserve_interword_spaces: '1'
+          }
+        },
+        {
+          name: 'Auto Segmentation',
+          psm: PSM.AUTO,
+          params: {
+            tessedit_write_images: '0',
+            user_defined_dpi: '300'
+          }
+        },
+        {
+          name: 'Uniform Block',
+          psm: PSM.SINGLE_UNIFORM_BLOCK,
+          params: {
+            tessedit_write_images: '0',
+            user_defined_dpi: '300'
           }
         }
+      ];
 
-        const averageConfidence = pageCount > 0 ? totalConfidence / pageCount : 0;
+      let bestResult = { text: '', confidence: 0, config: '' };
+      
+      for (const config of ocrConfigs) {
+        let worker: any = null;
+        try {
+          console.log(`🔄 Trying ${config.name} configuration...`);
+          
+          // Create worker with specific configuration
+          worker = await createWorker('eng', OEM.LSTM_ONLY, {
+            // Don't set logger here to avoid conflicts
+          });
+          
+          // Set page segmentation mode and other parameters
+          await worker.setParameters({
+            tessedit_pageseg_mode: config.psm,
+            ...config.params
+          });
+          
+          const { data } = await worker.recognize(imagePaths[0]);
+          const cleanText = data.text?.trim() || '';
+          const confidence = data.confidence || 0;
+          
+          console.log(`   ${config.name}: ${confidence}% confidence, ${cleanText.length} chars`);
+          
+          if (confidence > bestResult.confidence && cleanText.length > 20) {
+            bestResult = { 
+              text: cleanText, 
+              confidence: confidence,
+              config: config.name 
+            };
+          }
+          
+          await worker.terminate();
+          
+        } catch (error) {
+          console.warn(`   ${config.name} failed:`, error.message);
+          if (worker) {
+            try { await worker.terminate(); } catch (e) {}
+          }
+        }
+      }
+      
+      console.log(`✅ Best OCR result: ${bestResult.config} (${bestResult.confidence}%)`);
+      
+      const allText = bestResult.text;
+      const averageConfidence = bestResult.confidence;
         
         // Create processed document structure
         const processedDoc: ProcessedDocument = {
           text: allText.trim(),
           confidence: Math.round(averageConfidence),
-          language: 'multilingual',
+          language: 'eng',
           entities: {},
           claimRecords: [],
           metadata: {
             processingTime: Date.now() - startTime,
             imageQuality: averageConfidence > 60 ? 'good' : averageConfidence > 30 ? 'fair' : 'poor',
-            ocrMethod: 'Enhanced-Tesseract.js-Fallback',
-            preprocessingApplied: ['pdf_conversion', 'image_preprocessing', 'multi_language'],
-            pageCount,
-            languages: 'eng+hin+ori+tel'
+            ocrMethod: `Multi-Config-Tesseract-${bestResult.config}`,
+            preprocessingApplied: ['enhanced_preprocessing', 'multi_approach_ocr'],
+            pageCount: 1,
+            bestConfig: bestResult.config
           }
         };
-
-        await worker.terminate();
         
         // Clean up temporary files
         await this.cleanupTempFiles(imagePaths, processedImagePath);
         
-        console.log(`✅ Enhanced fallback OCR completed: ${averageConfidence}% confidence, ${pageCount} pages`);
+        console.log(`✅ Multi-approach OCR completed: ${averageConfidence}% confidence with ${bestResult.config}`);
         return processedDoc;
-        
-      } catch (error) {
-        await worker.terminate();
-        await this.cleanupTempFiles(imagePaths, processedImagePath);
-        throw error;
-      }
       
     } catch (error: any) {
       console.error('❌ Enhanced fallback OCR failed:', error);
@@ -381,23 +418,39 @@ Text: ${text.substring(0, 2000)}
 
   private async preprocessImage(imagePath: string): Promise<string> {
     try {
-      console.log('🔄 Preprocessing image for enhanced OCR...');
+      console.log('🔄 Advanced preprocessing for structured documents...');
       
-      const processedPath = imagePath.replace(/\.(jpg|jpeg|png)$/i, '_processed.png');
+      // Create unique processed path 
+      const timestamp = Date.now();
+      const processedPath = imagePath.replace(/\.(jpg|jpeg|png)$/i, `_enhanced_${timestamp}.png`);
       
-      // Apply image preprocessing using sharp
+      // Get image metadata
+      const metadata = await sharp(imagePath).metadata();
+      const originalWidth = metadata.width || 1000;
+      const originalHeight = metadata.height || 1000;
+      
+      console.log(`   Original: ${originalWidth}x${originalHeight}`);
+      
+      // Calculate optimal size for OCR (aim for 300+ DPI)
+      const targetHeight = Math.max(originalHeight, 2400);
+      const targetWidth = Math.max(originalWidth, 1800);
+      
+      // Multi-stage preprocessing for better text recognition
       await sharp(imagePath)
         .greyscale() // Convert to grayscale
-        .resize(null, 2000, { // Upscale to minimum height of 2000px
+        .resize(targetWidth, targetHeight, { 
+          fit: 'inside',
           withoutEnlargement: false,
-          kernel: sharp.kernel.lanczos3
+          kernel: sharp.kernel.lanczos3 
         })
-        .normalize() // Normalize contrast
-        .threshold(128) // Apply threshold for better text contrast
-        .png({ quality: 100 })
+        .gamma(1.1) // Slightly brighten dark text
+        .normalize() // Auto-adjust contrast
+        .sharpen({ sigma: 1, m1: 1, m2: 2 }) // Sharpen text edges
+        .median(1) // Reduce noise
+        .png({ quality: 100, compressionLevel: 0 })
         .toFile(processedPath);
       
-      console.log('✅ Image preprocessing completed');
+      console.log(`✅ Enhanced preprocessing: ${originalWidth}x${originalHeight} → ${targetWidth}x${targetHeight}`);
       return processedPath;
       
     } catch (error: any) {
@@ -426,8 +479,8 @@ Text: ${text.substring(0, 2000)}
         }
       }
       
-      // Clean up processed image
-      if (processedImagePath && processedImagePath.includes('_processed.png') && fs.existsSync(processedImagePath)) {
+      // Clean up processed image (support new naming pattern)
+      if (processedImagePath && (processedImagePath.includes('_processed.png') || processedImagePath.includes('_enhanced_')) && fs.existsSync(processedImagePath)) {
         fs.unlinkSync(processedImagePath);
       }
       
