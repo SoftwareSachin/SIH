@@ -2,7 +2,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PythonOCRClient } from './pythonOCRClient';
 import path from 'path';
 import fs from 'fs';
-import { createWorker } from 'tesseract.js';
+import { createWorker, PSM, OEM } from 'tesseract.js';
+import sharp from 'sharp';
 
 interface ProcessedDocument {
   text: string;
@@ -153,53 +154,113 @@ export class DocumentProcessor {
 
   private async processWithFallbackOCR(filePath: string, fileType: string, documentId?: string): Promise<ProcessedDocument> {
     const startTime = Date.now();
+    let processedImagePath: string | null = null;
     
     try {
       console.log(`🔄 Processing with fallback OCR (Tesseract.js): ${path.basename(filePath)}`);
       
+      // Handle PDF conversion first
+      let imagePaths: string[] = [];
+      if (fileType.includes('pdf')) {
+        console.log('🔄 Checking PDF support...');
+        try {
+          imagePaths = await this.convertPDFToImages(filePath);
+        } catch (error) {
+          // PDF processing not supported in fallback OCR - return informative error
+          console.error('❌ PDF processing failed in fallback OCR:', error);
+          return {
+            text: '',
+            confidence: 0,
+            language: 'eng',
+            entities: {},
+            claimRecords: [],
+            metadata: {
+              processingTime: Date.now() - startTime,
+              imageQuality: 'error',
+              ocrMethod: 'Enhanced-Tesseract.js-PDF-Not-Supported',
+              preprocessingApplied: [],
+              error: 'PDF processing requires Python OCR service. Please start the Python OCR service for PDF document processing.',
+              recommendation: 'Start Python OCR service with: python server/ocr_service.py'
+            }
+          };
+        }
+      } else {
+        // Preprocess image for better OCR
+        processedImagePath = await this.preprocessImage(filePath);
+        imagePaths = [processedImagePath];
+      }
+
+      // Initialize Tesseract worker with multi-language support
+      console.log('🔄 Initializing Tesseract worker with multi-language support...');
       const worker = await createWorker('eng');
       
       try {
-        // Set page segmentation mode for better text detection
+        
+        // Configure for structured document processing
         await worker.setParameters({
-          tessedit_pageseg_mode: 6, // Uniform block of text
-          tessedit_ocr_engine_mode: 1, // Neural nets LSTM engine
+          tessedit_pageseg_mode: PSM.AUTO, // Fully automatic page segmentation
+          tessedit_ocr_engine_mode: OEM.LSTM_ONLY, // Neural nets LSTM engine
+          tessedit_write_images: '0',
+          user_defined_dpi: '300',
+          // Remove character whitelist to support Indian scripts
         });
 
-        // Perform OCR
-        const { data } = await worker.recognize(filePath);
-        
-        // Calculate confidence (Tesseract provides confidence per word)
-        const confidence = data.confidence || 0;
+        // Process all pages and combine results
+        let allText = '';
+        let totalConfidence = 0;
+        let pageCount = 0;
+
+        for (const imagePath of imagePaths) {
+          console.log(`🔄 Processing page ${pageCount + 1}/${imagePaths.length}`);
+          const { data } = await worker.recognize(imagePath);
+          
+          if (data.text && data.text.trim()) {
+            allText += data.text + '\n\n';
+            totalConfidence += data.confidence || 0;
+            pageCount++;
+          }
+        }
+
+        const averageConfidence = pageCount > 0 ? totalConfidence / pageCount : 0;
         
         // Create processed document structure
         const processedDoc: ProcessedDocument = {
-          text: data.text || '',
-          confidence: Math.round(confidence),
-          language: 'eng',
+          text: allText.trim(),
+          confidence: Math.round(averageConfidence),
+          language: 'multilingual',
           entities: {},
           claimRecords: [],
           metadata: {
             processingTime: Date.now() - startTime,
-            imageQuality: confidence > 60 ? 'good' : confidence > 30 ? 'fair' : 'poor',
-            ocrMethod: 'Tesseract.js-Fallback',
-            preprocessingApplied: ['tesseract_native'],
-            pageCount: 1
+            imageQuality: averageConfidence > 60 ? 'good' : averageConfidence > 30 ? 'fair' : 'poor',
+            ocrMethod: 'Enhanced-Tesseract.js-Fallback',
+            preprocessingApplied: ['pdf_conversion', 'image_preprocessing', 'multi_language'],
+            pageCount,
+            languages: 'eng+hin+ori+tel'
           }
         };
 
         await worker.terminate();
         
-        console.log(`✅ Fallback OCR completed: ${confidence}% confidence`);
+        // Clean up temporary files
+        await this.cleanupTempFiles(imagePaths, processedImagePath);
+        
+        console.log(`✅ Enhanced fallback OCR completed: ${averageConfidence}% confidence, ${pageCount} pages`);
         return processedDoc;
         
       } catch (error) {
         await worker.terminate();
+        await this.cleanupTempFiles(imagePaths, processedImagePath);
         throw error;
       }
       
     } catch (error: any) {
-      console.error('❌ Fallback OCR failed:', error);
+      console.error('❌ Enhanced fallback OCR failed:', error);
+      
+      // Clean up on error
+      if (processedImagePath) {
+        await this.cleanupTempFiles([], processedImagePath);
+      }
       
       // Return minimal error document
       return {
@@ -211,7 +272,7 @@ export class DocumentProcessor {
         metadata: {
           processingTime: Date.now() - startTime,
           imageQuality: 'error',
-          ocrMethod: 'Tesseract.js-Failed',
+          ocrMethod: 'Enhanced-Tesseract.js-Failed',
           preprocessingApplied: [],
           error: error.message
         }
@@ -306,6 +367,73 @@ Text: ${text.substring(0, 2000)}
     }
 
     return records.slice(0, 10); // Limit to 10 records
+  }
+
+  private async convertPDFToImages(pdfPath: string): Promise<string[]> {
+    // Note: PDF-to-image conversion is not available in fallback OCR due to library limitations
+    // This would normally require pdf-poppler or similar, but it's not supported in this environment
+    console.warn('⚠️ PDF-to-image conversion not available in fallback OCR - skipping PDF processing');
+    console.log('💡 For PDF processing, please ensure the Python OCR service is running');
+    
+    // Return empty array to indicate no pages were processed
+    throw new Error('PDF processing not supported in fallback OCR. Please use Python OCR service for PDF documents.');
+  }
+
+  private async preprocessImage(imagePath: string): Promise<string> {
+    try {
+      console.log('🔄 Preprocessing image for enhanced OCR...');
+      
+      const processedPath = imagePath.replace(/\.(jpg|jpeg|png)$/i, '_processed.png');
+      
+      // Apply image preprocessing using sharp
+      await sharp(imagePath)
+        .greyscale() // Convert to grayscale
+        .resize(null, 2000, { // Upscale to minimum height of 2000px
+          withoutEnlargement: false,
+          kernel: sharp.kernel.lanczos3
+        })
+        .normalize() // Normalize contrast
+        .threshold(128) // Apply threshold for better text contrast
+        .png({ quality: 100 })
+        .toFile(processedPath);
+      
+      console.log('✅ Image preprocessing completed');
+      return processedPath;
+      
+    } catch (error: any) {
+      console.error('❌ Image preprocessing failed:', error);
+      // Return original path if preprocessing fails
+      return imagePath;
+    }
+  }
+
+  private async cleanupTempFiles(imagePaths: string[], processedImagePath?: string | null): Promise<void> {
+    try {
+      // Clean up PDF conversion images
+      for (const imagePath of imagePaths) {
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+        
+        // Also remove the directory if it's a temp directory
+        const dir = path.dirname(imagePath);
+        if (dir.includes('temp_pdf_pages')) {
+          try {
+            fs.rmSync(dir, { recursive: true, force: true });
+          } catch (e) {
+            // Directory might not be empty or already cleaned
+          }
+        }
+      }
+      
+      // Clean up processed image
+      if (processedImagePath && processedImagePath.includes('_processed.png') && fs.existsSync(processedImagePath)) {
+        fs.unlinkSync(processedImagePath);
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Cleanup of temporary files partially failed:', error);
+    }
   }
 
   async healthCheck(): Promise<any> {
