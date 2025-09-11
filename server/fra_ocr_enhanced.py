@@ -1070,9 +1070,63 @@ class EnhancedFRAOCR:
         
         return result
 
+    def build_script_aware_whitelist(self, languages: str) -> str:
+        """
+        Build script-aware character whitelist based on target languages
+        """
+        # Always include basic ASCII characters
+        whitelist_parts = [
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+            '0123456789',
+            '.,;:()[]{}/-_=+*&%$#@!?"\' ',
+            '\t\n\r'
+        ]
+        
+        # Add script-specific Unicode ranges based on languages
+        lang_list = languages.split('+')
+        
+        if 'hin' in lang_list:
+            # Devanagari script for Hindi
+            whitelist_parts.extend([
+                'ऀ', 'ँ', 'ं', 'ः', 'ऄ', 'अ', 'आ', 'इ', 'ई', 'उ', 'ऊ', 'ऋ', 'ऌ', 'ऍ', 'ऎ', 'ए', 'ऐ', 'ऑ', 'ऒ', 'ओ', 'औ',
+                'क', 'ख', 'ग', 'घ', 'ङ', 'च', 'छ', 'ज', 'झ', 'ञ', 'ट', 'ठ', 'ड', 'ढ', 'ण', 'त', 'थ', 'द', 'ध', 'न', 'ऩ', 'प', 'फ', 'ब', 'भ', 'म',
+                'य', 'र', 'ऱ', 'ल', 'ळ', 'ऴ', 'व', 'श', 'ष', 'स', 'ह', 'ऺ', 'ऻ', '़', 'ऽ', 'ा', 'ि', 'ी', 'ु', 'ू', 'ृ', 'ॄ', 'ॅ', 'ॆ', 'े', 'ै',
+                'ॉ', 'ॊ', 'ो', 'ौ', '्', 'ॎ', 'ॏ', 'ॐ', '॑', '॒', '॓', '॔', 'ॕ', 'ॖ', 'ॗ', 'क़', 'ख़', 'ग़', 'ज़', 'ड़', 'ढ़', 'फ़', 'य़',
+                'ॠ', 'ॡ', 'ॢ', 'ॣ', '।', '॥', '०', '१', '२', '३', '४', '५', '६', '७', '८', '९', '॰', 'ॱ', 'ॲ', 'ॳ', 'ॴ', 'ॵ', 'ॶ', 'ॷ', 'ॸ', 'ॹ', 'ॺ', 'ॻ', 'ॼ', 'ॽ', 'ॾ', 'ॿ'
+            ])
+            
+        if 'ben' in lang_list:
+            # Bengali script
+            whitelist_parts.extend([
+                'ঀ', 'ঁ', 'ং', 'ঃ', '঄', 'অ', 'আ', 'ই', 'ঈ', 'উ', 'ঊ', 'ঋ', 'ঌ', 'এ', 'ঐ', 'ও', 'ঔ',
+                'ক', 'খ', 'গ', 'ঘ', 'ঙ', 'চ', 'ছ', 'জ', 'ঝ', 'ঞ', 'ট', 'ঠ', 'ড', 'ঢ', 'ণ', 'ত', 'থ', 'দ', 'ধ', 'ন', 'প', 'ফ', 'ব', 'ভ', 'ম',
+                'য', 'র', 'ল', 'শ', 'ষ', 'স', 'হ', '়', 'ঽ', 'া', 'ি', 'ী', 'ু', 'ূ', 'ৃ', 'ৄ', 'ে', 'ৈ', 'ো', 'ৌ', '্', 'ৎ',
+                'ৗ', 'ড়', 'ঢ়', 'য়', 'ৠ', 'ৡ', 'ৢ', 'ৣ', '০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯', 'ৰ', 'ৱ', '৲', '৳', '৴', '৵', '৶', '৷', '৸', '৹', '৺', '৻', 'ৼ', '৽', '৾', '৿'
+            ])
+            
+        if 'ori' in lang_list:
+            # Odia script
+            whitelist_parts.extend([
+                'ଁ', 'ଂ', 'ଃ', 'ଅ', 'ଆ', 'ଇ', 'ଈ', 'ଉ', 'ଊ', 'ଋ', 'ଌ', 'ଏ', 'ଐ', 'ଓ', 'ଔ',
+                'କ', 'ଖ', 'ଗ', 'ଘ', 'ଙ', 'ଚ', 'ଛ', 'ଜ', 'ଝ', 'ଞ', 'ଟ', 'ଠ', 'ଡ', 'ଢ', 'ଣ', 'ତ', 'ଥ', 'ଦ', 'ଧ', 'ନ', 'ପ', 'ଫ', 'ବ', 'ଭ', 'ମ',
+                'ଯ', 'ର', 'ଲ', 'ଳ', 'ଵ', 'ଶ', 'ଷ', 'ସ', 'ହ', 'ଽ', 'ା', 'ି', 'ୀ', 'ୁ', 'ୂ', 'ୃ', 'ୄ', 'େ', 'ୈ', 'ୋ', 'ୌ', '୍', 'ୗ',
+                'ଡ଼', 'ଢ଼', 'ୟ', 'ୠ', 'ୡ', 'ୢ', 'ୣ', '୦', '୧', '୨', '୩', '୪', '୫', '୬', '୭', '୮', '୯', '୰', 'ୱ', '୲', '୳', '୴', '୵', '୶', '୷'
+            ])
+            
+        if 'tel' in lang_list:
+            # Telugu script
+            whitelist_parts.extend([
+                'ఁ', 'ం', 'ః', 'అ', 'ఆ', 'ఇ', 'ఈ', 'ఉ', 'ఊ', 'ఋ', 'ఌ', 'ఎ', 'ఏ', 'ఐ', 'ఒ', 'ఓ', 'ఔ',
+                'క', 'ఖ', 'గ', 'ఘ', 'ఙ', 'చ', 'ఛ', 'జ', 'ఝ', 'ఞ', 'ట', 'ఠ', 'డ', 'ఢ', 'ణ', 'త', 'థ', 'ద', 'ధ', 'న', 'ప', 'ఫ', 'బ', 'భ', 'మ',
+                'య', 'ర', 'ఱ', 'ల', 'ళ', 'వ', 'శ', 'ష', 'స', 'హ', 'ఽ', 'ా', 'ి', 'ీ', 'ు', 'ూ', 'ృ', 'ౄ', 'ె', 'ే', 'ై', 'ొ', 'ో', 'ౌ', '్',
+                'ౕ', 'ౖ', 'ౘ', 'ౙ', 'ౚ', '౦', '౧', '౨', '౩', '౪', '౫', '౬', '౭', '౮', '౯', '౸', '౹', '౺', '౻', '౼', '౽', '౾', '౿'
+            ])
+            
+        return ''.join(whitelist_parts)
+
     def get_optimized_tesseract_config(self, document_type: str, language: str) -> Dict[str, str]:
         """
-        Get optimized Tesseract configuration for FRA documents
+        Get optimized Tesseract configuration for FRA documents with script-aware whitelists
         """
         doc_config = self.fra_document_types.get(document_type, self.fra_document_types['individual_forest_rights'])
         
@@ -1089,36 +1143,33 @@ class EnhancedFRAOCR:
             'config_string': ''
         }
         
-        # FRA-specific character whitelist (English + Hindi + common symbols)
-        fra_whitelist = (
-            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-            '0123456789'
-            '.,;:()[]{}/-_=+*&%$#@!?"\''
-            ' \t\n\r'
-            'ऀ-ॿ'  # Devanagari (Hindi)
-            'ঀ-৿'  # Bengali
-            '଀-୿'  # Odia
-            'ఀ-౿'  # Telugu
-        )
+        # Build script-aware whitelist based on target languages
+        script_whitelist = self.build_script_aware_whitelist(filtered_language)
         
+        # Apply document-type specific configurations
         if document_type == 'government_form' or document_type == 'individual_forest_rights':
-            # For forms, use PSM 6 (uniform block of text) and strict whitelist
+            # For forms, use PSM 6 (uniform block of text) with script whitelist
             base_config.update({
                 'psm': '6',
-                'whitelist': fra_whitelist,
+                'whitelist': script_whitelist,
                 'blacklist': '~`\\|<>\u00a0\u2000-\u200f\u2028-\u202f'  # Remove problematic chars
             })
         elif document_type == 'verification_report':
             # For reports, use PSM 3 (fully automatic) for mixed layout
             base_config.update({
                 'psm': '3',
-                'whitelist': fra_whitelist
+                'whitelist': script_whitelist
             })
         elif document_type == 'patta_document':
             # For patta documents, use PSM 6 with focus on structured text
             base_config.update({
                 'psm': '6',
-                'whitelist': fra_whitelist
+                'whitelist': script_whitelist
+            })
+        else:
+            # Default fallback with script awareness
+            base_config.update({
+                'whitelist': script_whitelist
             })
         
         # Build final configuration string
@@ -1126,11 +1177,18 @@ class EnhancedFRAOCR:
         config_parts.append(f'--oem {base_config["oem"]}')
         config_parts.append(f'--psm {base_config["psm"]}')
         
-        if base_config['whitelist']:
-            # Note: Tesseract whitelist with Unicode can be tricky, so we'll use it selectively
-            # Fix: Escape quotes properly to prevent "No closing quotation" error
-            basic_whitelist = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:()[]{}/-_=+*&%$#@!? \t\n\r'
-            config_parts.append(f'-c tessedit_char_whitelist={basic_whitelist}')
+        # Use script-aware whitelist - CRITICAL FIX: No more ASCII-only restriction!
+        has_indic_languages = any(lang in filtered_language for lang in ['hin', 'ben', 'ori', 'tel'])
+        
+        if base_config['whitelist'] and has_indic_languages:
+            # For Indic scripts, don't use character whitelist as it can block Unicode
+            # Let Tesseract use its native script models instead
+            print(f"✅ Using native script models for Indic languages: {filtered_language}", file=sys.stderr)
+        elif base_config['whitelist'] and not has_indic_languages:
+            # Only use ASCII whitelist for pure English documents
+            ascii_whitelist = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:()[]{}/-_=+*&%$#@!? \t\n\r'
+            config_parts.append(f'-c tessedit_char_whitelist={ascii_whitelist}')
+            print(f"✅ Using ASCII whitelist for English-only: {filtered_language}", file=sys.stderr)
         
         if base_config['blacklist']:
             config_parts.append(f'-c tessedit_char_blacklist=~`\\|<>')
@@ -1461,51 +1519,114 @@ class EnhancedFRAOCR:
             # Get optimized Tesseract configuration
             tesseract_config = self.get_optimized_tesseract_config(document_type, language)
             
-            # Perform OCR with robust error handling and fallback
+            # Implement two-stage language detection strategy for optimal FRA OCR quality
             text = None
             data = None
             final_language = tesseract_config['languages']
             ocr_method = f'Enhanced-FRA-{final_language}-PSM{tesseract_config["psm"]}'
+            stage1_quality = 0
             
+            # STAGE 1: Try with detected language combination
             try:
-                # Attempt OCR with optimized configuration
-                print(f"🔄 Attempting OCR with languages: {tesseract_config['languages']}", file=sys.stderr)
-                text = pytesseract.image_to_string(
+                print(f"🎯 STAGE 1: OCR with detected languages: {tesseract_config['languages']}", file=sys.stderr)
+                
+                stage1_text = pytesseract.image_to_string(
                     processed_image, 
                     config=tesseract_config['config_string'],
                     lang=tesseract_config['languages']
                 )
                 
-                # Get confidence data with same configuration
-                data = pytesseract.image_to_data(
+                stage1_data = pytesseract.image_to_data(
                     processed_image, 
                     config=tesseract_config['config_string'],
                     lang=tesseract_config['languages'], 
                     output_type=pytesseract.Output.DICT
                 )
                 
-                print(f"✅ OCR successful with {tesseract_config['languages']}", file=sys.stderr)
+                # Quickly assess Stage 1 quality
+                stage1_confidences = [int(conf) for conf in stage1_data['conf'] if int(conf) > 0]
+                stage1_avg_confidence = sum(stage1_confidences) / len(stage1_confidences) if stage1_confidences else 0
                 
-            except Exception as ocr_error:
-                print(f"⚠️ Multi-language OCR failed: {ocr_error}", file=sys.stderr)
-                print(f"🔄 Falling back to English-only OCR", file=sys.stderr)
+                # Basic quality check: look for FRA keywords and reasonable confidence
+                has_fra_keywords = any(keyword in stage1_text.lower() for keyword in ['forest', 'rights', 'patta', 'village', 'name', 'वन', 'अधिकार', 'পাট্টা', 'গ্রাম', 'ବନ', 'ଅଧିକାର', 'అటవీ', 'హక్కులు'])
+                stage1_quality = stage1_avg_confidence if has_fra_keywords else stage1_avg_confidence * 0.7
                 
-                try:
-                    # Fallback to English-only with simpler configuration
-                    simple_config = '--psm 6 --oem 1'
-                    text = pytesseract.image_to_string(processed_image, config=simple_config, lang='eng')
-                    data = pytesseract.image_to_data(processed_image, config=simple_config, lang='eng', output_type=pytesseract.Output.DICT)
-                    final_language = 'eng'
-                    ocr_method = 'Enhanced-FRA-eng-Fallback'
-                    print(f"✅ English fallback OCR successful", file=sys.stderr)
+                print(f"📊 STAGE 1 Quality Assessment: confidence={stage1_avg_confidence:.1f}%, keywords={'Yes' if has_fra_keywords else 'No'}, final_quality={stage1_quality:.1f}%", file=sys.stderr)
+                
+                # Accept Stage 1 if quality is above threshold (70%)
+                if stage1_quality >= 70.0:
+                    text = stage1_text
+                    data = stage1_data
+                    print(f"✅ STAGE 1 SUCCESS: Quality {stage1_quality:.1f}% >= 70% threshold", file=sys.stderr)
+                else:
+                    print(f"⚠️ STAGE 1 INSUFFICIENT: Quality {stage1_quality:.1f}% < 70% threshold, proceeding to Stage 2", file=sys.stderr)
+                    raise Exception(f"Quality {stage1_quality:.1f}% below threshold")
                     
-                except Exception as fallback_error:
-                    print(f"❌ Even English fallback failed: {fallback_error}", file=sys.stderr)
-                    # Return basic structure with minimal text
-                    text = "OCR_PROCESSING_FAILED"
-                    data = {'conf': [50]}  # Fake minimal confidence data
-                    final_language = 'eng'
-                    ocr_method = 'Enhanced-FRA-Emergency-Fallback'
+            except Exception as stage1_error:
+                print(f"🔄 STAGE 1 failed or insufficient quality: {stage1_error}", file=sys.stderr)
+                
+                # STAGE 2: Try with full regional language bundle
+                try:
+                    print(f"🎯 STAGE 2: OCR with full regional bundle (hin+ben+ori+tel+eng)", file=sys.stderr)
+                    
+                    # Build configuration for full regional bundle
+                    full_regional_langs = 'hin+ben+ori+tel+eng'
+                    regional_config = self.get_optimized_tesseract_config(document_type, full_regional_langs)
+                    
+                    stage2_text = pytesseract.image_to_string(
+                        processed_image, 
+                        config=regional_config['config_string'],
+                        lang=regional_config['languages']
+                    )
+                    
+                    stage2_data = pytesseract.image_to_data(
+                        processed_image, 
+                        config=regional_config['config_string'],
+                        lang=regional_config['languages'], 
+                        output_type=pytesseract.Output.DICT
+                    )
+                    
+                    # Assess Stage 2 quality
+                    stage2_confidences = [int(conf) for conf in stage2_data['conf'] if int(conf) > 0]
+                    stage2_avg_confidence = sum(stage2_confidences) / len(stage2_confidences) if stage2_confidences else 0
+                    
+                    # Use Stage 2 result regardless of quality (best we can do)
+                    text = stage2_text
+                    data = stage2_data
+                    final_language = regional_config['languages']
+                    ocr_method = f'Enhanced-FRA-Regional-Stage2-PSM{regional_config["psm"]}'
+                    
+                    print(f"✅ STAGE 2 COMPLETE: Quality {stage2_avg_confidence:.1f}% with regional bundle", file=sys.stderr)
+                    
+                    # Compare and use best result
+                    if 'stage1_quality' in locals() and 'stage1_text' in locals() and stage1_quality > 0 and stage1_quality > stage2_avg_confidence:
+                        print(f"🔀 Using STAGE 1 result (quality: {stage1_quality:.1f}% > {stage2_avg_confidence:.1f}%)", file=sys.stderr)
+                        text = stage1_text
+                        data = stage1_data
+                        final_language = tesseract_config['languages']
+                        ocr_method = f'Enhanced-FRA-{final_language}-Stage1-Best'
+                    else:
+                        print(f"🔀 Using STAGE 2 result (quality: {stage2_avg_confidence:.1f}%)", file=sys.stderr)
+                    
+                except Exception as stage2_error:
+                    print(f"⚠️ STAGE 2 also failed: {stage2_error}", file=sys.stderr)
+                    
+                    # STAGE 3: Emergency English-only fallback
+                    try:
+                        print(f"🆘 STAGE 3: Emergency English-only fallback", file=sys.stderr)
+                        simple_config = '--psm 6 --oem 1'
+                        text = pytesseract.image_to_string(processed_image, config=simple_config, lang='eng')
+                        data = pytesseract.image_to_data(processed_image, config=simple_config, lang='eng', output_type=pytesseract.Output.DICT)
+                        final_language = 'eng'
+                        ocr_method = 'Enhanced-FRA-eng-Emergency-Fallback'
+                        print(f"✅ Emergency English fallback successful", file=sys.stderr)
+                        
+                    except Exception as emergency_error:
+                        print(f"❌ Even emergency fallback failed: {emergency_error}", file=sys.stderr)
+                        text = "OCR_PROCESSING_FAILED"
+                        data = {'conf': [50]}  # Fake minimal confidence data
+                        final_language = 'eng'
+                        ocr_method = 'Enhanced-FRA-Total-Failure'
             
             # Apply post-processing corrections if we have text
             if text and text != "OCR_PROCESSING_FAILED":
@@ -1513,9 +1634,13 @@ class EnhancedFRAOCR:
             else:
                 text = ""
             
-            # Calculate confidence
+            # Calculate final confidence
             confidences = [int(conf) for conf in data['conf'] if int(conf) > 0]
             avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+            
+            # Log final OCR results
+            print(f"🏁 FINAL OCR RESULT: method={ocr_method}, confidence={avg_confidence:.1f}%, text_length={len(text)}", file=sys.stderr)
+            print(f"📝 Text preview: {text[:100]}..." if len(text) > 100 else f"📝 Full text: {text}", file=sys.stderr)
             
             # Extract FRA entities
             entities = self.extract_enhanced_fra_entities(text, document_type)

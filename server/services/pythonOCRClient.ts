@@ -28,8 +28,8 @@ export class PythonOCRClient {
 
   constructor() {
     this.pythonPath = 'python3';
-    this.scriptPath = path.join(process.cwd(), 'server', 'fra_ocr_enhanced.py');
-    this.timeout = 120000; // 2 minutes timeout for complex FRA documents
+    this.scriptPath = path.join(process.cwd(), 'server', 'fra_ocr_simplified.py');
+    this.timeout = 60000; // 1 minute timeout for simplified processing
   }
 
   async healthCheck(): Promise<boolean> {
@@ -40,11 +40,11 @@ export class PythonOCRClient {
         return false;
       }
 
-      // Test Enhanced FRA OCR functionality (works with or without OpenCV)
-      const result = await this.runPythonScript(['-c', 'import pytesseract; import PIL; print("Enhanced-FRA-OCR-Ready")']);
+      // Test Simplified FRA OCR functionality
+      const result = await this.runPythonScript(['-c', 'import pytesseract; import PIL; print("Simplified-FRA-OCR-Ready")']);
       
-      if (result.success && result.stdout.includes('Enhanced-FRA-OCR-Ready')) {
-        console.log('✅ Enhanced FRA OCR engine is ready (with graceful OpenCV fallback)');
+      if (result.success && result.stdout.includes('Simplified-FRA-OCR-Ready')) {
+        console.log('✅ Simplified FRA OCR engine is ready (optimized for clear text extraction)');
         return true;
       }
       
@@ -69,7 +69,7 @@ export class PythonOCRClient {
         throw new Error(`File not found: ${filePath}`);
       }
 
-      console.log(`🔄 Processing FRA document with specialized engine: ${path.basename(filePath)}`);
+      console.log(`🔄 Processing FRA document with simplified engine: ${path.basename(filePath)}`);
 
       // Run FRA OCR engine
       const result = await this.runPythonScript([this.scriptPath, filePath]);

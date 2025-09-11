@@ -237,15 +237,15 @@ Text: ${text.substring(0, 2000)}
     return {
       status: ocrHealthy ? 'healthy' : 'degraded',
       ocr: {
-        service: 'Enhanced FRA OCR',
+        service: 'Simplified FRA OCR',
         healthy: ocrHealthy,
-        engine: 'Enhanced-FRA-OCR-Engine',
+        engine: 'Simplified-FRA-OCR-Engine',
         features: [
           'Multi-language support (Hindi, Bengali, Odia, Telugu, English)',
           'FRA-specific entity extraction',
-          'Graceful OpenCV fallback',
-          'Government form optimization',
-          'Intelligent document type detection'
+          'Basic but effective preprocessing',
+          'Clear text extraction focus',
+          'Simple Tesseract configuration (PSM 6, OEM 1)'
         ],
         languages: await this.ocrClient.getSupportedLanguages()
       },
@@ -265,7 +265,7 @@ Text: ${text.substring(0, 2000)}
       totalProcessed: 0,
       averageProcessingTime: 0,
       successRate: 100,
-      service: 'Enhanced-FRA-OCR-v3'
+      service: 'Simplified-FRA-OCR-v1'
     };
   }
 
