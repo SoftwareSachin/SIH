@@ -265,7 +265,9 @@ export class DocumentProcessor {
       
       console.log(`✅ Best OCR result: ${bestResult.config} (${bestResult.confidence}%)`);
       
-      const allText = bestResult.text;
+      // Post-process and clean the OCR text
+      const cleanedText = this.postProcessOCRText(bestResult.text);
+      const allText = cleanedText;
       const averageConfidence = bestResult.confidence;
         
         // Create processed document structure
@@ -449,6 +451,38 @@ Text: ${text.substring(0, 2000)}
 
     console.log('✅ Extracted entities:', entities);
     return entities;
+  }
+
+  private postProcessOCRText(text: string): string {
+    let cleanedText = text;
+    
+    // Clean up common OCR artifacts and noise
+    cleanedText = cleanedText
+      // Remove garbled Hindi text patterns (common OCR artifacts for Devanagari)
+      .replace(/[a-zA-Z0-9]{1,3}\s+[a-zA-Z0-9]+[Rr]+\s+[a-zA-Z0-9]+[Rr]*[a-zA-Z0-9]*[a-m]+/g, '')
+      // Clean up date patterns - remove trailing noise after dates
+      .replace(/(\d{4}-\d{2}-\d{2})\s+[A-Za-z]+/g, '$1')
+      // Remove standalone letter artifacts
+      .replace(/\b[a-zA-Z]\d+\b/g, '')
+      // Remove repeated characters that are likely artifacts
+      .replace(/([a-zA-Z])\1{3,}/g, '$1')
+      // Clean up multiple spaces
+      .replace(/\s+/g, ' ')
+      // Remove lines that are mostly garbled (more than 60% non-space, non-alphanumeric)
+      .split('\n')
+      .filter(line => {
+        const cleanLine = line.trim();
+        if (cleanLine.length < 3) return true; // Keep short lines
+        const validChars = cleanLine.match(/[a-zA-Z0-9\s:.-]/g) || [];
+        const validRatio = validChars.length / cleanLine.length;
+        return validRatio > 0.6; // Keep lines that are mostly valid characters
+      })
+      .join('\n')
+      // Final cleanup
+      .trim();
+    
+    console.log('🧹 Text cleaning applied');
+    return cleanedText;
   }
 
   private extractClaimRecords(text: string): any[] {
