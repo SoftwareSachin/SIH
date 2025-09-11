@@ -1128,7 +1128,8 @@ class EnhancedFRAOCR:
         
         if base_config['whitelist']:
             # Note: Tesseract whitelist with Unicode can be tricky, so we'll use it selectively
-            basic_whitelist = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:()[]{}/-_=+*&%$#@!?"\' \t\n\r'
+            # Fix: Escape quotes properly to prevent "No closing quotation" error
+            basic_whitelist = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:()[]{}/-_=+*&%$#@!? \t\n\r'
             config_parts.append(f'-c tessedit_char_whitelist={basic_whitelist}')
         
         if base_config['blacklist']:
