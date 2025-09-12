@@ -135,44 +135,82 @@ class AIProcessor {
 
   async detectAssetsAtCoordinates(lat: number, lng: number, villageId?: string): Promise<AssetDetectionResult[]> {
     try {
-      // Comprehensive asset detection using multi-spectral satellite imagery analysis
-      let detectedAssets: AssetDetectionResult[] = [];
+      console.log(`Starting genuine asset detection for coordinates: ${lat}, ${lng}`);
       
-      // 1. Agricultural Assets Detection
-      const agriculturalAssets = await this.detectAgriculturalAssets(lat, lng);
-      detectedAssets.push(...agriculturalAssets);
-      
-      // 2. Water Resources Detection  
-      const waterResources = await this.detectWaterResources(lat, lng);
-      detectedAssets.push(...waterResources);
-      
-      // 3. Forest Assets Detection (comprehensive forest analysis)
-      const forestAssets = await this.detectForestAssets(lat, lng);
-      detectedAssets.push(...forestAssets);
-      
-      // 4. Built Infrastructure Detection (comprehensive infrastructure analysis)
-      const builtInfrastructure = await this.detectBuiltInfrastructure(lat, lng);
-      detectedAssets.push(...builtInfrastructure);
-      
-      // 5. Additional infrastructure detection (legacy method)
-      const additionalInfra = await this.detectInfrastructure(lat, lng);
-      detectedAssets.push(...additionalInfra);
-      
-      // 6. Homesteads and Residential Buildings
-      const homesteads = await this.detectHomesteads(lat, lng);
-      detectedAssets.push(...homesteads);
-
-      // Filter and deduplicate assets to ensure realistic results
-      detectedAssets = this.filterAndDeduplicateAssets(detectedAssets);
-      
-      // Distribute assets geographically for realistic visualization
-      detectedAssets.forEach(asset => {
-        const [newLng, newLat] = this.generateNearbyCoordinates(lat, lng, 1.5);
-        asset.coordinates = {
-          type: 'Point',
-          coordinates: [newLng, newLat]
-        };
+      // First, validate that we can get real satellite data for this location
+      const apiKey = process.env.SENTINEL_HUB_API_KEY;
+      const landUseResult = await landUseClassificationService.classifyLandUse({ 
+        lat, 
+        lng, 
+        highResolution: !!apiKey,
+        apiKey 
       });
+      
+      // Only proceed if we got authentic satellite analysis (not fallback)
+      if (!landUseResult.metadata.imageDate || landUseResult.sensor === 'fallback') {
+        console.log('⚠️ No genuine satellite data available - refusing to generate simulated assets');
+        return []; // Return empty array instead of fake data
+      }
+      
+      console.log(`✅ Using genuine satellite data from ${landUseResult.sensor} on ${landUseResult.metadata.imageDate}`);
+      
+      // Only detect assets if there's genuine evidence in the satellite data
+      const detectedAssets: AssetDetectionResult[] = [];
+      const classifications = landUseResult.classifications;
+      const spectralIndices = landUseResult.metadata.spectralIndices;
+      
+      // GENUINE ASSET DETECTION: Only add assets if there's real evidence
+      
+      // 1. Water Bodies - Only if clear water signature detected
+      if (classifications.water > 0.15 && spectralIndices.avgNDWI > 0.3) {
+        detectedAssets.push({
+          type: 'water_body',
+          confidence: Math.round(classifications.water * landUseResult.confidence),
+          coordinates: { type: 'Point', coordinates: [lng, lat] },
+          area: Math.round(classifications.water * 10000) // Rough area estimation
+        });
+        console.log(`✅ Genuine water body detected with ${classifications.water.toFixed(2)} confidence`);
+      }
+      
+      // 2. Agricultural Land - Only if clear vegetation signature
+      if (classifications.agriculture > 0.15 && spectralIndices.avgNDVI > 0.3) {
+        detectedAssets.push({
+          type: 'agricultural_land',
+          confidence: Math.round(classifications.agriculture * landUseResult.confidence),
+          coordinates: { type: 'Point', coordinates: [lng + 0.001, lat + 0.001] },
+          area: Math.round(classifications.agriculture * 15000)
+        });
+        console.log(`✅ Genuine agricultural land detected with ${classifications.agriculture.toFixed(2)} confidence`);
+      }
+      
+      // 3. Forest - Only if clear forest signature
+      if (classifications.forest > 0.15 && spectralIndices.avgNDVI > 0.5) {
+        detectedAssets.push({
+          type: 'forest',
+          confidence: Math.round(classifications.forest * landUseResult.confidence),
+          coordinates: { type: 'Point', coordinates: [lng - 0.001, lat + 0.001] },
+          area: Math.round(classifications.forest * 12000)
+        });
+        console.log(`✅ Genuine forest detected with ${classifications.forest.toFixed(2)} confidence`);
+      }
+      
+      // 4. Built-up Areas - Only if clear built-up signature
+      if (classifications.builtUp > 0.15 && spectralIndices.avgNDBI > 0.1) {
+        detectedAssets.push({
+          type: 'built_up',
+          confidence: Math.round(classifications.builtUp * landUseResult.confidence),
+          coordinates: { type: 'Point', coordinates: [lng + 0.001, lat - 0.001] },
+          area: Math.round(classifications.builtUp * 8000)
+        });
+        console.log(`✅ Genuine built-up area detected with ${classifications.builtUp.toFixed(2)} confidence`);
+      }
+      
+      // Only distribute coordinates if we have genuine detections
+      if (detectedAssets.length > 0) {
+        console.log(`✅ ${detectedAssets.length} genuine assets detected from satellite analysis`);
+      } else {
+        console.log(`ℹ️ No significant assets detected in satellite imagery for this location`);
+      }
 
       // Save detected assets to database if villageId provided
       if (villageId) {
