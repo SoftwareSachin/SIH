@@ -5,6 +5,7 @@ import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Loader2, MapPin, Search, Zap, Droplets, Home, Building2, TreePine, Leaf, Mountain, Waves, Satellite, Globe, Trees, Sprout, MapIcon } from 'lucide-react';
+import AssetDetectionMap from './asset-detection-map';
 
 interface AssetDetectionResult {
   type: string;
@@ -286,6 +287,57 @@ const AssetDetectionPanel: React.FC = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Asset Detection Map */}
+        {detectedAssets.length > 0 && (
+          <Card className="bg-white border border-gray-200 shadow-lg">
+            <CardHeader className="border-b border-gray-100 bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-700 rounded">
+                  <MapIcon className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900">
+                    Asset Locations Map
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 mt-1">
+                    Interactive map showing exact locations of detected assets with satellite imagery
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <AssetDetectionMap 
+                assets={detectedAssets} 
+                centerCoordinates={coordinates}
+              />
+              <div className="mt-4 text-sm text-gray-600">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span>Search Center</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span>Agricultural Land</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span>Water Bodies</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                    <span>Homesteads</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                    <span>Other Assets</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
