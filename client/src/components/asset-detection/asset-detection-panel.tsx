@@ -51,21 +51,21 @@ const AssetDetectionPanel: React.FC = () => {
 
   const getAssetColor = (assetType: string) => {
     if (assetType.includes('water') || assetType.includes('pond') || assetType.includes('lake') || assetType.includes('river')) {
-      return 'bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-800 border border-blue-200 shadow-sm';
+      return 'bg-blue-50 text-blue-800 border border-blue-200';
     }
     if (assetType.includes('farm') || assetType.includes('agriculture') || assetType.includes('crop')) {
-      return 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-800 border border-emerald-200 shadow-sm';
+      return 'bg-emerald-50 text-emerald-800 border border-emerald-200';
     }
     if (assetType.includes('forest') || assetType.includes('tree') || assetType.includes('vegetation')) {
-      return 'bg-gradient-to-r from-green-50 to-lime-50 text-green-800 border border-green-200 shadow-sm';
+      return 'bg-green-50 text-green-800 border border-green-200';
     }
     if (assetType.includes('homestead') || assetType.includes('built') || assetType.includes('settlement')) {
-      return 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 border border-amber-200 shadow-sm';
+      return 'bg-amber-50 text-amber-800 border border-amber-200';
     }
     if (assetType.includes('infrastructure') || assetType.includes('school') || assetType.includes('health') || assetType.includes('road')) {
-      return 'bg-gradient-to-r from-stone-50 to-gray-50 text-stone-800 border border-stone-200 shadow-sm';
+      return 'bg-stone-50 text-stone-800 border border-stone-200';
     }
-    return 'bg-gradient-to-r from-slate-50 to-gray-50 text-slate-800 border border-slate-200 shadow-sm';
+    return 'bg-slate-50 text-slate-800 border border-slate-200';
   };
 
   const formatAssetType = (type: string) => {
@@ -137,40 +137,40 @@ const AssetDetectionPanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 p-6 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl border border-green-100 shadow-lg">
+    <div className="space-y-8 p-8 bg-green-50 rounded-xl border border-green-200">
       {/* Header Section with Forest Theme */}
-      <div className="text-center space-y-4">
-        <div className="flex justify-center items-center gap-3 mb-4">
-          <div className="p-3 bg-gradient-to-br from-green-600 to-emerald-700 rounded-full shadow-lg">
-            <Satellite className="h-8 w-8 text-white" />
+      <div className="text-center space-y-6">
+        <div className="flex justify-center items-center gap-4 mb-6">
+          <div className="p-4 bg-green-700 rounded-xl">
+            <Satellite className="h-10 w-10 text-white" />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-800 to-emerald-700 bg-clip-text text-transparent">
+          <div className="text-left">
+            <h1 className="text-4xl font-bold text-green-900">
               Forest Asset Detection
             </h1>
-            <p className="text-green-700 font-medium">AI-Powered Satellite Analysis</p>
+            <p className="text-green-700 text-lg font-medium">AI-Powered Satellite Analysis</p>
           </div>
         </div>
-        <p className="text-green-800 max-w-2xl mx-auto leading-relaxed">
-          Harness the power of real satellite imagery and advanced AI to automatically detect and classify forest resources, agricultural assets, water bodies, and infrastructure across rural landscapes.
+        <p className="text-green-800 max-w-3xl mx-auto text-lg leading-relaxed">
+          Utilize advanced satellite imagery and artificial intelligence to automatically detect and classify forest resources, agricultural assets, water bodies, and infrastructure across rural landscapes.
         </p>
       </div>
       
-      <Card className="shadow-xl border-green-200 bg-white/90 backdrop-blur-sm">
-        <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
-          <CardTitle className="flex items-center gap-3">
+      <Card className="shadow-lg border-green-300 bg-white">
+        <CardHeader className="bg-green-700 text-white">
+          <CardTitle className="flex items-center gap-3 text-xl">
             <Globe className="h-6 w-6" />
             Detection Controls
           </CardTitle>
-          <CardDescription className="text-green-100">
+          <CardDescription className="text-green-100 text-base">
             Enter coordinates to analyze satellite imagery and detect natural and built assets
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6 p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <Label htmlFor="latitude" className="text-green-800 font-semibold flex items-center gap-2">
-                <Mountain className="h-4 w-4" />
+        <CardContent className="space-y-8 p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <Label htmlFor="latitude" className="text-green-900 font-bold text-lg flex items-center gap-2">
+                <Mountain className="h-5 w-5" />
                 Latitude
               </Label>
               <Input
@@ -180,12 +180,12 @@ const AssetDetectionPanel: React.FC = () => {
                 placeholder="e.g., 23.5937"
                 value={coordinates.lat}
                 onChange={(e) => setCoordinates(prev => ({ ...prev, lat: e.target.value }))}
-                className="border-green-200 focus:border-green-400 focus:ring-green-200 bg-green-50/50"
+                className="border-green-300 focus:border-green-500 focus:ring-green-200 bg-white h-12 text-lg"
               />
             </div>
-            <div className="space-y-3">
-              <Label htmlFor="longitude" className="text-green-800 font-semibold flex items-center gap-2">
-                <Globe className="h-4 w-4" />
+            <div className="space-y-4">
+              <Label htmlFor="longitude" className="text-green-900 font-bold text-lg flex items-center gap-2">
+                <Globe className="h-5 w-5" />
                 Longitude
               </Label>
               <Input
@@ -195,42 +195,42 @@ const AssetDetectionPanel: React.FC = () => {
                 placeholder="e.g., 78.9629"
                 value={coordinates.lng}
                 onChange={(e) => setCoordinates(prev => ({ ...prev, lng: e.target.value }))}
-                className="border-green-200 focus:border-green-400 focus:ring-green-200 bg-green-50/50"
+                className="border-green-300 focus:border-green-500 focus:ring-green-200 bg-white h-12 text-lg"
               />
             </div>
           </div>
           
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
-            <div className="flex items-center space-x-3">
+          <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+            <div className="flex items-center space-x-4">
               <input
                 type="checkbox"
                 id="highRes"
                 checked={highResolution}
                 onChange={(e) => setHighResolution(e.target.checked)}
-                className="w-5 h-5 text-green-600 border-green-300 rounded focus:ring-green-500"
+                className="w-5 h-5 text-green-600 border-green-400 rounded focus:ring-green-500"
               />
-              <Label htmlFor="highRes" className="text-green-800 font-medium flex items-center gap-2">
-                <Satellite className="h-4 w-4" />
+              <Label htmlFor="highRes" className="text-green-900 font-semibold text-lg flex items-center gap-2">
+                <Satellite className="h-5 w-5" />
                 High-Resolution Sentinel-2 Analysis (10m precision)
               </Label>
             </div>
-            <p className="text-sm text-green-700 mt-2 ml-8">Enhanced detection capabilities for detailed forest and land-use mapping</p>
+            <p className="text-green-800 mt-3 ml-9 text-base">Enhanced detection capabilities for detailed forest and land-use mapping</p>
           </div>
 
           <div className="flex gap-4">
             <Button 
               onClick={detectAssets} 
               disabled={isDetecting} 
-              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-12"
+              className="flex-1 bg-green-700 hover:bg-green-800 text-white font-semibold h-14 text-lg transition-colors duration-200"
             >
               {isDetecting ? (
                 <>
-                  <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-3 h-6 w-6 animate-spin" />
                   Analyzing Satellite Data...
                 </>
               ) : (
                 <>
-                  <Search className="mr-3 h-5 w-5" />
+                  <Search className="mr-3 h-6 w-6" />
                   Detect Forest Assets
                 </>
               )}
@@ -238,48 +238,50 @@ const AssetDetectionPanel: React.FC = () => {
             <Button 
               variant="outline" 
               onClick={getCurrentLocation}
-              className="border-green-300 text-green-700 hover:bg-green-50 h-12 px-6"
+              className="border-green-400 border-2 text-green-800 hover:bg-green-100 h-14 px-8 font-semibold"
             >
-              <MapPin className="h-5 w-5" />
+              <MapPin className="h-6 w-6" />
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {detectedAssets.length > 0 && (
-        <Card className="shadow-xl border-green-200 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-t-lg">
-            <CardTitle className="flex items-center gap-3">
-              <Leaf className="h-6 w-6" />
+        <Card className="shadow-lg border-green-300 bg-white">
+          <CardHeader className="bg-green-700 text-white">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <Trees className="h-7 w-7" />
               Detected Forest Assets ({detectionCount})
             </CardTitle>
-            <CardDescription className="text-green-100">
+            <CardDescription className="text-green-100 text-base">
               Comprehensive analysis results from satellite imagery and AI classification
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid gap-4">
+          <CardContent className="p-8">
+            <div className="space-y-6">
               {detectedAssets.map((asset, index) => (
-                <div key={index} className="bg-gradient-to-r from-white to-green-50/30 border border-green-200 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-200">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl shadow-sm">
+                <div key={index} className="bg-white border border-green-200 rounded-lg p-6 shadow-md hover:shadow-lg hover:border-green-300 transition-all duration-200">
+                  <div className="flex items-start gap-6">
+                    <div className="p-4 bg-green-100 rounded-lg">
                       {getAssetIcon(asset.type)}
                     </div>
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="font-bold text-green-900 text-lg">{formatAssetType(asset.type)}</h3>
-                        <Badge className={`px-3 py-1 rounded-full font-semibold ${getAssetColor(asset.type)}`}>
+                    <div className="flex-1 space-y-4">
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <h3 className="font-bold text-green-900 text-xl">{formatAssetType(asset.type)}</h3>
+                        <Badge className={`px-4 py-2 rounded-lg font-bold text-sm ${getAssetColor(asset.type)}`}>
                           {Math.round(asset.confidence)}% confidence
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div className="flex items-center gap-2 text-green-800">
-                          <Mountain className="h-4 w-4" />
-                          <span className="font-medium">Area:</span> {formatArea(asset.area)}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-base">
+                        <div className="flex items-center gap-3 text-green-800">
+                          <Mountain className="h-5 w-5" />
+                          <span className="font-semibold">Area:</span> 
+                          <span className="font-medium">{formatArea(asset.area)}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-green-700">
-                          <MapIcon className="h-4 w-4" />
-                          <span className="font-medium">Location:</span> {asset.coordinates.coordinates[1].toFixed(6)}, {asset.coordinates.coordinates[0].toFixed(6)}
+                        <div className="flex items-center gap-3 text-green-800">
+                          <MapIcon className="h-5 w-5" />
+                          <span className="font-semibold">Location:</span> 
+                          <span className="font-medium">{asset.coordinates.coordinates[1].toFixed(6)}, {asset.coordinates.coordinates[0].toFixed(6)}</span>
                         </div>
                       </div>
                     </div>
@@ -292,17 +294,18 @@ const AssetDetectionPanel: React.FC = () => {
       )}
 
       {!isDetecting && detectedAssets.length === 0 && coordinates.lat && coordinates.lng && (
-        <Card className="shadow-lg border-green-200 bg-white/90 backdrop-blur-sm">
-          <CardContent className="p-8">
-            <div className="text-center space-y-4">
-              <div className="p-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full w-fit mx-auto">
-                <Search className="h-12 w-12 text-green-600" />
+        <Card className="shadow-lg border-green-300 bg-white">
+          <CardContent className="p-12">
+            <div className="text-center space-y-6">
+              <div className="p-6 bg-green-100 rounded-xl w-fit mx-auto">
+                <Search className="h-16 w-16 text-green-700" />
               </div>
-              <h3 className="text-lg font-semibold text-green-800">No Assets Detected</h3>
-              <p className="text-green-700">No forest or infrastructure assets were found at the specified coordinates.</p>
-              <p className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
-                💡 Try exploring a different location or enable high-resolution Sentinel-2 mode for enhanced detection capabilities.
-              </p>
+              <h3 className="text-2xl font-bold text-green-900">No Assets Detected</h3>
+              <p className="text-green-800 text-lg">No forest or infrastructure assets were found at the specified coordinates.</p>
+              <div className="text-green-700 bg-green-50 p-6 rounded-lg border border-green-200 max-w-md mx-auto">
+                <p className="font-semibold">Suggestion:</p>
+                <p className="mt-2">Try exploring a different location or enable high-resolution Sentinel-2 mode for enhanced detection capabilities.</p>
+              </div>
             </div>
           </CardContent>
         </Card>

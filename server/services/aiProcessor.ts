@@ -101,13 +101,17 @@ class AIProcessor {
       const waterResources = await this.detectWaterResources(lat, lng);
       detectedAssets.push(...waterResources);
       
-      // 3. Forest Assets Detection
+      // 3. Forest Assets Detection (comprehensive forest analysis)
       const forestAssets = await this.detectForestAssets(lat, lng);
       detectedAssets.push(...forestAssets);
       
-      // 4. Built Infrastructure Detection
+      // 4. Built Infrastructure Detection (comprehensive infrastructure analysis)
       const builtInfrastructure = await this.detectBuiltInfrastructure(lat, lng);
       detectedAssets.push(...builtInfrastructure);
+      
+      // 5. Additional infrastructure detection (legacy method)
+      const additionalInfra = await this.detectInfrastructure(lat, lng);
+      detectedAssets.push(...additionalInfra);
       
       // 5. Homesteads and Residential Buildings
       const homesteads = await this.detectHomesteads(lat, lng);
