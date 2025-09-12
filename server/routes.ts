@@ -801,8 +801,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🧪 Testing improved FRA OCR with: ${req.file.originalname}`);
       
       // Use the new optimized FRA OCR function
-      const { optimizedTesseractEngine } = await import('./services/optimizedTesseractEngine');
-      const result = await optimizedTesseractEngine.processFRADocument(req.file.path);
+      // Use regular document processor for now
+      const result = await documentProcessor.processDocument(req.file.path, req.file.mimetype);
       
       // Clean up uploaded file
       try {
@@ -820,9 +820,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ocrResults: {
           text: result.text,
           confidence: result.confidence,
-          method: result.method,
-          processingTime: result.processingTime,
-          tokens: result.tokens.length
+          method: result.metadata?.ocrMethod || 'unknown',
+          processingTime: result.metadata?.processingTime || 0,
+          tokens: result.text.split(/\s+/).length
         },
         improvements: [
           'English-focused language model',
@@ -1252,6 +1252,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error reprocessing document:", error);
       res.status(500).json({ message: "Failed to reprocess document" });
+    }
+  });
+
+  // Asset detection route
+  app.post('/api/ai/detect-assets', async (req, res) => {
+    try {
+      const { lat, lng, villageId } = req.body;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "Latitude and longitude are required" });
+      }
+
+      console.log(`🔍 Asset detection request for coordinates: ${lat}, ${lng}`);
+      const assets = await aiProcessor.detectAssetsAtCoordinates(lat, lng, villageId);
+      
+      res.json({
+        assets,
+        count: assets.length,
+        timestamp: new Date().toISOString(),
+        coordinates: { lat, lng }
+      });
+    } catch (error) {
+      console.error("Error detecting assets:", error);
+      res.status(500).json({ message: "Failed to detect assets" });
     }
   });
 
