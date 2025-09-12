@@ -137,45 +137,19 @@ const AssetDetectionPanel: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Professional Header */}
-      <div className="bg-white border-b-2 border-green-600 shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <div className="flex items-center gap-6">
-            <div className="p-3 bg-green-700 rounded-lg shadow-md">
-              <Satellite className="h-8 w-8 text-white" />
+    <div className="space-y-6">
+      {/* Detection Form */}
+      <Card className="bg-white border border-gray-200 shadow-lg">
+        <CardHeader className="border-b border-gray-100 bg-gray-50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-700 rounded">
+              <Search className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Asset Detection
-              </h1>
-              <p className="text-gray-600 text-lg">
-                Automatically detect physical and social infrastructure assets using real satellite imagery and AI classification
-              </p>
-            </div>
+            <CardTitle className="text-xl font-bold text-gray-900">
+              Coordinate Input & Detection
+            </CardTitle>
           </div>
-        </div>
-      </div>
-      
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-        {/* Detection Form */}
-        <Card className="bg-white border border-gray-200 shadow-lg">
-          <CardHeader className="border-b border-gray-100 bg-gray-50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-700 rounded">
-                <Search className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-gray-900">
-                  Asset Detection
-                </CardTitle>
-                <CardDescription className="text-gray-600 mt-1">
-                  Automatically detect physical and social infrastructure assets using real satellite imagery
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
+        </CardHeader>
           <CardContent className="p-8">
             <div className="space-y-6">
               {/* Coordinate Inputs */}
