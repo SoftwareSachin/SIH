@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, FileText, TrendingUp, ExternalLink, Phone, MapPin } from 'lucide-react';
+import { Loader2, FileText, TrendingUp, ExternalLink, Phone, MapPin, Wheat, Building2, Briefcase, BookOpen, Heart, ClipboardList, Target, BarChart3 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 interface Scheme {
@@ -58,19 +58,22 @@ export default function DSSPage() {
   };
 
   const getCategoryIcon = (category: string) => {
-    switch (category) {
+    const iconProps = { className: "h-4 w-4" };
+    switch (category.toLowerCase()) {
       case 'agriculture':
-        return '🌾';
+      case 'Agriculture & Livelihood':
+        return <Wheat {...iconProps} />;
       case 'infrastructure':
-        return '🏗️';
+        return <Building2 {...iconProps} />;
       case 'livelihood':
-        return '💼';
+      case 'employment':
+        return <Briefcase {...iconProps} />;
       case 'education':
-        return '📚';
+        return <BookOpen {...iconProps} />;
       case 'healthcare':
-        return '🏥';
+        return <Heart {...iconProps} />;
       default:
-        return '📋';
+        return <ClipboardList {...iconProps} />;
     }
   };
 
@@ -83,32 +86,42 @@ export default function DSSPage() {
   return (
     <div className="container mx-auto p-6" data-testid="dss-page">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2" data-testid="page-title">
-          Decision Support System (DSS)
-        </h1>
-        <p className="text-gray-600 mb-4" data-testid="page-description">
-          Get personalized recommendations for Central Sector Schemes and government benefits
-          based on your Forest Rights Act claim profile and eligibility criteria.
-        </p>
-        
-        <Button 
-          onClick={generateRecommendations}
-          disabled={loading}
-          className="mb-6"
-          data-testid="generate-recommendations-btn"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating Recommendations...
-            </>
-          ) : (
-            <>
-              <TrendingUp className="mr-2 h-4 w-4" />
-              Generate Scheme Recommendations
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-blue-600 rounded-lg">
+            <Target className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900" data-testid="page-title">
+              Decision Support System
+            </h1>
+            <p className="text-sm text-gray-500">Intelligent scheme recommendations</p>
+          </div>
+        </div>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
+          <p className="text-gray-700 mb-4 leading-relaxed" data-testid="page-description">
+            Get AI-powered recommendations for Central Sector Schemes and government benefits 
+            based on your Forest Rights Act claim profile and eligibility criteria.
+          </p>
+          <Button 
+            onClick={generateRecommendations}
+            disabled={loading}
+            size="lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            data-testid="generate-recommendations-btn"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Analyzing Profile...
+              </>
+            ) : (
+              <>
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Generate Recommendations
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -137,11 +150,14 @@ export default function DSSPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.isArray(schemesData) ? schemesData.map((scheme: Scheme) => (
-                <Card key={scheme.id} className="border-l-4 border-l-blue-500" data-testid={`scheme-card-${scheme.id}`}>
+                <Card key={scheme.id} className="border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 bg-white" data-testid={`scheme-card-${scheme.id}`}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <Badge variant="secondary" className="text-xs">
-                        {getCategoryIcon(scheme.category)} {scheme.category}
+                      <Badge variant="outline" className="text-xs font-medium border-gray-300 text-gray-700 bg-white">
+                        <span className="flex items-center gap-1">
+                          {getCategoryIcon(scheme.category)} 
+                          {scheme.category}
+                        </span>
                       </Badge>
                     </div>
                     <CardTitle className="text-lg">{scheme.shortName || scheme.name}</CardTitle>
@@ -171,21 +187,29 @@ export default function DSSPage() {
       {/* Personalized Recommendations */}
       {recommendations.length > 0 && (
         <div data-testid="recommendations-section">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Your Personalized Recommendations
-          </h2>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-green-600 rounded-lg">
+              <Target className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Your Personalized Recommendations
+            </h2>
+          </div>
           <div className="space-y-6">
             {recommendations.map((rec, index) => (
-              <Card key={rec.scheme.id} className="border-l-4 border-l-green-500" data-testid={`recommendation-${index}`}>
+              <Card key={rec.scheme.id} className="border border-green-200 bg-green-50/30 shadow-sm" data-testid={`recommendation-${index}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-xl">
-                          {getCategoryIcon(rec.scheme.category)} {rec.scheme.name}
-                        </CardTitle>
-                        <Badge className={getScoreColor(rec.eligibilityScore)}>
-                          Score: {rec.eligibilityScore}
+                        <div className="flex items-center gap-2">
+                          {getCategoryIcon(rec.scheme.category)}
+                          <CardTitle className="text-xl">
+                            {rec.scheme.name}
+                          </CardTitle>
+                        </div>
+                        <Badge className="bg-green-100 text-green-800 border-green-200 font-semibold">
+                          Match: {rec.eligibilityScore}%
                         </Badge>
                       </div>
                       <CardDescription className="text-base">
@@ -196,30 +220,32 @@ export default function DSSPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Benefit & Ministry Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white border border-gray-200 rounded-lg">
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-1">Estimated Benefit</h4>
-                      <p className="text-lg font-semibold text-green-600">{rec.estimatedBenefit}</p>
+                      <h4 className="font-semibold text-gray-900 mb-1 text-xs uppercase tracking-wide">Estimated Benefit</h4>
+                      <p className="text-lg font-bold text-green-700">{rec.estimatedBenefit}</p>
                     </div>
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-1">Implementing Ministry</h4>
-                      <p className="text-gray-700">{rec.scheme.implementingMinistry}</p>
+                      <h4 className="font-semibold text-gray-900 mb-1 text-xs uppercase tracking-wide">Implementing Ministry</h4>
+                      <p className="text-sm text-gray-700 font-medium">{rec.scheme.implementingMinistry}</p>
                     </div>
                   </div>
 
                   {/* Eligibility Reason */}
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Why You're Eligible</h4>
-                    <p className="text-gray-700 bg-blue-50 p-3 rounded-lg">{rec.reason}</p>
+                    <h4 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide">Eligibility Assessment</h4>
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg">
+                      <p className="text-gray-700">{rec.reason}</p>
+                    </div>
                   </div>
 
                   {/* Application Guidance */}
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Application Guidance</h4>
-                    <div className="bg-yellow-50 p-4 rounded-lg">
-                      <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
+                    <h4 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide">Application Process</h4>
+                    <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
+                      <div className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
                         {rec.guidance}
-                      </pre>
+                      </div>
                     </div>
                   </div>
 
@@ -255,13 +281,14 @@ export default function DSSPage() {
       )}
 
       {recommendations.length === 0 && !loading && !error && (
-        <Card className="text-center py-12" data-testid="no-recommendations">
+        <Card className="text-center py-16 border-2 border-dashed border-gray-300 bg-gray-50/50" data-testid="no-recommendations">
           <CardContent>
-            <TrendingUp className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Recommendations Yet</h3>
-            <p className="text-gray-600">
-              Click "Generate Scheme Recommendations" to get personalized suggestions 
-              based on your profile and Forest Rights Act claims.
+            <div className="p-3 bg-gray-100 rounded-full w-fit mx-auto mb-4">
+              <BarChart3 className="h-8 w-8 text-gray-500" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Recommendations Yet</h3>
+            <p className="text-gray-600 max-w-md mx-auto">
+              Generate personalized scheme recommendations based on your Forest Rights Act profile and eligibility criteria.
             </p>
           </CardContent>
         </Card>
