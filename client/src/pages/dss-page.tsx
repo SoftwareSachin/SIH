@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, FileText, TrendingUp, ExternalLink, Phone, MapPin, Wheat, Building2, Briefcase, BookOpen, Heart, ClipboardList, Target, BarChart3 } from 'lucide-react';
+import { Loader2, FileText, TrendingUp, ExternalLink, Phone, MapPin, Wheat, Building2, Briefcase, BookOpen, Heart, ClipboardList, Target, BarChart3, ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'wouter';
 
 interface Scheme {
   id: string;
@@ -85,6 +86,16 @@ export default function DSSPage() {
 
   return (
     <div className="container mx-auto p-6" data-testid="dss-page">
+      {/* Back Button */}
+      <div className="mb-6">
+        <Link href="/">
+          <Button variant="outline" className="bg-white border-gray-300 hover:bg-gray-50 text-gray-700 font-medium">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </Link>
+      </div>
+      
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-blue-600 rounded-lg">
