@@ -12,7 +12,7 @@ interface AssetDetectionResult {
   confidence: number;
   coordinates: {
     type: string;
-    coordinates: number[];
+    coordinates: [number, number];
   };
   area?: number;
 }
