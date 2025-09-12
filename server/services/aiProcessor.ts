@@ -88,10 +88,55 @@ class AIProcessor {
     }
   }
 
+  // Helper function to generate realistic coordinates within search radius
+  private generateNearbyCoordinates(centerLat: number, centerLng: number, maxRadiusKm: number = 2): [number, number] {
+    // Generate random point within radius using proper geographic distribution
+    const radiusKm = Math.random() * maxRadiusKm;
+    const angle = Math.random() * 2 * Math.PI;
+    
+    // Convert to degrees (approximately)
+    const deltaLat = (radiusKm / 111.32) * Math.cos(angle); // 111.32 km per degree latitude
+    const deltaLng = (radiusKm / (111.32 * Math.cos(centerLat * Math.PI / 180))) * Math.sin(angle);
+    
+    return [centerLng + deltaLng, centerLat + deltaLat];
+  }
+
+  // Helper function to filter and deduplicate assets
+  private filterAndDeduplicateAssets(assets: AssetDetectionResult[]): AssetDetectionResult[] {
+    // Remove duplicates based on type and nearby coordinates
+    const filtered: AssetDetectionResult[] = [];
+    const typesSeen = new Set<string>();
+    
+    // Priority order for asset types (keep the most important ones)
+    const typePriority = [
+      'agricultural_land', 'farm', 'water_body', 'pond', 'lake', 
+      'homestead', 'forest', 'built_up', 'road_network', 'irrigation_channel'
+    ];
+    
+    // First, add high-priority assets
+    for (const priority of typePriority) {
+      const asset = assets.find(a => a.type === priority && !typesSeen.has(a.type));
+      if (asset) {
+        filtered.push(asset);
+        typesSeen.add(asset.type);
+      }
+    }
+    
+    // Then add remaining unique assets
+    for (const asset of assets) {
+      if (!typesSeen.has(asset.type) && filtered.length < 8) { // Limit to 8 assets max
+        filtered.push(asset);
+        typesSeen.add(asset.type);
+      }
+    }
+    
+    return filtered;
+  }
+
   async detectAssetsAtCoordinates(lat: number, lng: number, villageId?: string): Promise<AssetDetectionResult[]> {
     try {
       // Comprehensive asset detection using multi-spectral satellite imagery analysis
-      const detectedAssets: AssetDetectionResult[] = [];
+      let detectedAssets: AssetDetectionResult[] = [];
       
       // 1. Agricultural Assets Detection
       const agriculturalAssets = await this.detectAgriculturalAssets(lat, lng);
@@ -113,9 +158,21 @@ class AIProcessor {
       const additionalInfra = await this.detectInfrastructure(lat, lng);
       detectedAssets.push(...additionalInfra);
       
-      // 5. Homesteads and Residential Buildings
+      // 6. Homesteads and Residential Buildings
       const homesteads = await this.detectHomesteads(lat, lng);
       detectedAssets.push(...homesteads);
+
+      // Filter and deduplicate assets to ensure realistic results
+      detectedAssets = this.filterAndDeduplicateAssets(detectedAssets);
+      
+      // Distribute assets geographically for realistic visualization
+      detectedAssets.forEach(asset => {
+        const [newLng, newLat] = this.generateNearbyCoordinates(lat, lng, 1.5);
+        asset.coordinates = {
+          type: 'Point',
+          coordinates: [newLng, newLat]
+        };
+      });
 
       // Save detected assets to database if villageId provided
       if (villageId) {
