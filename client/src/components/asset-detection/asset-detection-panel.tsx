@@ -35,37 +35,37 @@ const AssetDetectionPanel: React.FC = () => {
       return <Waves className="h-5 w-5 text-blue-600" />;
     }
     if (assetType.includes('farm') || assetType.includes('agriculture') || assetType.includes('crop')) {
-      return <Sprout className="h-5 w-5 text-emerald-600" />;
+      return <Sprout className="h-5 w-5 text-green-600" />;
     }
     if (assetType.includes('forest') || assetType.includes('tree') || assetType.includes('vegetation')) {
       return <Trees className="h-5 w-5 text-green-700" />;
     }
     if (assetType.includes('homestead') || assetType.includes('built') || assetType.includes('settlement')) {
-      return <Home className="h-5 w-5 text-amber-600" />;
+      return <Home className="h-5 w-5 text-orange-600" />;
     }
     if (assetType.includes('infrastructure') || assetType.includes('school') || assetType.includes('health') || assetType.includes('road')) {
-      return <Building2 className="h-5 w-5 text-stone-600" />;
+      return <Building2 className="h-5 w-5 text-gray-600" />;
     }
-    return <MapIcon className="h-5 w-5 text-slate-600" />;
+    return <MapIcon className="h-5 w-5 text-gray-500" />;
   };
 
   const getAssetColor = (assetType: string) => {
     if (assetType.includes('water') || assetType.includes('pond') || assetType.includes('lake') || assetType.includes('river')) {
-      return 'bg-blue-50 text-blue-800 border border-blue-200';
+      return 'bg-blue-100 text-blue-800 border-blue-200';
     }
     if (assetType.includes('farm') || assetType.includes('agriculture') || assetType.includes('crop')) {
-      return 'bg-emerald-50 text-emerald-800 border border-emerald-200';
+      return 'bg-green-100 text-green-800 border-green-200';
     }
     if (assetType.includes('forest') || assetType.includes('tree') || assetType.includes('vegetation')) {
-      return 'bg-green-50 text-green-800 border border-green-200';
+      return 'bg-emerald-100 text-emerald-800 border-emerald-200';
     }
     if (assetType.includes('homestead') || assetType.includes('built') || assetType.includes('settlement')) {
-      return 'bg-amber-50 text-amber-800 border border-amber-200';
+      return 'bg-orange-100 text-orange-800 border-orange-200';
     }
     if (assetType.includes('infrastructure') || assetType.includes('school') || assetType.includes('health') || assetType.includes('road')) {
-      return 'bg-stone-50 text-stone-800 border border-stone-200';
+      return 'bg-gray-100 text-gray-800 border-gray-200';
     }
-    return 'bg-slate-50 text-slate-800 border border-slate-200';
+    return 'bg-gray-100 text-gray-600 border-gray-200';
   };
 
   const formatAssetType = (type: string) => {
@@ -137,179 +137,208 @@ const AssetDetectionPanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 p-8 bg-green-50 rounded-xl border border-green-200">
-      {/* Header Section with Forest Theme */}
-      <div className="text-center space-y-6">
-        <div className="flex justify-center items-center gap-4 mb-6">
-          <div className="p-4 bg-green-700 rounded-xl">
-            <Satellite className="h-10 w-10 text-white" />
-          </div>
-          <div className="text-left">
-            <h1 className="text-4xl font-bold text-green-900">
-              Forest Asset Detection
-            </h1>
-            <p className="text-green-700 text-lg font-medium">AI-Powered Satellite Analysis</p>
+    <div className="min-h-screen bg-slate-50">
+      {/* Professional Header */}
+      <div className="bg-white border-b-2 border-green-600 shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="flex items-center gap-6">
+            <div className="p-3 bg-green-700 rounded-lg shadow-md">
+              <Satellite className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Asset Detection
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Automatically detect physical and social infrastructure assets using real satellite imagery and AI classification
+              </p>
+            </div>
           </div>
         </div>
-        <p className="text-green-800 max-w-3xl mx-auto text-lg leading-relaxed">
-          Utilize advanced satellite imagery and artificial intelligence to automatically detect and classify forest resources, agricultural assets, water bodies, and infrastructure across rural landscapes.
-        </p>
       </div>
       
-      <Card className="shadow-lg border-green-300 bg-white">
-        <CardHeader className="bg-green-700 text-white">
-          <CardTitle className="flex items-center gap-3 text-xl">
-            <Globe className="h-6 w-6" />
-            Detection Controls
-          </CardTitle>
-          <CardDescription className="text-green-100 text-base">
-            Enter coordinates to analyze satellite imagery and detect natural and built assets
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-8 p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <Label htmlFor="latitude" className="text-green-900 font-bold text-lg flex items-center gap-2">
-                <Mountain className="h-5 w-5" />
-                Latitude
-              </Label>
-              <Input
-                id="latitude"
-                type="number"
-                step="any"
-                placeholder="e.g., 23.5937"
-                value={coordinates.lat}
-                onChange={(e) => setCoordinates(prev => ({ ...prev, lat: e.target.value }))}
-                className="border-green-300 focus:border-green-500 focus:ring-green-200 bg-white h-12 text-lg"
-              />
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+        {/* Detection Form */}
+        <Card className="bg-white border border-gray-200 shadow-lg">
+          <CardHeader className="border-b border-gray-100 bg-gray-50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-700 rounded">
+                <Search className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold text-gray-900">
+                  Asset Detection
+                </CardTitle>
+                <CardDescription className="text-gray-600 mt-1">
+                  Automatically detect physical and social infrastructure assets using real satellite imagery
+                </CardDescription>
+              </div>
             </div>
-            <div className="space-y-4">
-              <Label htmlFor="longitude" className="text-green-900 font-bold text-lg flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Longitude
-              </Label>
-              <Input
-                id="longitude"
-                type="number"
-                step="any"
-                placeholder="e.g., 78.9629"
-                value={coordinates.lng}
-                onChange={(e) => setCoordinates(prev => ({ ...prev, lng: e.target.value }))}
-                className="border-green-300 focus:border-green-500 focus:ring-green-200 bg-white h-12 text-lg"
-              />
-            </div>
-          </div>
-          
-          <div className="bg-green-50 p-6 rounded-lg border border-green-200">
-            <div className="flex items-center space-x-4">
-              <input
-                type="checkbox"
-                id="highRes"
-                checked={highResolution}
-                onChange={(e) => setHighResolution(e.target.checked)}
-                className="w-5 h-5 text-green-600 border-green-400 rounded focus:ring-green-500"
-              />
-              <Label htmlFor="highRes" className="text-green-900 font-semibold text-lg flex items-center gap-2">
-                <Satellite className="h-5 w-5" />
-                High-Resolution Sentinel-2 Analysis (10m precision)
-              </Label>
-            </div>
-            <p className="text-green-800 mt-3 ml-9 text-base">Enhanced detection capabilities for detailed forest and land-use mapping</p>
-          </div>
-
-          <div className="flex gap-4">
-            <Button 
-              onClick={detectAssets} 
-              disabled={isDetecting} 
-              className="flex-1 bg-green-700 hover:bg-green-800 text-white font-semibold h-14 text-lg transition-colors duration-200"
-            >
-              {isDetecting ? (
-                <>
-                  <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                  Analyzing Satellite Data...
-                </>
-              ) : (
-                <>
-                  <Search className="mr-3 h-6 w-6" />
-                  Detect Forest Assets
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={getCurrentLocation}
-              className="border-green-400 border-2 text-green-800 hover:bg-green-100 h-14 px-8 font-semibold"
-            >
-              <MapPin className="h-6 w-6" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {detectedAssets.length > 0 && (
-        <Card className="shadow-lg border-green-300 bg-white">
-          <CardHeader className="bg-green-700 text-white">
-            <CardTitle className="flex items-center gap-3 text-xl">
-              <Trees className="h-7 w-7" />
-              Detected Forest Assets ({detectionCount})
-            </CardTitle>
-            <CardDescription className="text-green-100 text-base">
-              Comprehensive analysis results from satellite imagery and AI classification
-            </CardDescription>
           </CardHeader>
           <CardContent className="p-8">
             <div className="space-y-6">
-              {detectedAssets.map((asset, index) => (
-                <div key={index} className="bg-white border border-green-200 rounded-lg p-6 shadow-md hover:shadow-lg hover:border-green-300 transition-all duration-200">
-                  <div className="flex items-start gap-6">
-                    <div className="p-4 bg-green-100 rounded-lg">
-                      {getAssetIcon(asset.type)}
-                    </div>
-                    <div className="flex-1 space-y-4">
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <h3 className="font-bold text-green-900 text-xl">{formatAssetType(asset.type)}</h3>
-                        <Badge className={`px-4 py-2 rounded-lg font-bold text-sm ${getAssetColor(asset.type)}`}>
-                          {Math.round(asset.confidence)}% confidence
-                        </Badge>
+              {/* Coordinate Inputs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="latitude" className="text-sm font-semibold text-gray-700">
+                    Latitude
+                  </Label>
+                  <Input
+                    id="latitude"
+                    type="number"
+                    step="any"
+                    placeholder="e.g., 23.5937"
+                    value={coordinates.lat}
+                    onChange={(e) => setCoordinates(prev => ({ ...prev, lat: e.target.value }))}
+                    className="h-11 border-gray-300 focus:border-green-500 focus:ring-green-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="longitude" className="text-sm font-semibold text-gray-700">
+                    Longitude
+                  </Label>
+                  <Input
+                    id="longitude"
+                    type="number"
+                    step="any"
+                    placeholder="e.g., 78.9629"
+                    value={coordinates.lng}
+                    onChange={(e) => setCoordinates(prev => ({ ...prev, lng: e.target.value }))}
+                    className="h-11 border-gray-300 focus:border-green-500 focus:ring-green-200"
+                  />
+                </div>
+              </div>
+              
+              {/* High Resolution Option */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div className="flex items-start space-x-3">
+                  <input
+                    type="checkbox"
+                    id="highRes"
+                    checked={highResolution}
+                    onChange={(e) => setHighResolution(e.target.checked)}
+                    className="mt-1 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="highRes" className="text-sm font-semibold text-gray-700 cursor-pointer">
+                      Use high-resolution Sentinel-2 data (10m resolution)
+                    </Label>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Enhanced detection capabilities for detailed forest and land-use mapping
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  onClick={detectAssets} 
+                  disabled={isDetecting} 
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium h-11 transition-colors"
+                >
+                  {isDetecting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" />
+                      Detect Assets
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={getCurrentLocation}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50 h-11 px-4"
+                  title="Use current location"
+                >
+                  <MapPin className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Results Section */}
+        {detectedAssets.length > 0 && (
+          <Card className="bg-white border border-gray-200 shadow-lg">
+            <CardHeader className="border-b border-gray-100 bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-700 rounded">
+                  <Trees className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900">
+                    Detected Assets ({detectionCount})
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 mt-1">
+                    Analysis results from satellite imagery and AI classification
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-8">
+              <div className="space-y-4">
+                {detectedAssets.map((asset, index) => (
+                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-gray-100 rounded-lg flex-shrink-0">
+                        {getAssetIcon(asset.type)}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-base">
-                        <div className="flex items-center gap-3 text-green-800">
-                          <Mountain className="h-5 w-5" />
-                          <span className="font-semibold">Area:</span> 
-                          <span className="font-medium">{formatArea(asset.area)}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-3">
+                          <h3 className="font-semibold text-gray-900 text-lg">{formatAssetType(asset.type)}</h3>
+                          <Badge className={`px-3 py-1 rounded-full text-xs font-medium ${getAssetColor(asset.type)}`}>
+                            {Math.round(asset.confidence)}% confidence
+                          </Badge>
                         </div>
-                        <div className="flex items-center gap-3 text-green-800">
-                          <MapIcon className="h-5 w-5" />
-                          <span className="font-semibold">Location:</span> 
-                          <span className="font-medium">{asset.coordinates.coordinates[1].toFixed(6)}, {asset.coordinates.coordinates[0].toFixed(6)}</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Mountain className="h-4 w-4 flex-shrink-0" />
+                            <span className="font-medium">Area:</span> 
+                            <span>{formatArea(asset.area)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <MapIcon className="h-4 w-4 flex-shrink-0" />
+                            <span className="font-medium">Location:</span> 
+                            <span className="font-mono text-xs">{asset.coordinates.coordinates[1].toFixed(6)}, {asset.coordinates.coordinates[0].toFixed(6)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      {!isDetecting && detectedAssets.length === 0 && coordinates.lat && coordinates.lng && (
-        <Card className="shadow-lg border-green-300 bg-white">
-          <CardContent className="p-12">
-            <div className="text-center space-y-6">
-              <div className="p-6 bg-green-100 rounded-xl w-fit mx-auto">
-                <Search className="h-16 w-16 text-green-700" />
+        {/* No Results Message */}
+        {!isDetecting && detectedAssets.length === 0 && coordinates.lat && coordinates.lng && (
+          <Card className="bg-white border border-gray-200 shadow-lg">
+            <CardContent className="p-12">
+              <div className="text-center space-y-6">
+                <div className="p-4 bg-gray-100 rounded-full w-fit mx-auto">
+                  <Search className="h-12 w-12 text-gray-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Assets Detected</h3>
+                  <p className="text-gray-600">No assets were found at the specified coordinates.</p>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Tip:</span> Try a different location or enable high-resolution mode for better detection.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-green-900">No Assets Detected</h3>
-              <p className="text-green-800 text-lg">No forest or infrastructure assets were found at the specified coordinates.</p>
-              <div className="text-green-700 bg-green-50 p-6 rounded-lg border border-green-200 max-w-md mx-auto">
-                <p className="font-semibold">Suggestion:</p>
-                <p className="mt-2">Try exploring a different location or enable high-resolution Sentinel-2 mode for enhanced detection capabilities.</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };
