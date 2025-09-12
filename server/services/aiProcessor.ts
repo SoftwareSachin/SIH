@@ -1,5 +1,5 @@
 import { storage } from '../storage';
-import { landUseClassificationService } from './landUseClassificationService';
+import { landUseClassificationService, type LandUseResult } from './landUseClassificationService';
 
 interface ProcessingStatus {
   ocrQueue: number;
@@ -133,6 +133,46 @@ class AIProcessor {
     return filtered;
   }
 
+  /**
+   * Validates if land use classification result is from genuine satellite data
+   */
+  private isGenuineSource(result: LandUseResult): boolean {
+    const sensor = result.sensor?.toLowerCase() || '';
+    
+    // Explicit rejection patterns - anything with these terms is NOT genuine
+    const rejectionPatterns = [
+      'fallback',
+      'geographic analysis', 
+      'terrain-based',
+      'simulated',
+      'synthetic',
+      'mock',
+      'generated'
+    ];
+    
+    for (const pattern of rejectionPatterns) {
+      if (sensor.includes(pattern)) {
+        return false;
+      }
+    }
+    
+    // Genuine satellite sensor patterns - must match one of these exactly
+    const genuinePatterns = [
+      /^sentinel-[12]\s+(msi|sar)/,  // Sentinel-1 SAR, Sentinel-2 MSI
+      /^landsat\s+[89]\s+oli/,       // Landsat 8 OLI, Landsat 9 OLI
+      /^modis/,                      // MODIS Terra/Aqua
+      /^spot\s+\d+/,                 // SPOT satellites
+      /^worldview/,                  // WorldView satellites
+      /^quickbird/,                  // QuickBird
+      /^ikonos/                      // IKONOS
+    ];
+    
+    const hasGenuinePattern = genuinePatterns.some(pattern => pattern.test(sensor));
+    const hasImageDate = !!result.metadata.imageDate;
+    
+    return hasGenuinePattern && hasImageDate;
+  }
+
   async detectAssetsAtCoordinates(lat: number, lng: number, villageId?: string): Promise<AssetDetectionResult[]> {
     try {
       console.log(`Starting genuine asset detection for coordinates: ${lat}, ${lng}`);
@@ -146,9 +186,9 @@ class AIProcessor {
         apiKey 
       });
       
-      // Only proceed if we got authentic satellite analysis (not fallback)
-      if (!landUseResult.metadata.imageDate || landUseResult.sensor === 'fallback') {
-        console.log('⚠️ No genuine satellite data available - refusing to generate simulated assets');
+      // Only proceed if we got authentic satellite analysis
+      if (!this.isGenuineSource(landUseResult)) {
+        console.log(`⚠️ No genuine satellite data available (sensor: ${landUseResult.sensor}) - refusing to generate simulated assets`);
         return []; // Return empty array instead of fake data
       }
       
