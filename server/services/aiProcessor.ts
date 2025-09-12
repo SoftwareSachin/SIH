@@ -220,7 +220,7 @@ class AIProcessor {
       // GENUINE ASSET DETECTION: Only add assets if there's real evidence
       
       // 1. Water Bodies - Only if clear water signature detected
-      if (classifications.water > 0.15 && spectralIndices.avgNDWI > 0.3) {
+      if (classifications.water > 0.10 && spectralIndices.avgNDWI > 0.2) {
         detectedAssets.push({
           type: 'water_body',
           confidence: Math.round(classifications.water * 100),
@@ -231,7 +231,7 @@ class AIProcessor {
       }
       
       // 2. Agricultural Land - Only if clear vegetation signature
-      if (classifications.agriculture > 0.15 && spectralIndices.avgNDVI > 0.3) {
+      if (classifications.agriculture > 0.12 && spectralIndices.avgNDVI > 0.25) {
         detectedAssets.push({
           type: 'agricultural_land',
           confidence: Math.round(classifications.agriculture * 100),
@@ -242,7 +242,7 @@ class AIProcessor {
       }
       
       // 3. Forest - Only if clear forest signature
-      if (classifications.forest > 0.15 && spectralIndices.avgNDVI > 0.5) {
+      if (classifications.forest > 0.12 && spectralIndices.avgNDVI > 0.4) {
         detectedAssets.push({
           type: 'forest',
           confidence: Math.round(classifications.forest * 100),
@@ -253,7 +253,7 @@ class AIProcessor {
       }
       
       // 4. Built-up Areas - Only if clear built-up signature
-      if (classifications.builtUp > 0.15 && spectralIndices.avgNDBI > 0.1) {
+      if (classifications.builtUp > 0.12 && spectralIndices.avgNDBI > 0.05) {
         detectedAssets.push({
           type: 'built_up',
           confidence: Math.round(classifications.builtUp * 100),
