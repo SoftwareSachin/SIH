@@ -178,9 +178,9 @@ class AIProcessor {
         result.classifications?.water !== undefined ||
         result.classifications?.agriculture !== undefined ||
         result.classifications?.forest !== undefined ||
-        result.classifications?.urban !== undefined ||
+        result.classifications?.builtUp !== undefined ||
         result.metadata?.spectralIndices ||
-        (result.metadata?.imageDate && result.metadata?.resolution);
+        (result.metadata?.imageDate && result.resolution);
       
       if (hasScientificBasis) {
         console.log('✓ Allowing scientifically-based geographic analysis for asset detection');
@@ -223,7 +223,7 @@ class AIProcessor {
       if (classifications.water > 0.15 && spectralIndices.avgNDWI > 0.3) {
         detectedAssets.push({
           type: 'water_body',
-          confidence: Math.round(classifications.water * landUseResult.confidence),
+          confidence: Math.round(classifications.water * 100),
           coordinates: { type: 'Point', coordinates: [lng, lat] },
           area: Math.round(classifications.water * 10000) // Rough area estimation
         });
@@ -234,7 +234,7 @@ class AIProcessor {
       if (classifications.agriculture > 0.15 && spectralIndices.avgNDVI > 0.3) {
         detectedAssets.push({
           type: 'agricultural_land',
-          confidence: Math.round(classifications.agriculture * landUseResult.confidence),
+          confidence: Math.round(classifications.agriculture * 100),
           coordinates: { type: 'Point', coordinates: [lng + 0.001, lat + 0.001] },
           area: Math.round(classifications.agriculture * 15000)
         });
@@ -245,7 +245,7 @@ class AIProcessor {
       if (classifications.forest > 0.15 && spectralIndices.avgNDVI > 0.5) {
         detectedAssets.push({
           type: 'forest',
-          confidence: Math.round(classifications.forest * landUseResult.confidence),
+          confidence: Math.round(classifications.forest * 100),
           coordinates: { type: 'Point', coordinates: [lng - 0.001, lat + 0.001] },
           area: Math.round(classifications.forest * 12000)
         });
@@ -256,7 +256,7 @@ class AIProcessor {
       if (classifications.builtUp > 0.15 && spectralIndices.avgNDBI > 0.1) {
         detectedAssets.push({
           type: 'built_up',
-          confidence: Math.round(classifications.builtUp * landUseResult.confidence),
+          confidence: Math.round(classifications.builtUp * 100),
           coordinates: { type: 'Point', coordinates: [lng + 0.001, lat - 0.001] },
           area: Math.round(classifications.builtUp * 8000)
         });

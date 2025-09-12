@@ -25,7 +25,7 @@ interface ClassificationRequest {
   apiKey?: string; // For premium satellite data
 }
 
-interface LandUseResult {
+export interface LandUseResult {
   coordinates: { lat: number; lng: number };
   classifications: {
     agriculture: number;
