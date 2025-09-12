@@ -364,7 +364,6 @@ const AssetDetectionPanel: React.FC = () => {
             </CardContent>
           </Card>
         )}
-      </div>
     </div>
   );
 };

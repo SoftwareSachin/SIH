@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
 interface DetectedAsset {
   type: string;
   confidence: number;
-  area: number;
+  area?: number;
   coordinates: {
     type: string;
     coordinates: [number, number];
@@ -58,7 +58,8 @@ const formatAssetType = (type: string) => {
   ).join(' ');
 };
 
-const formatArea = (area: number) => {
+const formatArea = (area?: number) => {
+  if (!area) return 'N/A';
   if (area < 10000) {
     return `${area.toFixed(0)} sq m`;
   } else {
