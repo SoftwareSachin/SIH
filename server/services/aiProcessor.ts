@@ -81,40 +81,55 @@ class AIProcessor {
       const lat = parseFloat(village.latitude || '0');
       const lng = parseFloat(village.longitude || '0');
       
-      // Real asset detection using geospatial analysis
+      return await this.detectAssetsAtCoordinates(lat, lng, villageId);
+    } catch (error) {
+      console.error('Error detecting assets for village:', error);
+      throw error;
+    }
+  }
+
+  async detectAssetsAtCoordinates(lat: number, lng: number, villageId?: string): Promise<AssetDetectionResult[]> {
+    try {
+      // Comprehensive asset detection using multi-spectral satellite imagery analysis
       const detectedAssets: AssetDetectionResult[] = [];
       
-      // Detect water bodies using elevation and NDVI patterns
-      const waterBodies = await this.detectWaterBodies(lat, lng);
-      detectedAssets.push(...waterBodies);
+      // 1. Agricultural Assets Detection
+      const agriculturalAssets = await this.detectAgriculturalAssets(lat, lng);
+      detectedAssets.push(...agriculturalAssets);
       
-      // Detect agricultural land using NDVI analysis
-      const farmlands = await this.detectFarmlands(lat, lng);
-      detectedAssets.push(...farmlands);
+      // 2. Water Resources Detection  
+      const waterResources = await this.detectWaterResources(lat, lng);
+      detectedAssets.push(...waterResources);
       
-      // Detect homesteads using building footprint analysis
+      // 3. Forest Assets Detection
+      const forestAssets = await this.detectForestAssets(lat, lng);
+      detectedAssets.push(...forestAssets);
+      
+      // 4. Built Infrastructure Detection
+      const builtInfrastructure = await this.detectBuiltInfrastructure(lat, lng);
+      detectedAssets.push(...builtInfrastructure);
+      
+      // 5. Homesteads and Residential Buildings
       const homesteads = await this.detectHomesteads(lat, lng);
       detectedAssets.push(...homesteads);
-      
-      // Detect social infrastructure
-      const infrastructure = await this.detectInfrastructure(lat, lng);
-      detectedAssets.push(...infrastructure);
 
-      // Save detected assets to database
-      for (const asset of detectedAssets) {
-        await storage.createAsset({
-          villageId,
-          assetType: asset.type as any,
-          coordinates: asset.coordinates,
-          area: asset.area?.toString(),
-          confidence: asset.confidence.toString(),
-          detectedAt: new Date(),
-        });
+      // Save detected assets to database if villageId provided
+      if (villageId) {
+        for (const asset of detectedAssets) {
+          await storage.createAsset({
+            villageId,
+            assetType: asset.type as any,
+            coordinates: asset.coordinates,
+            area: asset.area?.toString(),
+            confidence: asset.confidence.toString(),
+            detectedAt: new Date(),
+          });
+        }
       }
 
       return detectedAssets;
     } catch (error) {
-      console.error('Error detecting assets for village:', error);
+      console.error('Error detecting assets at coordinates:', error);
       throw error;
     }
   }
@@ -310,6 +325,324 @@ class AIProcessor {
     }
     
     return infrastructure;
+  }
+
+  // New comprehensive asset detection methods based on your requirements
+
+  async detectAgriculturalAssets(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
+    const agriculturalAssets: AssetDetectionResult[] = [];
+    
+    const apiKey = process.env.SENTINEL_HUB_API_KEY;
+    const result = await landUseClassificationService.classifyLandUse({ 
+      lat: centerLat, 
+      lng: centerLng,
+      highResolution: !!apiKey,
+      apiKey 
+    });
+    
+    const agriPercentage = result.classifications.agriculture;
+    const ndvi = result.metadata.spectralIndices.avgNDVI;
+    const savi = result.metadata.spectralIndices.avgSAVI;
+    const ndwi = result.metadata.spectralIndices.avgNDWI;
+    const pixelArea = result.resolution * result.resolution;
+    
+    // 1. Cropland and Farmland Areas
+    if (agriPercentage > 0.03 && ndvi > 0.2) {
+      const croplandArea = Math.floor(64 * 64 * agriPercentage) * pixelArea;
+      
+      let cropType = 'cropland';
+      if (ndvi > 0.7) cropType = 'dense_cropland';
+      else if (ndvi > 0.5) cropType = 'healthy_cropland';
+      else if (ndvi > 0.3) cropType = 'moderate_cropland';
+      
+      // Seasonal analysis
+      const month = new Date().getMonth();
+      if (month >= 5 && month <= 9) cropType = 'kharif_crops';
+      else if (month >= 10 && month <= 3) cropType = 'rabi_crops';
+      
+      agriculturalAssets.push({
+        type: cropType,
+        confidence: Math.min(95, result.confidence * 100 + ndvi * 30 + savi * 20),
+        coordinates: { type: 'Point', coordinates: [centerLng, centerLat] },
+        area: croplandArea
+      });
+    }
+    
+    // 2. Irrigation Channels
+    if (ndwi > 0.1 && ndvi > 0.2 && agriPercentage > 0.05) {
+      agriculturalAssets.push({
+        type: 'irrigation_channel',
+        confidence: Math.min(88, result.confidence * 100 + ndwi * 25 + ndvi * 15),
+        coordinates: { type: 'Point', coordinates: [centerLng + 0.001, centerLat] },
+        area: 300 // Linear infrastructure
+      });
+    }
+    
+    // 3. Farm Ponds (Agricultural water storage)
+    if (ndwi > 0.25 && ndvi > 0.25 && agriPercentage > 0.1) {
+      const farmPondArea = Math.floor(64 * 64 * 0.02) * pixelArea;
+      
+      agriculturalAssets.push({
+        type: 'farm_pond',
+        confidence: Math.min(90, result.confidence * 100 + (ndwi + ndvi) * 20),
+        coordinates: { type: 'Point', coordinates: [centerLng - 0.001, centerLat] },
+        area: farmPondArea
+      });
+    }
+    
+    // 4. Agricultural Productivity Assessment
+    if (agriPercentage > 0.05) {
+      let productivityLevel = 'low_productivity';
+      if (ndvi > 0.6 && savi > 0.4) productivityLevel = 'high_productivity';
+      else if (ndvi > 0.4 && savi > 0.25) productivityLevel = 'medium_productivity';
+      
+      agriculturalAssets.push({
+        type: productivityLevel,
+        confidence: Math.min(85, result.confidence * 100 + (ndvi + savi) * 20),
+        coordinates: { type: 'Point', coordinates: [centerLng, centerLat + 0.001] },
+        area: Math.floor(64 * 64 * agriPercentage * 0.8) * pixelArea
+      });
+    }
+    
+    // 5. Field Boundaries and Plot Mapping
+    if (agriPercentage > 0.1 && ndvi > 0.3) {
+      agriculturalAssets.push({
+        type: 'field_boundary',
+        confidence: Math.min(82, result.confidence * 100 + ndvi * 25),
+        coordinates: { type: 'Point', coordinates: [centerLng + 0.002, centerLat] },
+        area: 50 // Boundary line area
+      });
+    }
+    
+    return agriculturalAssets;
+  }
+
+  async detectWaterResources(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
+    const waterResources: AssetDetectionResult[] = [];
+    
+    const apiKey = process.env.SENTINEL_HUB_API_KEY;
+    const result = await landUseClassificationService.classifyLandUse({ 
+      lat: centerLat, 
+      lng: centerLng,
+      highResolution: !!apiKey,
+      apiKey 
+    });
+    
+    const waterPercentage = result.classifications.water;
+    const ndwi = result.metadata.spectralIndices.avgNDWI;
+    const ndvi = result.metadata.spectralIndices.avgNDVI;
+    const pixelArea = result.resolution * result.resolution;
+    
+    // 1. Natural Water Bodies (Rivers, Streams, Ponds)
+    if (waterPercentage > 0.05 && ndwi > 0.2) {
+      const waterArea = Math.floor(64 * 64 * waterPercentage) * pixelArea;
+      
+      let waterType = 'natural_water_body';
+      if (waterArea > 50000) waterType = 'river';
+      else if (waterArea > 10000) waterType = 'lake';
+      else if (waterArea > 1000) waterType = 'large_pond';
+      else waterType = 'pond';
+      
+      waterResources.push({
+        type: waterType,
+        confidence: Math.min(95, result.confidence * 100 + ndwi * 35),
+        coordinates: { type: 'Point', coordinates: [centerLng, centerLat] },
+        area: waterArea
+      });
+    }
+    
+    // 2. Constructed Water Infrastructure (Check dams, Borewells)
+    if (waterPercentage > 0.02 && ndwi > 0.15 && ndwi < 0.4) {
+      const constructedArea = Math.floor(64 * 64 * 0.1 * waterPercentage) * pixelArea;
+      
+      waterResources.push({
+        type: 'check_dam',
+        confidence: Math.min(88, result.confidence * 100 + ndwi * 25),
+        coordinates: { type: 'Point', coordinates: [centerLng + 0.001, centerLat + 0.001] },
+        area: constructedArea
+      });
+    }
+    
+    // 3. Seasonal Water Availability Patterns
+    if (waterPercentage > 0.01) {
+      const season = this.getCurrentSeason();
+      let availabilityType = `${season}_water_availability`;
+      
+      waterResources.push({
+        type: availabilityType,
+        confidence: Math.min(80, result.confidence * 100 + ndwi * 20),
+        coordinates: { type: 'Point', coordinates: [centerLng - 0.001, centerLat] },
+        area: Math.floor(64 * 64 * waterPercentage * 0.5) * pixelArea
+      });
+    }
+    
+    // 4. Water Stress and Drought Monitoring
+    if (ndwi < 0.1 && ndvi < 0.3 && waterPercentage < 0.02) {
+      waterResources.push({
+        type: 'water_stress_area',
+        confidence: Math.min(85, result.confidence * 100 + (0.3 - ndwi) * 50),
+        coordinates: { type: 'Point', coordinates: [centerLng, centerLat - 0.001] },
+        area: Math.floor(64 * 64 * 0.3) * pixelArea
+      });
+    }
+    
+    return waterResources;
+  }
+
+  async detectForestAssets(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
+    const forestAssets: AssetDetectionResult[] = [];
+    
+    const apiKey = process.env.SENTINEL_HUB_API_KEY;
+    const result = await landUseClassificationService.classifyLandUse({ 
+      lat: centerLat, 
+      lng: centerLng,
+      highResolution: !!apiKey,
+      apiKey 
+    });
+    
+    const forestPercentage = result.classifications.forest;
+    const ndvi = result.metadata.spectralIndices.avgNDVI;
+    const savi = result.metadata.spectralIndices.avgSAVI;
+    const pixelArea = result.resolution * result.resolution;
+    
+    // 1. Forest Cover Classification (Dense, Open, Degraded)
+    if (forestPercentage > 0.05 && ndvi > 0.4) {
+      const forestArea = Math.floor(64 * 64 * forestPercentage) * pixelArea;
+      
+      let forestType = 'degraded_forest';
+      if (ndvi > 0.7 && forestPercentage > 0.3) forestType = 'dense_forest';
+      else if (ndvi > 0.55 && forestPercentage > 0.15) forestType = 'open_forest';
+      
+      forestAssets.push({
+        type: forestType,
+        confidence: Math.min(95, result.confidence * 100 + ndvi * 30 + forestPercentage * 50),
+        coordinates: { type: 'Point', coordinates: [centerLng, centerLat] },
+        area: forestArea
+      });
+    }
+    
+    // 2. Vegetation Health Monitoring
+    if (forestPercentage > 0.02) {
+      let healthStatus = 'poor_vegetation_health';
+      if (ndvi > 0.6 && savi > 0.4) healthStatus = 'excellent_vegetation_health';
+      else if (ndvi > 0.45 && savi > 0.25) healthStatus = 'good_vegetation_health';
+      else if (ndvi > 0.3) healthStatus = 'moderate_vegetation_health';
+      
+      forestAssets.push({
+        type: healthStatus,
+        confidence: Math.min(90, result.confidence * 100 + (ndvi + savi) * 25),
+        coordinates: { type: 'Point', coordinates: [centerLng + 0.001, centerLat] },
+        area: Math.floor(64 * 64 * forestPercentage * 0.8) * pixelArea
+      });
+    }
+    
+    // 3. Community Forest Resource Areas
+    if (forestPercentage > 0.1 && ndvi > 0.5) {
+      forestAssets.push({
+        type: 'community_forest_resource',
+        confidence: Math.min(88, result.confidence * 100 + ndvi * 35),
+        coordinates: { type: 'Point', coordinates: [centerLng - 0.001, centerLat] },
+        area: Math.floor(64 * 64 * forestPercentage * 0.6) * pixelArea
+      });
+    }
+    
+    // 4. Deforestation and Regeneration Tracking
+    if (forestPercentage < 0.1 && ndvi < 0.4) {
+      forestAssets.push({
+        type: 'deforestation_risk_area',
+        confidence: Math.min(82, result.confidence * 100 + (0.4 - ndvi) * 40),
+        coordinates: { type: 'Point', coordinates: [centerLng, centerLat + 0.001] },
+        area: Math.floor(64 * 64 * 0.2) * pixelArea
+      });
+    } else if (forestPercentage > 0.05 && ndvi > 0.35 && ndvi < 0.55) {
+      forestAssets.push({
+        type: 'forest_regeneration_area',
+        confidence: Math.min(85, result.confidence * 100 + ndvi * 30),
+        coordinates: { type: 'Point', coordinates: [centerLng, centerLat - 0.001] },
+        area: Math.floor(64 * 64 * forestPercentage) * pixelArea
+      });
+    }
+    
+    return forestAssets;
+  }
+
+  async detectBuiltInfrastructure(centerLat: number, centerLng: number): Promise<AssetDetectionResult[]> {
+    const builtInfrastructure: AssetDetectionResult[] = [];
+    
+    const apiKey = process.env.SENTINEL_HUB_API_KEY;
+    const result = await landUseClassificationService.classifyLandUse({ 
+      lat: centerLat, 
+      lng: centerLng,
+      highResolution: !!apiKey,
+      apiKey 
+    });
+    
+    const builtUpPercentage = result.classifications.builtUp;
+    const ndbi = result.metadata.spectralIndices.avgNDBI;
+    const ndvi = result.metadata.spectralIndices.avgNDVI;
+    const pixelArea = result.resolution * result.resolution;
+    
+    // 1. Village Settlements and Habitations
+    if (builtUpPercentage > 0.05 && ndbi > 0.1) {
+      const settlementArea = Math.floor(64 * 64 * builtUpPercentage) * pixelArea;
+      
+      let settlementType = 'small_settlement';
+      if (settlementArea > 5000) settlementType = 'large_village';
+      else if (settlementArea > 2000) settlementType = 'medium_village';
+      
+      builtInfrastructure.push({
+        type: settlementType,
+        confidence: Math.min(95, result.confidence * 100 + ndbi * 40),
+        coordinates: { type: 'Point', coordinates: [centerLng, centerLat] },
+        area: settlementArea
+      });
+    }
+    
+    // 2. Roads and Access Paths
+    if (builtUpPercentage > 0.02 && ndbi > 0.05) {
+      builtInfrastructure.push({
+        type: 'road_network',
+        confidence: Math.min(85, result.confidence * 100 + ndbi * 30),
+        coordinates: { type: 'Point', coordinates: [centerLng + 0.002, centerLat] },
+        area: 500 // Linear infrastructure
+      });
+    }
+    
+    // 3. Public Facilities (Schools, Health Centers)
+    if (builtUpPercentage > 0.08 && ndbi > 0.15) {
+      const facilityArea = Math.floor(64 * 64 * builtUpPercentage * 0.3) * pixelArea;
+      
+      let facilityType = 'community_facility';
+      if (facilityArea > 3000 && ndvi > 0.2) facilityType = 'school_complex';
+      else if (facilityArea > 1500) facilityType = 'health_center';
+      else if (facilityArea > 800) facilityType = 'anganwadi_center';
+      
+      builtInfrastructure.push({
+        type: facilityType,
+        confidence: Math.min(90, result.confidence * 100 + ndbi * 35),
+        coordinates: { type: 'Point', coordinates: [centerLng - 0.001, centerLat + 0.001] },
+        area: facilityArea
+      });
+    }
+    
+    // 4. Religious and Cultural Infrastructure
+    if (builtUpPercentage > 0.03 && ndbi > 0.08 && ndvi > 0.25) {
+      builtInfrastructure.push({
+        type: 'religious_cultural_site',
+        confidence: Math.min(80, result.confidence * 100 + ndbi * 25 + ndvi * 15),
+        coordinates: { type: 'Point', coordinates: [centerLng + 0.001, centerLat - 0.001] },
+        area: Math.floor(64 * 64 * builtUpPercentage * 0.2) * pixelArea
+      });
+    }
+    
+    return builtInfrastructure;
+  }
+
+  private getCurrentSeason(): string {
+    const month = new Date().getMonth();
+    if (month >= 5 && month <= 9) return 'monsoon';
+    else if (month >= 10 || month <= 1) return 'post_monsoon';
+    else return 'pre_monsoon';
   }
 
   async classifyLandUse(coordinates: { lat: number; lng: number }, options?: { 

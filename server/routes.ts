@@ -1760,21 +1760,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (villageId) {
         detectedAssets = await aiProcessor.detectAssetsForVillage(villageId);
       } else {
-        // Direct coordinate-based detection
+        // Direct coordinate-based detection using enhanced comprehensive system
         const { lat, lng } = coordinates;
         if (!lat || !lng) {
           return res.status(400).json({ message: "Latitude and longitude are required" });
         }
         
-        // Create temporary detection for coordinates
-        const tempAssets = [];
-        const waterBodies = await aiProcessor.detectWaterBodies(lat, lng);
-        const farmlands = await aiProcessor.detectFarmlands(lat, lng);
-        const homesteads = await aiProcessor.detectHomesteads(lat, lng);
-        const infrastructure = await aiProcessor.detectInfrastructure(lat, lng);
-        
-        tempAssets.push(...waterBodies, ...farmlands, ...homesteads, ...infrastructure);
-        detectedAssets = tempAssets;
+        // Use the new comprehensive asset detection system
+        detectedAssets = await aiProcessor.detectAssetsAtCoordinates(lat, lng);
       }
       
       res.json({ 
