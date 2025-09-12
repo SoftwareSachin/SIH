@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
+import fs from "fs";
+import path from "path";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -64,6 +66,20 @@ app.use((req, res, next) => {
     // Log the error but don't throw it again (this was causing HTML pages)
     console.error('Global error handler:', err);
   });
+
+  // Reconcile paths: ensure server/public exists for serveStatic
+  const serverPublic = path.resolve(import.meta.dirname, "public");
+  const distPublic = path.resolve(import.meta.dirname, "..", "dist", "public");
+  if (!fs.existsSync(serverPublic) && fs.existsSync(distPublic)) {
+    try {
+      fs.symlinkSync(distPublic, serverPublic, "dir");
+      log("Created symlink from dist/public to server/public");
+    } catch (e) {
+      // Fallback if symlinks are disallowed
+      fs.cpSync(distPublic, serverPublic, { recursive: true });
+      log("Copied dist/public to server/public");
+    }
+  }
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
