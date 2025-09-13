@@ -651,7 +651,9 @@ export default function RealWebGISMap() {
     if (villagesData && villagesData.length > 0) {
       const firstVillage = villagesData[0];
       if (firstVillage.latitude && firstVillage.longitude) {
-        flyToLocation(parseFloat(firstVillage.latitude), parseFloat(firstVillage.longitude), 13);
+        const lat = typeof firstVillage.latitude === 'string' ? parseFloat(firstVillage.latitude) : firstVillage.latitude;
+        const lng = typeof firstVillage.longitude === 'string' ? parseFloat(firstVillage.longitude) : firstVillage.longitude;
+        flyToLocation(lat, lng, 13);
       }
     } else if (mapInstance.current) {
       mapInstance.current.flyTo([22.6000, 80.3800], 11, {
