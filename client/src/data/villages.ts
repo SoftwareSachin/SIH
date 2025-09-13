@@ -280,6 +280,75 @@ export const VILLAGES_BY_DISTRICT: Record<string, Village[]> = {
       population: 1900,
       tribalPopulation: 741
     }
+  ],
+
+  // Shahdol district (MP) - ID: "mp-shahdol"
+  "mp-shahdol": [
+    {
+      id: "vill-bamhni",
+      name: "Bamhni",
+      code: "BAMH",
+      districtId: "mp-shahdol",
+      districtName: "Shahdol",
+      stateId: "MP",
+      stateName: "Madhya Pradesh",
+      latitude: 23.4734,
+      longitude: 81.1409,
+      population: 8500,
+      tribalPopulation: 4200
+    },
+    {
+      id: "vill-beohari",
+      name: "Beohari",
+      code: "BEOH",
+      districtId: "mp-shahdol",
+      districtName: "Shahdol",
+      stateId: "MP",
+      stateName: "Madhya Pradesh",
+      latitude: 23.6333,
+      longitude: 81.3667,
+      population: 12000,
+      tribalPopulation: 6000
+    },
+    {
+      id: "vill-burhar",
+      name: "Burhar",
+      code: "BURH",
+      districtId: "mp-shahdol",
+      districtName: "Shahdol",
+      stateId: "MP",
+      stateName: "Madhya Pradesh",
+      latitude: 23.2167,
+      longitude: 81.5333,
+      population: 15000,
+      tribalPopulation: 7500
+    },
+    {
+      id: "vill-jaisinghnagar",
+      name: "Jaisinghnagar",
+      code: "JSGR",
+      districtId: "mp-shahdol",
+      districtName: "Shahdol",
+      stateId: "MP",
+      stateName: "Madhya Pradesh",
+      latitude: 23.1167,
+      longitude: 80.9500,
+      population: 9800,
+      tribalPopulation: 4900
+    },
+    {
+      id: "vill-sohagpur",
+      name: "Sohagpur",
+      code: "SOHG",
+      districtId: "mp-shahdol",
+      districtName: "Shahdol",
+      stateId: "MP",
+      stateName: "Madhya Pradesh",
+      latitude: 23.4000,
+      longitude: 81.6667,
+      population: 11200,
+      tribalPopulation: 5600
+    }
   ]
 };
 
