@@ -150,6 +150,15 @@ export default function RealWebGISMap() {
     }).setView([23.4734, 81.1409], 8); // Centered on Shahdol/Anuppur region with sample data
     mapInstance.current = map;
 
+    // Disable click propagation on all control containers
+    const controlContainers = document.querySelectorAll('.absolute.top-4.right-4');
+    controlContainers.forEach(container => {
+      if (container instanceof HTMLElement) {
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
+      }
+    });
+
     // Add the default basemap
     const defaultBasemap = basemaps.find(b => b.id === currentBasemap);
     if (defaultBasemap) {
@@ -1258,24 +1267,31 @@ export default function RealWebGISMap() {
         <div ref={mapRef} className="h-full w-full" data-testid="webgis-map" />
         
         {/* Map Controls */}
-        <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+        <div 
+          className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 pointer-events-auto"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
           {/* Zoom Controls */}
           <div className="bg-card rounded-lg border border-border shadow-lg">
             <div className="flex flex-col">
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                className="p-2 border-b border-border rounded-none rounded-t-lg"
-                onClick={zoomIn}
+                className="p-2 border-b border-border rounded-none rounded-t-lg pointer-events-auto"
+                onClick={(e) => { e.stopPropagation(); zoomIn(); }}
                 data-testid="button-zoom-in"
               >
                 <ZoomIn className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                className="p-2 rounded-none rounded-b-lg"
-                onClick={zoomOut}
+                className="p-2 rounded-none rounded-b-lg pointer-events-auto"
+                onClick={(e) => { e.stopPropagation(); zoomOut(); }}
                 data-testid="button-zoom-out"
               >
                 <ZoomOut className="h-4 w-4" />
@@ -1287,19 +1303,21 @@ export default function RealWebGISMap() {
           <div className="bg-card rounded-lg border border-border shadow-lg">
             <div className="flex flex-col">
               <Button
+                type="button"
                 variant={currentBasemap.includes('satellite') ? 'default' : 'ghost'}
                 size="sm"
-                className="p-2 border-b border-border rounded-none rounded-t-lg"
-                onClick={() => setCurrentBasemap('satellite_esri')}
+                className="p-2 border-b border-border rounded-none rounded-t-lg pointer-events-auto"
+                onClick={(e) => { e.stopPropagation(); setCurrentBasemap('satellite_esri'); }}
                 data-testid="button-satellite-view"
               >
                 <Satellite className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant={currentBasemap === 'openstreetmap' ? 'default' : 'ghost'}
                 size="sm"
-                className="p-2 rounded-none rounded-b-lg"
-                onClick={() => setCurrentBasemap('openstreetmap')}
+                className="p-2 rounded-none rounded-b-lg pointer-events-auto"
+                onClick={(e) => { e.stopPropagation(); setCurrentBasemap('openstreetmap'); }}
                 data-testid="button-street-view"
               >
                 <Map className="h-4 w-4" />
@@ -1311,40 +1329,44 @@ export default function RealWebGISMap() {
           <div className="bg-card rounded-lg border border-border shadow-lg">
             <div className="flex flex-col">
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                className="p-2 border-b border-border rounded-none rounded-t-lg"
-                onClick={zoomToIndia}
+                className="p-2 border-b border-border rounded-none rounded-t-lg pointer-events-auto"
+                onClick={(e) => { e.stopPropagation(); zoomToIndia(); }}
                 title="Zoom to India"
                 data-testid="button-zoom-india"
               >
                 <Home className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                className="p-2 border-b border-border rounded-none"
-                onClick={zoomToState}
+                className="p-2 border-b border-border rounded-none pointer-events-auto"
+                onClick={(e) => { e.stopPropagation(); zoomToState(); }}
                 title="Zoom to State Level"
                 data-testid="button-zoom-state"
               >
                 <Building className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                className="p-2 border-b border-border rounded-none"
-                onClick={zoomToDistrict}
+                className="p-2 border-b border-border rounded-none pointer-events-auto"
+                onClick={(e) => { e.stopPropagation(); zoomToDistrict(); }}
                 title="Zoom to District Level"
                 data-testid="button-zoom-district"
               >
                 <Trees className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                className="p-2 rounded-none rounded-b-lg"
-                onClick={zoomToVillage}
+                className="p-2 rounded-none rounded-b-lg pointer-events-auto"
+                onClick={(e) => { e.stopPropagation(); zoomToVillage(); }}
                 title="Zoom to Village Level"
                 data-testid="button-zoom-village"
               >
@@ -1355,10 +1377,11 @@ export default function RealWebGISMap() {
 
           {/* Export Control */}
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            className="bg-card border border-border shadow-lg"
-            onClick={exportMap}
+            className="bg-card border border-border shadow-lg pointer-events-auto"
+            onClick={(e) => { e.stopPropagation(); exportMap(); }}
             data-testid="button-export-map"
           >
             <Download className="h-4 w-4" />
