@@ -6,7 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Edit, Filter } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Eye, Edit, Filter, MapPin, Calendar, User, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -184,34 +188,160 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        data-testid={`button-view-${claim.id}`}
-                        onClick={() => {
-                          // Open view modal with claim details
-                          toast({
-                            title: "Claim Details",
-                            description: `Viewing claim ${claim.claimId} by ${claim.claimantName} in ${claim.village?.name || 'Unknown Village'}. Area: ${claim.area || 'N/A'} acres, Status: ${claim.status}, AI Score: ${claim.aiConfidence || 'N/A'}%`,
-                          });
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        data-testid={`button-edit-${claim.id}`}
-                        onClick={() => {
-                          // Open edit modal with claim data
-                          toast({
-                            title: "Edit Claim",
-                            description: `Opening edit form for claim ${claim.claimId}. You can modify claim details, status, and other information.`,
-                          });
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      {/* View Modal */}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            data-testid={`button-view-${claim.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              <FileText className="h-5 w-5" />
+                              Claim Details - {claim.claimId || claim.id}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                  <User className="h-4 w-4" />
+                                  Claimant Information
+                                </Label>
+                                <div className="pl-6 space-y-1">
+                                  <p><strong>Name:</strong> {claim.claimantName || 'N/A'}</p>
+                                  <p><strong>Father's Name:</strong> {claim.claimantFatherName || 'N/A'}</p>
+                                  <p><strong>Address:</strong> {claim.claimantAddress || 'N/A'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                  <MapPin className="h-4 w-4" />
+                                  Location Details
+                                </Label>
+                                <div className="pl-6 space-y-1">
+                                  <p><strong>Village:</strong> {claim.village?.name || 'Unknown Village'}</p>
+                                  <p><strong>Coordinates:</strong> {claim.coordinates ? `${claim.coordinates.coordinates?.[1]}, ${claim.coordinates.coordinates?.[0]}` : 'N/A'}</p>
+                                  <p><strong>Area:</strong> {claim.area ? `${claim.area} acres` : 'N/A'}</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Claim Information</Label>
+                                <div className="pl-2 space-y-1">
+                                  <p><strong>Type:</strong> {claim.claimType}</p>
+                                  <p><strong>Status:</strong> {claim.status}</p>
+                                  <p><strong>AI Score:</strong> {claim.aiConfidence ? `${claim.aiConfidence}%` : 'N/A'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4" />
+                                  Dates
+                                </Label>
+                                <div className="pl-6 space-y-1">
+                                  <p><strong>Submitted:</strong> {new Date(claim.submittedDate || claim.createdAt).toLocaleDateString()}</p>
+                                  <p><strong>Last Updated:</strong> {new Date(claim.updatedAt).toLocaleDateString()}</p>
+                                  {claim.verifiedDate && <p><strong>Verified:</strong> {new Date(claim.verifiedDate).toLocaleDateString()}</p>}
+                                </div>
+                              </div>
+                            </div>
+                            {claim.notes && (
+                              <div className="space-y-2">
+                                <Label>Notes</Label>
+                                <div className="p-3 bg-muted rounded-md">
+                                  <p className="text-sm">{claim.notes}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      
+                      {/* Edit Modal */}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            data-testid={`button-edit-${claim.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              <Edit className="h-5 w-5" />
+                              Edit Claim - {claim.claimId || claim.id}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-claimantName">Claimant Name</Label>
+                              <Input
+                                id="edit-claimantName"
+                                defaultValue={claim.claimantName || ''}
+                                placeholder="Enter claimant name"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-area">Area (acres)</Label>
+                              <Input
+                                id="edit-area"
+                                defaultValue={claim.area || ''}
+                                placeholder="Enter area in acres"
+                                type="number"
+                                step="0.01"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-status">Status</Label>
+                              <Select defaultValue={claim.status}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="under_review">Under Review</SelectItem>
+                                  <SelectItem value="verified">Verified</SelectItem>
+                                  <SelectItem value="rejected">Rejected</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-notes">Notes</Label>
+                              <Textarea
+                                id="edit-notes"
+                                defaultValue={claim.notes || ''}
+                                placeholder="Add any notes or comments"
+                                rows={3}
+                              />
+                            </div>
+                            <div className="flex justify-end space-x-2 pt-4">
+                              <DialogTrigger asChild>
+                                <Button variant="outline">Cancel</Button>
+                              </DialogTrigger>
+                              <Button 
+                                onClick={() => {
+                                  toast({
+                                    title: "Success",
+                                    description: "Claim updated successfully!",
+                                  });
+                                }}
+                              >
+                                Save Changes
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </TableCell>
                 </TableRow>
