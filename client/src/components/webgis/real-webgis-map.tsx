@@ -304,7 +304,7 @@ export default function RealWebGISMap() {
       }).filter(Boolean);
 
       if (validCoords.length > 0) {
-        const group = new L.FeatureGroup(validCoords.map(coord => L.marker(coord as [number, number])));
+        const group = new L.FeatureGroup(validCoords.map((coord: any) => L.marker(coord as [number, number])));
         mapInstance.current.fitBounds(group.getBounds().pad(0.1));
       }
     }
