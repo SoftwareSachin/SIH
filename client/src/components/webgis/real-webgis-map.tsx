@@ -10,7 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Layers, Download, ZoomIn, ZoomOut, Map, Satellite, Eye, EyeOff, ChevronUp, ChevronDown, Search, MapPin, Home, Building, Trees, Route, Zap, Radio, Ruler, Edit3, Save, FileDown, Camera, Globe, Mountain } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
-import geoData from '@/data/geo-data';
+import geoData, { 
+  forestCoverData, 
+  waterBodiesData, 
+  agriculturalLandData, 
+  urbanAreasData,
+  roadsData,
+  railwaysData,
+  powerlinesData,
+  towersData
+} from '@/data/geo-data';
 
 // Fix for default markers in Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -521,6 +530,355 @@ export default function RealWebGISMap() {
     window.addEventListener('assetsUpdate', handleAssetsUpdate);
     return () => window.removeEventListener('assetsUpdate', handleAssetsUpdate);
   }, [assets, layers]);
+
+  // Load Forest Cover data
+  useEffect(() => {
+    if (!mapInstance.current || !layersRef.current?.forest) return;
+    
+    const forestLayer = layersRef.current.forest;
+    
+    try {
+      forestLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing forest layer:', error);
+      return;
+    }
+
+    forestCoverData.forEach((forest: any) => {
+      const { lat, lng } = forest.coordinates;
+      
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const currentLayer = layers.find(l => l.id === 'forest');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.7;
+          const circle = L.circle([lat, lng], {
+            color: '#059669',
+            fillColor: '#10b981',
+            fillOpacity: opacity,
+            radius: Math.sqrt(forest.area) * 50 // Scale radius based on area
+          }).bindPopup(`
+            <div>
+              <h3>${forest.name}</h3>
+              <p><strong>Area:</strong> ${forest.area} hectares</p>
+              <p><strong>Density:</strong> ${forest.density}</p>
+              <p><strong>Tree Species:</strong> ${forest.treeSpecies.join(', ')}</p>
+              <p><strong>Established:</strong> ${forest.establishedYear}</p>
+            </div>
+          `);
+          forestLayer.addLayer(circle);
+        } catch (error) {
+          console.warn('Error adding forest marker:', error, forest);
+        }
+      }
+    });
+
+    setLayers(prev => prev.map(layer => 
+      layer.id === 'forest' ? { ...layer, count: forestCoverData.length } : layer
+    ));
+  }, [layers]);
+
+  // Load Water Bodies data
+  useEffect(() => {
+    if (!mapInstance.current || !layersRef.current?.water) return;
+    
+    const waterLayer = layersRef.current.water;
+    
+    try {
+      waterLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing water layer:', error);
+      return;
+    }
+
+    waterBodiesData.forEach((water: any) => {
+      const { lat, lng } = water.coordinates;
+      
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const currentLayer = layers.find(l => l.id === 'water');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.7;
+          const circle = L.circle([lat, lng], {
+            color: '#3b82f6',
+            fillColor: '#60a5fa', 
+            fillOpacity: opacity,
+            radius: Math.sqrt(water.area) * 30
+          }).bindPopup(`
+            <div>
+              <h3>${water.name}</h3>
+              <p><strong>Type:</strong> ${water.type}</p>
+              <p><strong>Area:</strong> ${water.area} hectares</p>
+              <p><strong>Depth:</strong> ${water.depth} meters</p>
+              <p><strong>Fish Species:</strong> ${water.fishSpecies.join(', ')}</p>
+            </div>
+          `);
+          waterLayer.addLayer(circle);
+        } catch (error) {
+          console.warn('Error adding water marker:', error, water);
+        }
+      }
+    });
+
+    setLayers(prev => prev.map(layer => 
+      layer.id === 'water' ? { ...layer, count: waterBodiesData.length } : layer
+    ));
+  }, [layers]);
+
+  // Load Agricultural Land data
+  useEffect(() => {
+    if (!mapInstance.current || !layersRef.current?.agriculture) return;
+    
+    const agricultureLayer = layersRef.current.agriculture;
+    
+    try {
+      agricultureLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing agriculture layer:', error);
+      return;
+    }
+
+    agriculturalLandData.forEach((agri: any) => {
+      const { lat, lng } = agri.coordinates;
+      
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const currentLayer = layers.find(l => l.id === 'agriculture');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.6;
+          const polygon = L.circle([lat, lng], {
+            color: '#f59e0b',
+            fillColor: '#fbbf24',
+            fillOpacity: opacity,
+            radius: Math.sqrt(agri.area) * 40
+          }).bindPopup(`
+            <div>
+              <h3>${agri.name}</h3>
+              <p><strong>Area:</strong> ${agri.area} hectares</p>
+              <p><strong>Crop:</strong> ${agri.cropType}</p>
+              <p><strong>Soil:</strong> ${agri.soilType}</p>
+              <p><strong>Irrigation:</strong> ${agri.irrigationType}</p>
+              <p><strong>Method:</strong> ${agri.farmingMethod}</p>
+            </div>
+          `);
+          agricultureLayer.addLayer(polygon);
+        } catch (error) {
+          console.warn('Error adding agriculture marker:', error, agri);
+        }
+      }
+    });
+
+    setLayers(prev => prev.map(layer => 
+      layer.id === 'agriculture' ? { ...layer, count: agriculturalLandData.length } : layer
+    ));
+  }, [layers]);
+
+  // Load Urban Areas data
+  useEffect(() => {
+    if (!mapInstance.current || !layersRef.current?.urban) return;
+    
+    const urbanLayer = layersRef.current.urban;
+    
+    try {
+      urbanLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing urban layer:', error);
+      return;
+    }
+
+    urbanAreasData.forEach((urban: any) => {
+      const { lat, lng } = urban.coordinates;
+      
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const currentLayer = layers.find(l => l.id === 'urban');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.65;
+          const circle = L.circle([lat, lng], {
+            color: '#6b7280',
+            fillColor: '#9ca3af',
+            fillOpacity: opacity,
+            radius: Math.sqrt(urban.area) * 45
+          }).bindPopup(`
+            <div>
+              <h3>${urban.name}</h3>
+              <p><strong>Type:</strong> ${urban.urbanType}</p>
+              <p><strong>Population:</strong> ${urban.population.toLocaleString()}</p>
+              <p><strong>Area:</strong> ${urban.area} hectares</p>
+              <p><strong>Amenities:</strong> ${urban.amenities.join(', ')}</p>
+            </div>
+          `);
+          urbanLayer.addLayer(circle);
+        } catch (error) {
+          console.warn('Error adding urban marker:', error, urban);
+        }
+      }
+    });
+
+    setLayers(prev => prev.map(layer => 
+      layer.id === 'urban' ? { ...layer, count: urbanAreasData.length } : layer
+    ));
+  }, [layers]);
+
+  // Load Roads data
+  useEffect(() => {
+    if (!mapInstance.current || !layersRef.current?.roads) return;
+    
+    const roadsLayer = layersRef.current.roads;
+    
+    try {
+      roadsLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing roads layer:', error);
+      return;
+    }
+
+    roadsData.forEach((road: any) => {
+      const { lat, lng } = road.coordinates;
+      
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const currentLayer = layers.find(l => l.id === 'roads');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.8;
+          const marker = L.marker([lat, lng]).bindPopup(`
+            <div>
+              <h3>${road.name}</h3>
+              <p><strong>Type:</strong> ${road.roadType}</p>
+              <p><strong>Length:</strong> ${road.length} km</p>
+              <p><strong>Width:</strong> ${road.width} meters</p>
+              <p><strong>Condition:</strong> ${road.condition}</p>
+            </div>
+          `);
+          roadsLayer.addLayer(marker);
+        } catch (error) {
+          console.warn('Error adding road marker:', error, road);
+        }
+      }
+    });
+
+    setLayers(prev => prev.map(layer => 
+      layer.id === 'roads' ? { ...layer, count: roadsData.length } : layer
+    ));
+  }, [layers]);
+
+  // Load Railways data
+  useEffect(() => {
+    if (!mapInstance.current || !layersRef.current?.railways) return;
+    
+    const railwaysLayer = layersRef.current.railways;
+    
+    try {
+      railwaysLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing railways layer:', error);
+      return;
+    }
+
+    railwaysData.forEach((railway: any) => {
+      const { lat, lng } = railway.coordinates;
+      
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const currentLayer = layers.find(l => l.id === 'railways');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.75;
+          const marker = L.marker([lat, lng]).bindPopup(`
+            <div>
+              <h3>${railway.name}</h3>
+              <p><strong>Length:</strong> ${railway.length} km</p>
+              <p><strong>Gauge:</strong> ${railway.gauge}</p>
+              <p><strong>Electrified:</strong> ${railway.electrified ? 'Yes' : 'No'}</p>
+              <p><strong>Stations:</strong> ${railway.stations.join(', ')}</p>
+            </div>
+          `);
+          railwaysLayer.addLayer(marker);
+        } catch (error) {
+          console.warn('Error adding railway marker:', error, railway);
+        }
+      }
+    });
+
+    setLayers(prev => prev.map(layer => 
+      layer.id === 'railways' ? { ...layer, count: railwaysData.length } : layer
+    ));
+  }, [layers]);
+
+  // Load Power Lines data
+  useEffect(() => {
+    if (!mapInstance.current || !layersRef.current?.powerlines) return;
+    
+    const powerlinesLayer = layersRef.current.powerlines;
+    
+    try {
+      powerlinesLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing powerlines layer:', error);
+      return;
+    }
+
+    powerlinesData.forEach((powerline: any) => {
+      const { lat, lng } = powerline.coordinates;
+      
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const currentLayer = layers.find(l => l.id === 'powerlines');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.7;
+          const marker = L.marker([lat, lng]).bindPopup(`
+            <div>
+              <h3>${powerline.name}</h3>
+              <p><strong>Voltage:</strong> ${powerline.voltage}</p>
+              <p><strong>Length:</strong> ${powerline.length} km</p>
+              <p><strong>Capacity:</strong> ${powerline.capacity}</p>
+              <p><strong>Operator:</strong> ${powerline.operator}</p>
+            </div>
+          `);
+          powerlinesLayer.addLayer(marker);
+        } catch (error) {
+          console.warn('Error adding powerline marker:', error, powerline);
+        }
+      }
+    });
+
+    setLayers(prev => prev.map(layer => 
+      layer.id === 'powerlines' ? { ...layer, count: powerlinesData.length } : layer
+    ));
+  }, [layers]);
+
+  // Load Communication Towers data
+  useEffect(() => {
+    if (!mapInstance.current || !layersRef.current?.towers) return;
+    
+    const towersLayer = layersRef.current.towers;
+    
+    try {
+      towersLayer.clearLayers();
+    } catch (error) {
+      console.warn('Error clearing towers layer:', error);
+      return;
+    }
+
+    towersData.forEach((tower: any) => {
+      const { lat, lng } = tower.coordinates;
+      
+      if (lat && lng && isFinite(lat) && isFinite(lng)) {
+        try {
+          const currentLayer = layers.find(l => l.id === 'towers');
+          const opacity = currentLayer ? currentLayer.opacity / 100 : 0.85;
+          const marker = L.marker([lat, lng]).bindPopup(`
+            <div>
+              <h3>${tower.name}</h3>
+              <p><strong>Height:</strong> ${tower.height} meters</p>
+              <p><strong>Operator:</strong> ${tower.operator}</p>
+              <p><strong>Services:</strong> ${tower.services.join(', ')}</p>
+              <p><strong>Coverage:</strong> ${tower.coverage}</p>
+            </div>
+          `);
+          towersLayer.addLayer(marker);
+        } catch (error) {
+          console.warn('Error adding tower marker:', error, tower);
+        }
+      }
+    });
+
+    setLayers(prev => prev.map(layer => 
+      layer.id === 'towers' ? { ...layer, count: towersData.length } : layer
+    ));
+  }, [layers]);
 
   // Debug effect to track searchQuery changes
   useEffect(() => {
