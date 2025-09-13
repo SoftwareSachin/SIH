@@ -27,6 +27,7 @@ function Router() {
       <Route path="/dss" component={DSSPage} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/verification-workflow" component={VerificationWorkflowPage} />
+      <Route path="/verification-workflow/:claimId" component={VerificationWorkflowPage} />
       <Route component={NotFound} />
     </Switch>
   );

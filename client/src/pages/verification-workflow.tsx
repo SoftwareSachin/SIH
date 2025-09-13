@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useParams } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,10 +11,10 @@ import { Search, FileCheck, Clock, CheckCircle } from 'lucide-react';
 export function VerificationWorkflowPage() {
   const [location, setLocation] = useLocation();
   const [searchClaimId, setSearchClaimId] = useState('');
+  const params = useParams();
 
-  // Get query parameter for claim ID from URL
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
-  const selectedClaimId = urlParams.get('claimId') || '';
+  // Get claimId from path parameter
+  const selectedClaimId = params.claimId || '';
 
   // Fetch all claims with workflow status
   const { data: claimsData, isLoading } = useQuery({
@@ -24,12 +24,12 @@ export function VerificationWorkflowPage() {
 
   const handleSearchClaim = () => {
     if (searchClaimId.trim()) {
-      setLocation(`/verification-workflow?claimId=${encodeURIComponent(searchClaimId.trim())}`);
+      setLocation(`/verification-workflow/${encodeURIComponent(searchClaimId.trim())}`);
     }
   };
 
   const handleSelectClaim = (claimId: string) => {
-    setLocation(`/verification-workflow?claimId=${encodeURIComponent(claimId)}`);
+    setLocation(`/verification-workflow/${encodeURIComponent(claimId)}`);
   };
 
   return (
