@@ -429,6 +429,42 @@ export class DatabaseStorage implements IStorage {
 
   async createClaim(claim: InsertClaim): Promise<Claim> {
     const [newClaim] = await db.insert(claims).values(claim).returning();
+    
+    // Trigger automatic AI processing for coordinates if available
+    if (newClaim.coordinates) {
+      try {
+        const coords = typeof newClaim.coordinates === 'string' 
+          ? JSON.parse(newClaim.coordinates) 
+          : newClaim.coordinates;
+        
+        if (coords && coords.coordinates && coords.coordinates.length >= 2) {
+          const [lng, lat] = coords.coordinates;
+          console.log(`🤖 Triggering AI processing for claim ${newClaim.id} at coordinates [${lat}, ${lng}]`);
+          
+          // Import aiProcessor here to avoid circular dependencies
+          const { aiProcessor } = await import('./services/aiProcessor');
+          
+          // Run AI processing in background - don't await to avoid blocking claim creation
+          setImmediate(async () => {
+            try {
+              await aiProcessor.detectAssetsAtCoordinates(lat, lng, newClaim.villageId || undefined);
+              
+              // Calculate basic confidence score based on coordinate analysis
+              const baseConfidence = 75; // Base score for manual entry with coordinates
+              await this.updateClaim(newClaim.id, { aiConfidence: baseConfidence.toString() });
+              console.log(`✅ AI processing completed for claim ${newClaim.id} with confidence ${baseConfidence}%`);
+            } catch (error) {
+              console.warn(`⚠️ AI processing failed for claim ${newClaim.id}:`, error);
+              // Set a lower confidence for failed AI processing
+              await this.updateClaim(newClaim.id, { aiConfidence: "50" });
+            }
+          });
+        }
+      } catch (error) {
+        console.warn('Error parsing coordinates for AI processing:', error);
+      }
+    }
+    
     return newClaim;
   }
 
