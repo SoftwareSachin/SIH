@@ -101,7 +101,15 @@ export function VerificationWorkflowPage() {
                       <Badge className={getStatusColor(claim.status)}>
                         {claim.status}
                       </Badge>
-                      <Button variant="outline" size="sm" data-testid={`button-verify-${claim.claimId}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectClaim(claim.id);
+                        }}
+                        data-testid={`button-verify-${claim.claimId}`}
+                      >
                         Start Verification
                       </Button>
                     </div>
