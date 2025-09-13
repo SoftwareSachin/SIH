@@ -970,6 +970,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transformedBody.aiConfidence = req.body.aiConfidence.toString();
       }
       
+      // Validate and handle villageId if present
+      if (transformedBody.villageId) {
+        try {
+          const village = await storage.getVillageById(transformedBody.villageId);
+          if (!village) {
+            // Village doesn't exist, remove villageId to avoid foreign key constraint
+            delete transformedBody.villageId;
+          }
+        } catch (error) {
+          // If there's an error checking the village, remove villageId
+          delete transformedBody.villageId;
+        }
+      }
+      
       const claimData = insertClaimSchema.parse(transformedBody);
       
       // Generate claim ID without user dependency
