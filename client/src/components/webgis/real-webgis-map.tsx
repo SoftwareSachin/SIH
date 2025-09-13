@@ -229,7 +229,7 @@ export default function RealWebGISMap() {
       map.remove();
       mapInstance.current = null;
     };
-  }, []);
+  }, [spatialQueryMode, bufferDistance, classificationMode]); // Added dependencies so click handler updates
 
   // Update basemap when selection changes
   useEffect(() => {
