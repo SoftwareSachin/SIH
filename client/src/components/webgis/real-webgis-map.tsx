@@ -942,8 +942,13 @@ export default function RealWebGISMap() {
 
   // Drawing tools functionality
   const startDrawing = (mode: 'polygon' | 'line' | 'point' | 'rectangle' | 'circle') => {
-    if (!mapInstance.current || !drawingLayerRef.current) return;
+    console.log(`✏️ Start drawing ${mode} button clicked`);
+    if (!mapInstance.current || !drawingLayerRef.current) {
+      console.error('❌ Map instance or drawing layer not available');
+      return;
+    }
     
+    console.log(`✅ Starting ${mode} drawing mode`);
     setDrawingMode(mode);
     const map = mapInstance.current;
     
@@ -1032,8 +1037,13 @@ export default function RealWebGISMap() {
 
   // Measurement tools
   const startMeasurement = (mode: 'distance' | 'area') => {
-    if (!mapInstance.current || !measurementLayerRef.current) return;
+    console.log(`📏 Start ${mode} measurement button clicked`);
+    if (!mapInstance.current || !measurementLayerRef.current) {
+      console.error('❌ Map instance or measurement layer not available');
+      return;
+    }
     
+    console.log(`✅ Starting ${mode} measurement mode`);
     setMeasurementMode(mode);
     const map = mapInstance.current;
     
@@ -1157,8 +1167,15 @@ export default function RealWebGISMap() {
 
   // Clear drawing layers
   const clearDrawings = () => {
-    drawingLayerRef.current?.clearLayers();
-    measurementLayerRef.current?.clearLayers();
+    console.log('🗑️ Clear drawings button clicked');
+    if (drawingLayerRef.current) {
+      drawingLayerRef.current.clearLayers();
+      console.log('✅ Drawing layers cleared successfully');
+    }
+    if (measurementLayerRef.current) {
+      measurementLayerRef.current.clearLayers();
+      console.log('✅ Measurement layers cleared successfully');
+    }
   };
 
   const zoomIn = () => mapInstance.current?.zoomIn();
@@ -1539,30 +1556,33 @@ export default function RealWebGISMap() {
         </div>
         
         {/* Drawing Tools */}
-        <div className="mb-6 space-y-3">
+        <div className="mb-6 space-y-3 pointer-events-auto" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
           <h4 className="text-sm font-medium">Drawing Tools</h4>
           <div className="grid grid-cols-3 gap-2">
             <Button
+              type="button"
               variant={drawingMode === 'point' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => startDrawing('point')}
-              className="text-xs"
+              onClick={(e) => { e.stopPropagation(); startDrawing('point'); }}
+              className="text-xs pointer-events-auto"
             >
               <MapPin className="h-4 w-4" />
             </Button>
             <Button
+              type="button"
               variant={drawingMode === 'polygon' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => startDrawing('polygon')}
-              className="text-xs"
+              onClick={(e) => { e.stopPropagation(); startDrawing('polygon'); }}
+              className="text-xs pointer-events-auto"
             >
               <Edit3 className="h-4 w-4" />
             </Button>
             <Button
+              type="button"
               variant="outline"
               size="sm"
-              onClick={clearDrawings}
-              className="text-xs"
+              onClick={(e) => { e.stopPropagation(); clearDrawings(); }}
+              className="text-xs pointer-events-auto"
             >
               Clear
             </Button>
@@ -1575,23 +1595,25 @@ export default function RealWebGISMap() {
         </div>
         
         {/* Measurement Tools */}
-        <div className="mb-6 space-y-3">
+        <div className="mb-6 space-y-3 pointer-events-auto" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
           <h4 className="text-sm font-medium">Measurement</h4>
           <div className="grid grid-cols-2 gap-2">
             <Button
+              type="button"
               variant={measurementMode === 'distance' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => startMeasurement('distance')}
-              className="text-xs"
+              onClick={(e) => { e.stopPropagation(); startMeasurement('distance'); }}
+              className="text-xs pointer-events-auto"
             >
               <Ruler className="h-4 w-4 mr-1" />
               Distance
             </Button>
             <Button
+              type="button"
               variant={measurementMode === 'area' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => startMeasurement('area')}
-              className="text-xs"
+              onClick={(e) => { e.stopPropagation(); startMeasurement('area'); }}
+              className="text-xs pointer-events-auto"
             >
               <Edit3 className="h-4 w-4 mr-1" />
               Area
