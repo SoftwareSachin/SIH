@@ -133,16 +133,16 @@ export default function DecisionSupport() {
                   ) : (
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">
-                        🏘️ {villages.length} villages available for analysis
+                        {villages.length} villages available for analysis
                       </p>
                       <Select value={selectedVillage} onValueChange={setSelectedVillage}>
                         <SelectTrigger className="w-full border-2 border-blue-200 focus:border-blue-400">
-                          <SelectValue placeholder="👆 Click here to select a village" />
+                          <SelectValue placeholder="Click here to select a village" />
                         </SelectTrigger>
                         <SelectContent>
                           {villages.map((village: Village) => (
                             <SelectItem key={village.id} value={village.id}>
-                              📍 {village.name}
+                              {village.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
