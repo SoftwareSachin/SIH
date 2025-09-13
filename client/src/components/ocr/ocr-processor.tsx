@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Brain, Eye, RefreshCw } from "lucide-react";
+import { Upload, FileText, Settings, RefreshCw, CheckCircle, AlertCircle, Info } from "lucide-react";
 
 export default function OCRProcessor() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -113,23 +113,17 @@ export default function OCRProcessor() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Eye className="h-5 w-5" />
-            <span>Real OCR Testing</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Service Status */}
-          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+      {/* Service Health Status */}
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <CardHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-primary/10 rounded-full">
-                <Brain className="h-4 w-4 text-primary" />
+              <div className="h-10 w-10 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                <Settings className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm font-medium">OCR Service Status</p>
-                <p className="text-xs text-muted-foreground">Real-time FRA document processing</p>
+                <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">OCR Service Health</CardTitle>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Document processing service status</p>
               </div>
             </div>
             <Button 
@@ -137,192 +131,264 @@ export default function OCRProcessor() {
               size="sm" 
               onClick={testOCRService}
               disabled={isProcessing}
+              className="h-9 px-4"
             >
               {isProcessing ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
-              Test Service
+              Test Connection
             </Button>
           </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Service Online</span>
+            </div>
+            <div className="text-gray-400">•</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Multi-language processing enabled</div>
+            <div className="text-gray-400">•</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">FRA document optimized</div>
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* File Upload */}
-          <div className="space-y-4">
+      {/* Document Processing */}
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <CardHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="h-10 w-10 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+              <FileText className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            </div>
             <div>
-              <label htmlFor="document-upload" className="text-sm font-medium mb-2 block">
-                Upload Document for OCR Testing
+              <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Document Processing</CardTitle>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Upload and analyze documents with OCR</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="document-upload" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Select Document
               </label>
-              <div className="flex items-center space-x-4">
-                <Input
-                  id="document-upload"
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg"
-                  onChange={handleFileSelect}
-                  className="flex-1"
-                />
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                <div className="lg:col-span-3">
+                  <Input
+                    id="document-upload"
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={handleFileSelect}
+                    className="h-10"
+                  />
+                </div>
                 <Button 
                   onClick={processDocument}
                   disabled={!selectedFile || isProcessing}
-                  className="min-w-[120px]"
+                  className="h-10"
                 >
                   {isProcessing ? (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
+                      Processing
                     </>
                   ) : (
                     <>
                       <FileText className="h-4 w-4 mr-2" />
-                      Process OCR
+                      Start Processing
                     </>
                   )}
                 </Button>
               </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Supported formats: PDF, PNG, JPG, JPEG • Maximum file size: 10MB
+              </p>
             </div>
 
-            {/* Upload Progress */}
+            {/* Processing Progress */}
             {isProcessing && uploadProgress > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Processing document...</span>
-                  <span>{uploadProgress}%</span>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center space-x-2">
+                    <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Processing document</span>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{uploadProgress}%</span>
                 </div>
-                <Progress value={uploadProgress} />
+                <Progress value={uploadProgress} className="h-2" />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Analyzing content and extracting text...
+                </p>
               </div>
             )}
 
-            {/* Selected File Info */}
-            {selectedFile && (
-              <div className="p-3 bg-accent/20 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <Upload className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-medium">{selectedFile.name}</span>
-                  <Badge variant="secondary">
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+            {/* File Information */}
+            {selectedFile && !isProcessing && (
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="h-8 w-8 bg-green-50 dark:bg-green-900/20 rounded-md flex items-center justify-center">
+                      <Upload className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedFile.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • Ready for processing
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedFile.type.split('/')[1].toUpperCase()}
                   </Badge>
                 </div>
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
 
-          {/* OCR Results */}
-          {ocrResult && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {ocrResult.serviceTest ? 'Service Test Results' : 'OCR Results'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+      {/* Processing Results */}
+      {ocrResult && (
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
+            <div className="flex items-center space-x-3">
+              <div className="h-10 w-10 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
                 {ocrResult.error ? (
-                  <div className="p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-red-800 dark:text-red-200 text-sm">{ocrResult.error}</p>
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                ) : (
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                )}
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+                  {ocrResult.serviceTest ? 'Service Diagnostics' : 'Processing Results'}
+                </CardTitle>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {ocrResult.error ? 'Processing failed' : 'Analysis completed successfully'}
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            {ocrResult.error ? (
+              <div className="border border-red-200 dark:border-red-800 rounded-lg p-4 bg-red-50 dark:bg-red-900/20">
+                <div className="flex items-start space-x-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-1">Processing Error</h4>
+                    <p className="text-sm text-red-700 dark:text-red-300">{ocrResult.error}</p>
                   </div>
-                ) : ocrResult.serviceTest ? (
+                </div>
+              </div>
+            ) : ocrResult.serviceTest ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Service Status:</span>
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</span>
                       <Badge variant={ocrResult.status === 'healthy' ? 'default' : 'destructive'}>
                         {ocrResult.status || 'Unknown'}
                       </Badge>
                     </div>
                     {ocrResult.workersActive && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Active Workers:</span>
-                        <span className="text-sm">{ocrResult.workersActive}</span>
-                      </div>
-                    )}
-                    {ocrResult.capabilities && (
-                      <div className="space-y-2">
-                        <span className="text-sm font-medium">Capabilities:</span>
-                        <div className="flex flex-wrap gap-2">
-                          {ocrResult.capabilities.map((cap: string, idx: number) => (
-                            <Badge key={idx} variant="outline">{cap}</Badge>
-                          ))}
-                        </div>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Active Workers</span>
+                        <span className="text-sm text-gray-900 dark:text-white font-medium">{ocrResult.workersActive}</span>
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Confidence Score */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Confidence Score:</span>
-                      <Badge variant={(ocrResult.confidence || 0) > 80 ? 'default' : (ocrResult.confidence || 0) > 60 ? 'secondary' : 'destructive'}>
-{ocrResult.confidence !== undefined && ocrResult.confidence !== null && !isNaN(Number(ocrResult.confidence))
-                          ? `${Math.round(Number(ocrResult.confidence))}%`
-                          : 'Processing...'}
-                      </Badge>
+                  {ocrResult.capabilities && (
+                    <div className="space-y-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Service Capabilities</span>
+                      <div className="flex flex-wrap gap-2">
+                        {ocrResult.capabilities.map((cap: string, idx: number) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {cap}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-
-                    {/* Language Detection */}
-                    {ocrResult.language && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Detected Language:</span>
-                        <Badge variant="outline">{ocrResult.language}</Badge>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Processing Summary */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                      Analysis Summary
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Confidence Score</span>
+                        <Badge variant={(ocrResult.confidence || 0) > 80 ? 'default' : (ocrResult.confidence || 0) > 60 ? 'secondary' : 'destructive'}>
+                          {ocrResult.confidence !== undefined && ocrResult.confidence !== null && !isNaN(Number(ocrResult.confidence))
+                            ? `${Math.round(Number(ocrResult.confidence))}%`
+                            : '—'}
+                        </Badge>
                       </div>
-                    )}
+                      {ocrResult.language && (
+                        <div className="flex items-center justify-between py-2">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Language</span>
+                          <Badge variant="outline">{ocrResult.language}</Badge>
+                        </div>
+                      )}
+                      {ocrResult.metadata?.processingTime && (
+                        <div className="flex items-center justify-between py-2">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Processing Time</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {ocrResult.metadata.processingTime}ms
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                    {/* Extracted Text */}
-                    {ocrResult.text && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Extracted Text:</label>
-                        <Textarea
-                          value={ocrResult.text}
-                          readOnly
-                          className="min-h-[200px] font-mono text-sm"
-                          placeholder="No text extracted"
-                        />
-                      </div>
-                    )}
-
-                    {/* Entities */}
-                    {ocrResult.entities && Object.keys(ocrResult.entities).length > 0 && (
+                  {/* Extracted Entities */}
+                  {ocrResult.entities && Object.keys(ocrResult.entities).length > 0 && (
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                        Extracted Data
+                      </h4>
                       <div className="space-y-3">
-                        <span className="text-sm font-medium">Extracted Entities:</span>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {Object.entries(ocrResult.entities).map(([key, value]: [string, any]) => (
-                            <div key={key} className="p-3 bg-muted rounded-lg">
-                              <div className="text-xs text-muted-foreground uppercase tracking-wide">
-                                {key.replace(/_/g, ' ')}
-                              </div>
-                              <div className="text-sm font-medium mt-1">
-                                {Array.isArray(value) ? value.join(', ') : String(value)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        {Object.entries(ocrResult.entities).slice(0, 6).map(([key, value]: [string, any]) => (
+                          <div key={key} className="flex items-center justify-between py-2">
+                            <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                              {key.replace(/_/g, ' ')}
+                            </span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white max-w-[200px] truncate">
+                              {Array.isArray(value) ? value.join(', ') : String(value)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
+                </div>
 
-                    {/* Processing Metadata */}
-                    {ocrResult.metadata && (
-                      <div className="space-y-2">
-                        <span className="text-sm font-medium">Processing Details:</span>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {ocrResult.metadata.processingTime && (
-                            <div>Processing Time: {ocrResult.metadata.processingTime}ms</div>
-                          )}
-                          {ocrResult.metadata.ocrMethod && (
-                            <div>OCR Method: {ocrResult.metadata.ocrMethod}</div>
-                          )}
-                          {ocrResult.metadata.imageQuality && (
-                            <div>Image Quality: {ocrResult.metadata.imageQuality}</div>
-                          )}
-                          {ocrResult.metadata.pageCount && (
-                            <div>Pages: {ocrResult.metadata.pageCount}</div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                {/* Full Text Output */}
+                {ocrResult.text && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                      Extracted Text
+                    </h4>
+                    <Textarea
+                      value={ocrResult.text}
+                      readOnly
+                      className="min-h-[200px] font-mono text-sm bg-gray-50 dark:bg-gray-900"
+                      placeholder="No text content extracted"
+                    />
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
