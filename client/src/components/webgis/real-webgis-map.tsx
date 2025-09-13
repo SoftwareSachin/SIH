@@ -210,8 +210,9 @@ export default function RealWebGISMap() {
         queryMarker.bindPopup(`
           <div>
             <h3>Spatial Query Results</h3>
-            <p>Found ${results.length} features within ${bufferDistance}m</p>
+            <p>Found ${results.length} features within ${(bufferDistance/1000).toFixed(1)}km (${bufferDistance}m)</p>
             <p><strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+            <p><strong>Search radius:</strong> ${(bufferDistance/1000).toFixed(1)}km</p>
           </div>
         `).openPopup();
         
@@ -747,9 +748,11 @@ export default function RealWebGISMap() {
 
   // Enhanced spatial query with buffer zones
   const performSpatialQuery = (lat: number, lng: number, radiusKm: number = 5) => {
+    console.log('🔍 performSpatialQuery called with:', { lat, lng, radiusKm });
     const results: any[] = [];
     
     const villagesData = Array.isArray(villages) ? villages : [];
+    console.log('📍 Villages data:', villagesData.length, 'villages loaded');
     if (villagesData.length > 0) {
       villagesData.forEach((village: any) => {
         if (village.latitude && village.longitude) {
