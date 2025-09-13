@@ -20,12 +20,13 @@ interface Scheme {
 }
 
 interface Recommendation {
-  scheme: Scheme;
+  schemeId: string;
+  schemeName: string;
+  priority: 'high' | 'medium' | 'low';
   eligibilityScore: number;
-  matchingCriteria: string[];
-  reason: string;
-  guidance: string;
-  estimatedBenefit: string;
+  estimatedBenefit: number;
+  rationale: string;
+  requirements: string[];
 }
 
 export default function DSSPage() {
@@ -51,7 +52,7 @@ export default function DSSPage() {
       }
       
       const data = await response.json();
-      setRecommendations(data.recommendations || []);
+      setRecommendations(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -211,37 +212,37 @@ export default function DSSPage() {
           </div>
           <div className="space-y-6">
             {recommendations.map((rec, index) => (
-              <Card key={rec.scheme.id} className="border border-green-200 bg-green-50/30 shadow-sm" data-testid={`recommendation-${index}`}>
+              <Card key={rec.schemeId} className="border border-green-200 bg-green-50/30 shadow-sm" data-testid={`recommendation-${index}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="flex items-center gap-2">
-                          {getCategoryIcon(rec.scheme.category)}
+                          <ClipboardList className="h-4 w-4" />
                           <CardTitle className="text-xl">
-                            {rec.scheme.name}
+                            {rec.schemeName}
                           </CardTitle>
                         </div>
                         <Badge className="bg-green-100 text-green-800 border-green-200 font-semibold">
                           Match: {rec.eligibilityScore}%
                         </Badge>
+                        <Badge variant="outline" className={rec.priority === 'high' ? 'bg-red-100 text-red-800' : rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}>
+                          {rec.priority.toUpperCase()} Priority
+                        </Badge>
                       </div>
-                      <CardDescription className="text-base">
-                        {rec.scheme.description}
-                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Benefit & Ministry Info */}
+                  {/* Benefit Info */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white border border-gray-200 rounded-lg">
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-1 text-xs uppercase tracking-wide">Estimated Benefit</h4>
-                      <p className="text-lg font-bold text-green-700">{rec.estimatedBenefit}</p>
+                      <p className="text-lg font-bold text-green-700">₹{rec.estimatedBenefit.toLocaleString()}</p>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900 mb-1 text-xs uppercase tracking-wide">Implementing Ministry</h4>
-                      <p className="text-sm text-gray-700 font-medium">{rec.scheme.implementingMinistry}</p>
+                      <h4 className="font-semibold text-gray-900 mb-1 text-xs uppercase tracking-wide">Scheme ID</h4>
+                      <p className="text-sm text-gray-700 font-medium">{rec.schemeId}</p>
                     </div>
                   </div>
 
@@ -249,43 +250,20 @@ export default function DSSPage() {
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide">Eligibility Assessment</h4>
                     <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg">
-                      <p className="text-gray-700">{rec.reason}</p>
+                      <p className="text-gray-700">{rec.rationale}</p>
                     </div>
                   </div>
 
-                  {/* Application Guidance */}
+                  {/* Requirements */}
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide">Application Process</h4>
+                    <h4 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide">Required Documents & Actions</h4>
                     <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
-                      <div className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
-                        {rec.guidance}
-                      </div>
+                      <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                        {rec.requirements.map((req, reqIndex) => (
+                          <li key={reqIndex}>{req}</li>
+                        ))}
+                      </ul>
                     </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4 border-t">
-                    {rec.scheme.applicationWebsite && (
-                      <Button asChild variant="default" data-testid={`apply-btn-${index}`}>
-                        <a
-                          href={rec.scheme.applicationWebsite}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Apply Online
-                        </a>
-                      </Button>
-                    )}
-                    {rec.scheme.helplineNumber && (
-                      <Button variant="outline" asChild data-testid={`contact-btn-${index}`}>
-                        <a href={`tel:${rec.scheme.helplineNumber}`} className="flex items-center gap-2">
-                          <Phone className="h-4 w-4" />
-                          Contact: {rec.scheme.helplineNumber}
-                        </a>
-                      </Button>
-                    )}
                   </div>
                 </CardContent>
               </Card>
