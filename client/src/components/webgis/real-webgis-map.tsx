@@ -178,9 +178,12 @@ export default function RealWebGISMap() {
     }
 
     // Initialize layer groups
+    console.log('🗂️ Initializing layer groups for', layers.length, 'layers');
     layers.forEach(layer => {
+      console.log('🗂️ Creating layer reference for:', layer.id);
       layersRef.current[layer.id] = L.layerGroup().addTo(map);
     });
+    console.log('✅ Layer groups initialized:', Object.keys(layersRef.current));
     
     // Initialize drawing and measurement layers
     drawingLayerRef.current = L.layerGroup().addTo(map);
@@ -533,7 +536,15 @@ export default function RealWebGISMap() {
 
   // Load Forest Cover data
   useEffect(() => {
-    if (!mapInstance.current || !layersRef.current?.forest) return;
+    console.log('🌲 Forest layer effect triggered');
+    console.log('🌲 Forest data available:', forestCoverData.length, 'items');
+    console.log('🗺️ Map instance:', !!mapInstance.current);
+    console.log('🗂️ Layer ref forest:', !!layersRef.current?.forest);
+    
+    if (!mapInstance.current || !layersRef.current?.forest) {
+      console.log('❌ Forest layer: Missing map or layer ref');
+      return;
+    }
     
     const forestLayer = layersRef.current.forest;
     
@@ -572,6 +583,7 @@ export default function RealWebGISMap() {
       }
     });
 
+    console.log('✅ Forest layer loaded with', forestCoverData.length, 'features');
     setLayers(prev => prev.map(layer => 
       layer.id === 'forest' ? { ...layer, count: forestCoverData.length } : layer
     ));
