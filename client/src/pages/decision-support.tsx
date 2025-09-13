@@ -12,9 +12,12 @@ import { BarChart3, TrendingUp, Download, Filter, ExternalLink, FileText, AlertC
 interface Village {
   id: string;
   name: string;
+  code?: string;
   districtId: string;
-  latitude: string;
-  longitude: string;
+  latitude: number;
+  longitude: number;
+  population?: number;
+  tribalPopulation?: number;
 }
 
 interface Analytics {

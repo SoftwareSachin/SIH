@@ -299,7 +299,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllVillages(): Promise<Village[]> {
-    return db.select().from(villages).orderBy(villages.name);
+    const villageRows = await db.select().from(villages).orderBy(villages.name);
+    // Transform snake_case to camelCase for frontend compatibility
+    return villageRows.map(village => ({
+      id: village.id,
+      name: village.name,
+      code: village.code,
+      districtId: village.districtId, // Keep as districtId for frontend
+      latitude: village.latitude,
+      longitude: village.longitude,
+      boundary: village.boundary,
+      population: village.population,
+      tribalPopulation: village.tribalPopulation,
+      createdAt: village.createdAt
+    }));
   }
 
   async getVillageById(villageId: string): Promise<Village | undefined> {
