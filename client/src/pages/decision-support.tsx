@@ -14,8 +14,8 @@ interface Village {
   name: string;
   code?: string;
   districtId: string;
-  latitude: number;
-  longitude: number;
+  latitude: string;
+  longitude: string;
   population?: number;
   tribalPopulation?: number;
 }
@@ -35,12 +35,12 @@ export default function DecisionSupport() {
     queryKey: ["/api/geo/villages/all"],
   });
 
-  const { data: recommendations } = useQuery({
+  const { data: recommendations } = useQuery<any>({
     queryKey: ["/api/dss/village-recommendations", selectedVillage],
     enabled: !!selectedVillage,
   });
 
-  const { data: schemes = [] } = useQuery({
+  const { data: schemes = [] } = useQuery<any[]>({
     queryKey: ["/api/dss/schemes"],
   });
 
@@ -48,7 +48,7 @@ export default function DecisionSupport() {
     queryKey: ["/api/dss/analytics"],
   });
 
-  const { data: eligibilityMatrix } = useQuery({
+  const { data: eligibilityMatrix } = useQuery<any>({
     queryKey: ["/api/dss/eligibility-matrix", selectedVillage],
     enabled: !!selectedVillage,
   });
