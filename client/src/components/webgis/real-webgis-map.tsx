@@ -582,7 +582,9 @@ export default function RealWebGISMap() {
   };
 
   const searchOnMap = async (query: string) => {
+    console.log('🔎 Performing search:', query);
     if (!query.trim()) {
+      console.log('🔎 Empty search query, clearing results');
       setSearchResults([]);
       return;
     }
@@ -1096,12 +1098,17 @@ export default function RealWebGISMap() {
 
   // Coordinate search functionality
   const searchByCoordinates = () => {
-    if (!coordinateSearch.trim() || !mapInstance.current) return;
+    console.log('📍 Starting coordinate search:', coordinateSearch);
+    if (!coordinateSearch.trim() || !mapInstance.current) {
+      console.error('❌ Invalid coordinates or map not available:', coordinateSearch);
+      return;
+    }
     
     try {
       // Parse coordinates (lat,lng or lng,lat)
       const coords = coordinateSearch.split(',').map(c => parseFloat(c.trim()));
       if (coords.length !== 2 || coords.some(isNaN)) {
+        console.error('❌ Invalid coordinate format:', coords);
         alert('Please enter valid coordinates in format: latitude,longitude');
         return;
       }
@@ -1115,6 +1122,7 @@ export default function RealWebGISMap() {
       }
       
       // Fly to location and add marker
+      console.log(`✅ Navigating to coordinates: [${lat}, ${lng}]`);
       flyToLocation(lat, lng, 15);
       
       const marker = L.marker([lat, lng], {
@@ -1446,9 +1454,10 @@ export default function RealWebGISMap() {
             <input
               type="text"
               placeholder="Search claims, villages..."
-              className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 pointer-events-auto"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { console.log('🔍 Search query changed:', e.target.value); setSearchQuery(e.target.value); }}
+              onKeyPress={(e) => { if (e.key === 'Enter') { console.log('🔍 Search triggered:', searchQuery); searchOnMap(searchQuery); } }}
               data-testid="input-map-search"
             />
           </div>
@@ -1489,10 +1498,16 @@ export default function RealWebGISMap() {
               <Input
                 placeholder="Lat,Lng coordinates"
                 value={coordinateSearch}
-                onChange={(e) => setCoordinateSearch(e.target.value)}
-                className="flex-1 text-xs"
+                onChange={(e) => { console.log('📍 Coordinates changed:', e.target.value); setCoordinateSearch(e.target.value); }}
+                onKeyPress={(e) => { if (e.key === 'Enter') { console.log('📍 Coordinate search triggered:', coordinateSearch); searchByCoordinates(); } }}
+                className="flex-1 text-xs pointer-events-auto"
               />
-              <Button onClick={searchByCoordinates} size="sm">
+              <Button 
+                type="button" 
+                onClick={(e) => { e.stopPropagation(); console.log('📍 Coordinate search button clicked'); searchByCoordinates(); }} 
+                size="sm"
+                className="pointer-events-auto"
+              >
                 <MapPin className="h-4 w-4" />
               </Button>
             </div>
