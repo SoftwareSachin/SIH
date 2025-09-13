@@ -537,10 +537,12 @@ export default function RealWebGISMap() {
   }, [searchQuery, villages, claims]);
 
   const toggleLayer = (layerId: string) => {
+    console.log('👁️ Toggle layer clicked:', layerId);
     if (!mapInstance.current || !layersRef.current[layerId]) return;
 
     const layer = layersRef.current[layerId];
     const isVisible = mapInstance.current.hasLayer(layer);
+    console.log('🗺️ Layer', layerId, 'current visibility:', isVisible, '-> toggling to:', !isVisible);
 
     if (isVisible) {
       mapInstance.current.removeLayer(layer);
@@ -551,23 +553,26 @@ export default function RealWebGISMap() {
     setLayers(prev => prev.map(l => 
       l.id === layerId ? { ...l, visible: !isVisible } : l
     ));
+    console.log('✅ Layer', layerId, 'visibility updated successfully');
   };
 
   const updateLayerOpacity = (layerId: string, opacity: number) => {
+    console.log('🎛️ Opacity slider changed:', layerId, 'to', opacity + '%');
     setLayers(prev => prev.map(l => 
       l.id === layerId ? { ...l, opacity } : l
     ));
     
     // Trigger re-render of the layer with new opacity
     if (layerId === 'villages' && villages) {
-      // Re-trigger villages effect
+      console.log('🏘️ Re-rendering villages with new opacity:', opacity + '%');
       const event = new CustomEvent('villagesUpdate');
       window.dispatchEvent(event);
     } else if (layerId === 'assets' && assets) {
-      // Re-trigger assets effect
+      console.log('🏗️ Re-rendering assets with new opacity:', opacity + '%');
       const event = new CustomEvent('assetsUpdate');
       window.dispatchEvent(event);
     }
+    console.log('✅ Opacity update complete for', layerId);
   };
 
   const moveLayerUp = (layerId: string) => {
