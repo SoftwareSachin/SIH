@@ -1627,7 +1627,7 @@ export default function RealWebGISMap() {
         </div>
         
         {/* AI Land-Use Classification */}
-        <div className="mb-6 space-y-3">
+        <div className="mb-6 space-y-3 pointer-events-auto" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
           <h4 className="text-sm font-medium">AI Land-Use Classification</h4>
           
           {/* Classification Mode Toggle */}
@@ -1636,7 +1636,7 @@ export default function RealWebGISMap() {
               <span className="text-xs font-medium">Single Point Mode</span>
               <Switch
                 checked={classificationMode === 'single'}
-                onCheckedChange={(checked) => setClassificationMode(checked ? 'single' : null)}
+                onCheckedChange={(checked) => { console.log('🤖 AI Classification mode toggled:', checked ? 'single' : 'none'); setClassificationMode(checked ? 'single' : null); }}
                 disabled={isClassifying}
               />
             </div>
@@ -1651,9 +1651,12 @@ export default function RealWebGISMap() {
           {/* Region Classification */}
           <div className="space-y-2">
             <Button
+              type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('🔍 Select Current View button clicked');
                 if (mapInstance.current) {
                   const bounds = mapInstance.current.getBounds();
                   setSelectedRegion({
@@ -1662,10 +1665,11 @@ export default function RealWebGISMap() {
                     east: bounds.getEast(),
                     west: bounds.getWest()
                   });
+                  console.log('✅ Region selected:', bounds);
                 }
               }}
               disabled={isClassifying}
-              className="w-full text-xs"
+              className="w-full text-xs pointer-events-auto"
             >
               <Satellite className="h-4 w-4 mr-1" />
               Select Current View
@@ -1673,11 +1677,12 @@ export default function RealWebGISMap() {
             
             {selectedRegion && (
               <Button
+                type="button"
                 variant="default"
                 size="sm"
-                onClick={performRegionClassification}
+                onClick={(e) => { e.stopPropagation(); console.log('🌍 Classify Region button clicked'); performRegionClassification(); }}
                 disabled={isClassifying}
-                className="w-full text-xs"
+                className="w-full text-xs pointer-events-auto"
               >
                 {isClassifying ? (
                   <>
