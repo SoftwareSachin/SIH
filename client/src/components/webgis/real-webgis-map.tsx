@@ -187,8 +187,15 @@ export default function RealWebGISMap() {
     map.on('click', async (e) => {
       if (spatialQueryMode) {
         const { lat, lng } = e.latlng;
-        const results = performSpatialQuery(lat, lng, 5); // 5km radius
+        console.log('🎯 Map clicked in spatial query mode at:', lat, lng);
+        
+        // Perform buffer analysis with the orange circle
+        performBufferAnalysis(lat, lng);
+        
+        // Also perform spatial query for results
+        const results = performSpatialQuery(lat, lng, bufferDistance / 1000); // Use buffer distance in km
         setSpatialQueryResults(results);
+        console.log('📊 Spatial query results:', results.length, 'features found');
         
         // Add a temporary marker at click location
         const queryMarker = L.marker([lat, lng], {
@@ -203,7 +210,7 @@ export default function RealWebGISMap() {
         queryMarker.bindPopup(`
           <div>
             <h3>Spatial Query Results</h3>
-            <p>Found ${results.length} features within 5km</p>
+            <p>Found ${results.length} features within ${bufferDistance}m</p>
             <p><strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
           </div>
         `).openPopup();
