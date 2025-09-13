@@ -282,13 +282,13 @@ export const VILLAGES_BY_DISTRICT: Record<string, Village[]> = {
     }
   ],
 
-  // Shahdol district (MP) - ID: "mp-shahdol"
-  "mp-shahdol": [
+  // Shahdol district (MP) - ID: "de8220a9-7b93-4b15-8211-72f4b67469b6"
+  "de8220a9-7b93-4b15-8211-72f4b67469b6": [
     {
       id: "vill-bamhni",
       name: "Bamhni",
       code: "BAMH",
-      districtId: "mp-shahdol",
+      districtId: "de8220a9-7b93-4b15-8211-72f4b67469b6",
       districtName: "Shahdol",
       stateId: "MP",
       stateName: "Madhya Pradesh",
@@ -301,7 +301,7 @@ export const VILLAGES_BY_DISTRICT: Record<string, Village[]> = {
       id: "vill-beohari",
       name: "Beohari",
       code: "BEOH",
-      districtId: "mp-shahdol",
+      districtId: "de8220a9-7b93-4b15-8211-72f4b67469b6",
       districtName: "Shahdol",
       stateId: "MP",
       stateName: "Madhya Pradesh",
@@ -314,7 +314,7 @@ export const VILLAGES_BY_DISTRICT: Record<string, Village[]> = {
       id: "vill-burhar",
       name: "Burhar",
       code: "BURH",
-      districtId: "mp-shahdol",
+      districtId: "de8220a9-7b93-4b15-8211-72f4b67469b6",
       districtName: "Shahdol",
       stateId: "MP",
       stateName: "Madhya Pradesh",
@@ -327,7 +327,7 @@ export const VILLAGES_BY_DISTRICT: Record<string, Village[]> = {
       id: "vill-jaisinghnagar",
       name: "Jaisinghnagar",
       code: "JSGR",
-      districtId: "mp-shahdol",
+      districtId: "de8220a9-7b93-4b15-8211-72f4b67469b6",
       districtName: "Shahdol",
       stateId: "MP",
       stateName: "Madhya Pradesh",
@@ -340,7 +340,7 @@ export const VILLAGES_BY_DISTRICT: Record<string, Village[]> = {
       id: "vill-sohagpur",
       name: "Sohagpur",
       code: "SOHG",
-      districtId: "mp-shahdol",
+      districtId: "de8220a9-7b93-4b15-8211-72f4b67469b6",
       districtName: "Shahdol",
       stateId: "MP",
       stateName: "Madhya Pradesh",
