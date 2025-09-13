@@ -1407,7 +1407,7 @@ export default function RealWebGISMap() {
       </div>
 
       {/* Enhanced Control Panel */}
-      <div className="w-80 bg-card border-l border-border p-4 overflow-y-auto">
+      <div className="w-80 bg-card border-l border-border p-4 overflow-y-auto pointer-events-auto" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 mb-4">
           <Globe className="h-5 w-5" />
           <h3 className="font-semibold">WebGIS Controls</h3>
@@ -1416,8 +1416,8 @@ export default function RealWebGISMap() {
         {/* Basemap Selector */}
         <div className="mb-4">
           <h4 className="text-sm font-medium mb-2">Basemap</h4>
-          <Select value={currentBasemap} onValueChange={setCurrentBasemap}>
-            <SelectTrigger className="w-full">
+          <Select value={currentBasemap} onValueChange={(value) => { console.log('🗺️ Basemap changed to:', value); setCurrentBasemap(value); }}>
+            <SelectTrigger className="w-full pointer-events-auto" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
