@@ -372,7 +372,7 @@ export default function DocumentUpload() {
                             <span>AI processing document... This may take 1-3 minutes</span>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            ⚡ Converting text using OCR • 🧠 Extracting entities • 📍 Detecting locations
+                            Converting text using OCR • Extracting entities • Detecting locations
                           </div>
                         </div>
                       )}
