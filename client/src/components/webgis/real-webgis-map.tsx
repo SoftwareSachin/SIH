@@ -1560,7 +1560,7 @@ export default function RealWebGISMap() {
         
         {/* AI Land-Use Classification */}
         <div className="mb-6 space-y-3">
-          <h4 className="text-sm font-medium">🤖 AI Land-Use Classification</h4>
+          <h4 className="text-sm font-medium">AI Land-Use Classification</h4>
           
           {/* Classification Mode Toggle */}
           <div className="space-y-2">
