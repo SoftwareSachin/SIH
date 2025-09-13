@@ -447,16 +447,21 @@ export class DatabaseStorage implements IStorage {
           // Run AI processing in background - don't await to avoid blocking claim creation
           setImmediate(async () => {
             try {
-              await aiProcessor.detectAssetsAtCoordinates(lat, lng, newClaim.villageId || undefined);
+              // Run real land use classification using AI models
+              const { landUseClassificationService } = await import('./services/landUseClassificationService');
+              const classificationResult = await landUseClassificationService.classifyLandUse({ lat, lng });
               
-              // Calculate basic confidence score based on coordinate analysis
-              const baseConfidence = 75; // Base score for manual entry with coordinates
-              await this.updateClaim(newClaim.id, { aiConfidence: baseConfidence.toString() });
-              console.log(`✅ AI processing completed for claim ${newClaim.id} with confidence ${baseConfidence}%`);
+              // Calculate genuine confidence based on real AI classification
+              const genuineConfidence = Math.round(classificationResult.confidence * 100);
+              await this.updateClaim(newClaim.id, { aiConfidence: genuineConfidence.toString() });
+              console.log(`✅ Genuine AI processing completed for claim ${newClaim.id} with real confidence ${genuineConfidence}% (Agriculture: ${(classificationResult.classifications.agriculture * 100).toFixed(1)}%, Forest: ${(classificationResult.classifications.forest * 100).toFixed(1)}%, Water: ${(classificationResult.classifications.water * 100).toFixed(1)}%, Built-up: ${(classificationResult.classifications.builtUp * 100).toFixed(1)}%)`);
+              
+              // Also run asset detection
+              await aiProcessor.detectAssetsAtCoordinates(lat, lng, newClaim.villageId || undefined);
             } catch (error) {
               console.warn(`⚠️ AI processing failed for claim ${newClaim.id}:`, error);
               // Set a lower confidence for failed AI processing
-              await this.updateClaim(newClaim.id, { aiConfidence: "50" });
+              await this.updateClaim(newClaim.id, { aiConfidence: "45" });
             }
           });
         }
