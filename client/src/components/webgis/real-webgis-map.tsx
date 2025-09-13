@@ -1276,9 +1276,36 @@ export default function RealWebGISMap() {
     } else if (format === 'geojson') {
       // Export as GeoJSON
       const features: any[] = [];
+      console.log('📊 Starting GeoJSON export...');
+      
+      // Add villages as features (we have real village data)
+      const villagesData = Array.isArray(villages) ? villages : [];
+      console.log('📍 Adding villages to export:', villagesData.length, 'villages');
+      villagesData.forEach((village: any) => {
+        if (village.latitude && village.longitude) {
+          features.push({
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [parseFloat(village.longitude), parseFloat(village.latitude)]
+            },
+            properties: {
+              type: 'village',
+              id: village.id,
+              name: village.name,
+              code: village.code,
+              districtName: village.districtName,
+              stateName: village.stateName,
+              population: village.population,
+              tribalPopulation: village.tribalPopulation
+            }
+          });
+        }
+      });
       
       // Add claims as features
       const claimsData = Array.isArray(claims) ? claims : (claims && typeof claims === 'object' && 'data' in claims) ? (claims as any).data || [] : [];
+      console.log('📋 Adding claims to export:', claimsData.length, 'claims');
       claimsData.forEach((claim: any) => {
         if (claim.latitude && claim.longitude) {
           features.push({
@@ -1288,6 +1315,7 @@ export default function RealWebGISMap() {
               coordinates: [parseFloat(claim.longitude), parseFloat(claim.latitude)]
             },
             properties: {
+              type: 'claim',
               claimId: claim.claimId,
               claimantName: claim.claimantName,
               claimType: claim.claimType,
@@ -1298,14 +1326,54 @@ export default function RealWebGISMap() {
         }
       });
       
+      // Add assets as features  
+      const assetsData = Array.isArray(assets) ? assets : [];
+      console.log('🏗️ Adding assets to export:', assetsData.length, 'assets');
+      assetsData.forEach((asset: any) => {
+        if (asset.coordinates?.coordinates) {
+          const [assetLng, assetLat] = asset.coordinates.coordinates;
+          features.push({
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [assetLng, assetLat]
+            },
+            properties: {
+              type: 'asset',
+              id: asset.id,
+              assetType: asset.assetType,
+              description: asset.description,
+              confidence: asset.confidence,
+              detectedAt: asset.detectedAt
+            }
+          });
+        }
+      });
+      
       const geojson = {
         type: 'FeatureCollection',
-        features
+        features,
+        metadata: {
+          exportedAt: new Date().toISOString(),
+          totalFeatures: features.length,
+          featureTypes: {
+            villages: villagesData.length,
+            claims: claimsData.length,
+            assets: assetsData.length
+          }
+        }
       };
+      
+      console.log('✅ GeoJSON export complete:', features.length, 'total features');
+      console.log('📊 Export breakdown:', {
+        villages: villagesData.length,
+        claims: claimsData.length, 
+        assets: assetsData.length
+      });
       
       downloadFile(
         JSON.stringify(geojson, null, 2),
-        `fra-claims-${new Date().toISOString().split('T')[0]}.geojson`,
+        `fra-atlas-data-${new Date().toISOString().split('T')[0]}.geojson`,
         'application/geo+json'
       );
       
