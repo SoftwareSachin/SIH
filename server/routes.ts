@@ -1005,6 +1005,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update entire claim
+  app.put('/api/claims/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      // Validate and transform area if present
+      if (updateData.area && typeof updateData.area === 'string') {
+        updateData.area = parseFloat(updateData.area);
+      }
+      
+      const claim = await storage.updateClaim(id, updateData);
+      res.json(claim);
+    } catch (error) {
+      console.error('Claim update error:', error);
+      res.status(500).json({ message: 'Failed to update claim' });
+    }
+  });
+
   app.patch('/api/claims/:id/status', async (req: any, res) => {
     try {
       const userId = req.user.id;

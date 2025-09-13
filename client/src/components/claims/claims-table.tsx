@@ -23,6 +23,8 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [editingClaim, setEditingClaim] = useState<any>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -56,6 +58,29 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
           variant: "destructive",
         });
       }
+    },
+  });
+
+  const updateClaimMutation = useMutation({
+    mutationFn: async (updateData: { id: string; claimantName: string; area: string; status: string; notes: string }) => {
+      const { id, ...data } = updateData;
+      return apiRequest('PUT', `/api/claims/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/claims"] });
+      setEditDialogOpen(false);
+      setEditingClaim(null);
+      toast({
+        title: "Success",
+        description: "Claim updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update claim",
+        variant: "destructive",
+      });
     },
   });
 
@@ -265,12 +290,21 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
                       </Dialog>
                       
                       {/* Edit Modal */}
-                      <Dialog>
+                      <Dialog open={editDialogOpen && editingClaim?.id === claim.id} onOpenChange={(open) => {
+                        if (!open) {
+                          setEditDialogOpen(false);
+                          setEditingClaim(null);
+                        }
+                      }}>
                         <DialogTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
                             data-testid={`button-edit-${claim.id}`}
+                            onClick={() => {
+                              setEditingClaim(claim);
+                              setEditDialogOpen(true);
+                            }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -282,64 +316,85 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
                               Edit Claim - {claim.claimId || claim.id}
                             </DialogTitle>
                           </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-claimantName">Claimant Name</Label>
-                              <Input
-                                id="edit-claimantName"
-                                defaultValue={claim.claimantName || ''}
-                                placeholder="Enter claimant name"
-                              />
+                          <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const formData = new FormData(e.target as HTMLFormElement);
+                            const updateData = {
+                              id: claim.id,
+                              claimantName: formData.get('claimantName') as string,
+                              area: formData.get('area') as string,
+                              status: formData.get('status') as string,
+                              notes: formData.get('notes') as string,
+                            };
+                            updateClaimMutation.mutate(updateData);
+                          }}>
+                            <div className="grid gap-4 py-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-claimantName">Claimant Name</Label>
+                                <Input
+                                  id="edit-claimantName"
+                                  name="claimantName"
+                                  defaultValue={claim.claimantName || ''}
+                                  placeholder="Enter claimant name"
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-area">Area (acres)</Label>
+                                <Input
+                                  id="edit-area"
+                                  name="area"
+                                  defaultValue={claim.area || ''}
+                                  placeholder="Enter area in acres"
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-status">Status</Label>
+                                <Select name="status" defaultValue={claim.status}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="under_review">Under Review</SelectItem>
+                                    <SelectItem value="verified">Verified</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-notes">Notes</Label>
+                                <Textarea
+                                  id="edit-notes"
+                                  name="notes"
+                                  defaultValue={claim.notes || ''}
+                                  placeholder="Add any notes or comments"
+                                  rows={3}
+                                />
+                              </div>
+                              <div className="flex justify-end space-x-2 pt-4">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditDialogOpen(false);
+                                    setEditingClaim(null);
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  type="submit"
+                                  disabled={updateClaimMutation.isPending}
+                                >
+                                  {updateClaimMutation.isPending ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                              </div>
                             </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-area">Area (acres)</Label>
-                              <Input
-                                id="edit-area"
-                                defaultValue={claim.area || ''}
-                                placeholder="Enter area in acres"
-                                type="number"
-                                step="0.01"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-status">Status</Label>
-                              <Select defaultValue={claim.status}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending">Pending</SelectItem>
-                                  <SelectItem value="under_review">Under Review</SelectItem>
-                                  <SelectItem value="verified">Verified</SelectItem>
-                                  <SelectItem value="rejected">Rejected</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-notes">Notes</Label>
-                              <Textarea
-                                id="edit-notes"
-                                defaultValue={claim.notes || ''}
-                                placeholder="Add any notes or comments"
-                                rows={3}
-                              />
-                            </div>
-                            <div className="flex justify-end space-x-2 pt-4">
-                              <DialogTrigger asChild>
-                                <Button variant="outline">Cancel</Button>
-                              </DialogTrigger>
-                              <Button 
-                                onClick={() => {
-                                  toast({
-                                    title: "Success",
-                                    description: "Claim updated successfully!",
-                                  });
-                                }}
-                              >
-                                Save Changes
-                              </Button>
-                            </div>
-                          </div>
+                          </form>
                         </DialogContent>
                       </Dialog>
                     </div>
