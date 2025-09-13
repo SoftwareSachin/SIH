@@ -506,9 +506,9 @@ export function VerificationWorkflow({ claimId }: VerificationWorkflowProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {auditData?.auditTrail?.length > 0 ? (
+              {auditData && Array.isArray(auditData) && auditData.length > 0 ? (
                 <div className="space-y-3">
-                  {auditData.auditTrail.map((entry: AuditEntry) => (
+                  {(auditData as AuditEntry[]).map((entry: AuditEntry) => (
                     <div 
                       key={entry.id} 
                       className="flex gap-3 p-3 border border-gray-200 rounded-lg"
