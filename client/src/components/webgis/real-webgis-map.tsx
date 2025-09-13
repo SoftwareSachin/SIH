@@ -514,6 +514,11 @@ export default function RealWebGISMap() {
     return () => window.removeEventListener('assetsUpdate', handleAssetsUpdate);
   }, [assets, layers]);
 
+  // Debug effect to track searchQuery changes
+  useEffect(() => {
+    console.log('🔍 searchQuery state changed:', searchQuery);
+  }, [searchQuery]);
+
   // Handle search on map
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -583,6 +588,8 @@ export default function RealWebGISMap() {
 
   const searchOnMap = async (query: string) => {
     console.log('🔎 Performing search:', query);
+    console.log('🔎 Available villages count:', villages.length);
+    
     if (!query.trim()) {
       console.log('🔎 Empty search query, clearing results');
       setSearchResults([]);
@@ -594,12 +601,27 @@ export default function RealWebGISMap() {
       const results: any[] = [];
       
       const villagesData = Array.isArray(villages) ? villages : [];
+      console.log('🔎 Villages data available:', villagesData.length, 'villages');
+      
       if (villagesData.length > 0) {
         const matchingVillages = villagesData.filter((v: any) => 
           v.name?.toLowerCase().includes(query.toLowerCase()) ||
-          v.districtName?.toLowerCase().includes(query.toLowerCase())
+          v.districtName?.toLowerCase().includes(query.toLowerCase()) ||
+          v.stateName?.toLowerCase().includes(query.toLowerCase())
         );
+        console.log('🔎 Found matching villages:', matchingVillages.length);
         results.push(...matchingVillages.map((v: any) => ({ ...v, type: 'village' })));
+      }
+      
+      // Try external geocoding if no local results found
+      if (results.length === 0) {
+        console.log('🔎 No local results, trying external geocoding for:', query);
+        try {
+          const geocodeResults = await searchWithGeocoding(query);
+          results.push(...geocodeResults);
+        } catch (geocodeError) {
+          console.log('🔎 Geocoding failed:', geocodeError);
+        }
       }
       
       const claimsData = Array.isArray(claims) ? claims : (claims && typeof claims === 'object' && 'data' in claims) ? (claims as any).data || [] : [];
@@ -611,9 +633,33 @@ export default function RealWebGISMap() {
         results.push(...matchingClaims.map((c: any) => ({ ...c, type: 'claim' })));
       }
       
+      console.log('🔎 Total search results:', results.length);
       setSearchResults(results.slice(0, 10)); // Limit to 10 results
     } catch (error) {
       console.error('Search failed:', error);
+    }
+  };
+
+  // External geocoding function for cities/places not in our data
+  const searchWithGeocoding = async (query: string) => {
+    try {
+      // Using Nominatim (OpenStreetMap) for free geocoding
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5`);
+      if (!response.ok) return [];
+      
+      const data = await response.json();
+      return data.map((item: any) => ({
+        id: `geocode-${item.place_id}`,
+        name: item.display_name.split(',')[0],
+        latitude: parseFloat(item.lat),
+        longitude: parseFloat(item.lon),
+        type: 'geocoded',
+        displayName: item.display_name,
+        source: 'OpenStreetMap'
+      }));
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      return [];
     }
   };
 
@@ -1456,8 +1502,17 @@ export default function RealWebGISMap() {
               placeholder="Search claims, villages..."
               className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 pointer-events-auto"
               value={searchQuery}
-              onChange={(e) => { console.log('🔍 Search query changed:', e.target.value); setSearchQuery(e.target.value); }}
-              onKeyPress={(e) => { if (e.key === 'Enter') { console.log('🔍 Search triggered:', searchQuery); searchOnMap(searchQuery); } }}
+              onChange={(e) => { 
+                console.log('🔍 Search query changed:', e.target.value); 
+                setSearchQuery(e.target.value); 
+              }}
+              onKeyDown={(e) => { 
+                if (e.key === 'Enter') { 
+                  e.preventDefault();
+                  console.log('🔍 Search triggered via Enter:', searchQuery); 
+                  searchOnMap(searchQuery); 
+                } 
+              }}
               data-testid="input-map-search"
             />
           </div>
