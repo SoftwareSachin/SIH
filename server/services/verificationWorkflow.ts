@@ -83,7 +83,13 @@ class VerificationWorkflowEngine {
         throw new Error('Workflow already completed');
       }
 
-      const currentStep = workflow.steps[workflow.currentStep];
+      // Load workflow steps separately
+      const steps = await storage.getVerificationSteps(workflow.id);
+      if (!steps || steps.length === 0) {
+        throw new Error('No workflow steps found');
+      }
+
+      const currentStep = steps[workflow.currentStep];
       if (!currentStep) {
         throw new Error('No more steps to process');
       }
@@ -126,10 +132,13 @@ class VerificationWorkflowEngine {
             throw new Error(`Unknown step: ${currentStep.id}`);
         }
 
-        // Mark step as completed
-        currentStep.status = 'completed';
-        currentStep.completedAt = new Date();
-        currentStep.result = stepResult;
+        // Mark step as completed and save to database
+        await storage.updateVerificationStep(currentStep.id, {
+          status: 'completed',
+          completedAt: new Date(),
+          result: stepResult,
+          verifiedBy: userId
+        });
 
         // Create audit trail
         await this.createAuditEntry(claimId, `step_completed_${currentStep.id}`, userId, stepResult);
