@@ -33,17 +33,17 @@ export function VerificationWorkflowPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto p-6 space-y-6">
         {/* Header Section with Back Button */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setLocation('/')}
-                className="flex items-center gap-2 hover:bg-blue-50 border-blue-200 text-blue-600"
+                className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Dashboard
@@ -51,7 +51,7 @@ export function VerificationWorkflowPage() {
               <div className="h-8 w-px bg-gray-300"></div>
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-green-500 rounded-lg">
+                  <div className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg">
                     <Shield className="h-5 w-5 text-white" />
                   </div>
                   <h1 className="text-3xl font-bold text-gray-900">Verification Workflow & Audit Trails</h1>
@@ -69,7 +69,7 @@ export function VerificationWorkflowPage() {
         <Card data-testid="card-search-claim" className="shadow-sm border border-gray-200">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-gray-800">
-              <Search className="h-5 w-5 text-blue-600" />
+              <Search className="h-5 w-5" />
               Search Claim for Verification
             </CardTitle>
           </CardHeader>
@@ -81,12 +81,10 @@ export function VerificationWorkflowPage() {
                 onChange={(e) => setSearchClaimId(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearchClaim()}
                 data-testid="input-search-claim"
-                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               <Button 
                 onClick={handleSearchClaim} 
                 data-testid="button-search-claim"
-                className="bg-blue-600 hover:bg-blue-700"
               >
                 Search
               </Button>
@@ -103,7 +101,7 @@ export function VerificationWorkflowPage() {
             <CardContent>
               {isLoading ? (
                 <div className="flex items-center justify-center p-8">
-                  <Clock className="h-8 w-8 animate-spin text-blue-600" />
+                  <Clock className="h-8 w-8 animate-spin" />
                   <span className="ml-2 text-gray-600">Loading claims...</span>
                 </div>
               ) : claimsData?.length > 0 ? (
@@ -111,7 +109,7 @@ export function VerificationWorkflowPage() {
                   {claimsData.slice(0, 10).map((claim: any) => (
                     <div 
                       key={claim.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                       onClick={() => handleSelectClaim(claim.id)}
                       data-testid={`claim-item-${claim.claimId}`}
                     >
@@ -136,7 +134,6 @@ export function VerificationWorkflowPage() {
                             handleSelectClaim(claim.id);
                           }}
                           data-testid={`button-verify-${claim.claimId}`}
-                          className="hover:bg-blue-50 border-blue-200 text-blue-600"
                         >
                           Start Verification
                         </Button>
@@ -163,7 +160,6 @@ export function VerificationWorkflowPage() {
                 variant="outline" 
                 onClick={() => setLocation('/verification-workflow')}
                 data-testid="button-back-to-list"
-                className="hover:bg-blue-50 border-blue-200 text-blue-600"
               >
                 ← Back to Claims List
               </Button>
