@@ -31,9 +31,14 @@ interface Analytics {
 export default function DecisionSupport() {
   const [selectedVillage, setSelectedVillage] = useState<string>('');
 
-  const { data: villages = [] } = useQuery<Village[]>({
+  const { data: villages = [], isLoading: villagesLoading, error: villagesError } = useQuery<Village[]>({
     queryKey: ["/api/geo/villages/all"],
   });
+
+  // Debug logging
+  console.log('Villages data:', villages);
+  console.log('Villages loading:', villagesLoading);
+  console.log('Villages error:', villagesError);
 
   const { data: recommendations } = useQuery<any>({
     queryKey: ["/api/dss/village-recommendations", selectedVillage],
@@ -117,18 +122,28 @@ export default function DecisionSupport() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Select value={selectedVillage} onValueChange={setSelectedVillage}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a village to generate recommendations" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {villages.map((village: Village) => (
-                        <SelectItem key={village.id} value={village.id}>
-                          {village.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {villagesLoading ? (
+                    <div className="text-center py-4 text-muted-foreground">
+                      Loading villages...
+                    </div>
+                  ) : villagesError ? (
+                    <div className="text-center py-4 text-red-500">
+                      Error loading villages: {villagesError.message}
+                    </div>
+                  ) : (
+                    <Select value={selectedVillage} onValueChange={setSelectedVillage}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={`Select a village (${villages.length} available)`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {villages.map((village: Village) => (
+                          <SelectItem key={village.id} value={village.id}>
+                            {village.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </CardContent>
               </Card>
 
