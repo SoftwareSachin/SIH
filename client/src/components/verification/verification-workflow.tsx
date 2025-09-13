@@ -87,10 +87,18 @@ export function VerificationWorkflow({ claimId }: VerificationWorkflowProps) {
   // Initialize workflow mutation
   const initializeWorkflowMutation = useMutation({
     mutationFn: async ({ priority }: { priority: string }) => {
-      return await apiRequest(`/api/workflow/initialize/${claimId}`, {
+      const response = await fetch(`/api/workflow/initialize/${claimId}`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ priority })
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to initialize workflow');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -111,9 +119,17 @@ export function VerificationWorkflow({ claimId }: VerificationWorkflowProps) {
   // Process step mutation
   const processStepMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/workflow/process-step/${claimId}`, {
-        method: 'POST'
+      const response = await fetch(`/api/workflow/process-step/${claimId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to process workflow step');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -134,10 +150,18 @@ export function VerificationWorkflow({ claimId }: VerificationWorkflowProps) {
   // Assign workflow mutation
   const assignWorkflowMutation = useMutation({
     mutationFn: async ({ assignedTo }: { assignedTo: string }) => {
-      return await apiRequest(`/api/workflow/assign/${claimId}`, {
+      const response = await fetch(`/api/workflow/assign/${claimId}`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ assignedTo })
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to assign workflow');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -159,10 +183,18 @@ export function VerificationWorkflow({ claimId }: VerificationWorkflowProps) {
   // Escalate workflow mutation
   const escalateWorkflowMutation = useMutation({
     mutationFn: async ({ reason }: { reason: string }) => {
-      return await apiRequest(`/api/workflow/escalate/${claimId}`, {
+      const response = await fetch(`/api/workflow/escalate/${claimId}`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ reason })
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to escalate workflow');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -256,7 +288,7 @@ export function VerificationWorkflow({ claimId }: VerificationWorkflowProps) {
     );
   }
 
-  const { workflow, steps }: { workflow: VerificationWorkflow; steps: WorkflowStep[] } = workflowData;
+  const { workflow, steps }: { workflow: VerificationWorkflow; steps: WorkflowStep[] } = workflowData || { workflow: {} as VerificationWorkflow, steps: [] };
   const currentStep = steps[workflow.currentStep];
   const completedSteps = steps.filter(s => s.status === 'completed').length;
   const progressPercentage = (completedSteps / steps.length) * 100;
