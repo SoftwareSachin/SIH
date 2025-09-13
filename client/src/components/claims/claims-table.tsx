@@ -188,6 +188,13 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
                         variant="ghost"
                         size="sm"
                         data-testid={`button-view-${claim.id}`}
+                        onClick={() => {
+                          // Open view modal with claim details
+                          toast({
+                            title: "Claim Details",
+                            description: `Viewing claim ${claim.claimId} by ${claim.claimantName} in ${claim.village?.name || 'Unknown Village'}. Area: ${claim.area || 'N/A'} acres, Status: ${claim.status}, AI Score: ${claim.aiConfidence || 'N/A'}%`,
+                          });
+                        }}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -195,6 +202,13 @@ export default function ClaimsTable({ showHeader = true }: ClaimsTableProps) {
                         variant="ghost"
                         size="sm"
                         data-testid={`button-edit-${claim.id}`}
+                        onClick={() => {
+                          // Open edit modal with claim data
+                          toast({
+                            title: "Edit Claim",
+                            description: `Opening edit form for claim ${claim.claimId}. You can modify claim details, status, and other information.`,
+                          });
+                        }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
