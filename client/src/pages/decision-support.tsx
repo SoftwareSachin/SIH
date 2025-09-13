@@ -35,8 +35,9 @@ export default function DecisionSupport() {
     queryKey: ["/api/geo/villages/all"],
   });
 
-  const { data: recommendations } = useQuery<any>({
+  const { data: recommendations, isLoading: recommendationsLoading } = useQuery<any>({
     queryKey: ["/api/dss/village-recommendations", selectedVillage],
+    queryFn: () => fetch(`/api/dss/village-recommendations/${selectedVillage}`).then(res => res.json()),
     enabled: !!selectedVillage,
   });
 
@@ -179,8 +180,8 @@ export default function DecisionSupport() {
                       ) : (
                         <div className="text-center py-8 text-muted-foreground">
                           <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>Loading recommendations...</p>
-                          <p className="text-sm">Analyzing village data and scheme eligibility</p>
+                          <p>No recommendations available for this village</p>
+                          <p className="text-sm">The system could not generate recommendations for this location</p>
                         </div>
                       )}
                     </CardContent>
@@ -220,13 +221,13 @@ export default function DecisionSupport() {
                 </div>
               )}
 
-              {selectedVillage && !recommendations && (
+              {selectedVillage && recommendationsLoading && (
                 <Card>
                   <CardContent className="py-12">
                     <div className="text-center text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50 animate-pulse" />
                       <p>Loading recommendations...</p>
-                      <p className="text-sm">Analyzing village data and scheme eligibility</p>
+                      <p className="text-sm">Analyzing village data for {villages.find(v => v.id === selectedVillage)?.name}</p>
                     </div>
                   </CardContent>
                 </Card>
