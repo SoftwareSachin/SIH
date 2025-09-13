@@ -773,10 +773,10 @@ export default function RealWebGISMap() {
           <p><strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
           <p><strong>Dominant Class:</strong> ${dominantClass.charAt(0).toUpperCase() + dominantClass.slice(1)} (${classifications[dominantClass].toFixed(1)}%)</p>
           <hr style="margin: 10px 0;">
-          <div style="margin-bottom: 8px;"><strong>🌾 Agriculture:</strong> ${classifications.agriculture.toFixed(1)}%</div>
-          <div style="margin-bottom: 8px;"><strong>🌲 Forest:</strong> ${classifications.forest.toFixed(1)}%</div>
-          <div style="margin-bottom: 8px;"><strong>💧 Water:</strong> ${classifications.water.toFixed(1)}%</div>
-          <div style="margin-bottom: 8px;"><strong>🏢 Built-up:</strong> ${classifications.builtUp.toFixed(1)}%</div>
+          <div style="margin-bottom: 8px;"><strong>Agriculture:</strong> ${classifications.agriculture.toFixed(1)}%</div>
+          <div style="margin-bottom: 8px;"><strong>Forest Cover:</strong> ${classifications.forest.toFixed(1)}%</div>
+          <div style="margin-bottom: 8px;"><strong>Water Bodies:</strong> ${classifications.water.toFixed(1)}%</div>
+          <div style="margin-bottom: 8px;"><strong>Built-up Area:</strong> ${classifications.builtUp.toFixed(1)}%</div>
           <hr style="margin: 10px 0;">
           <p><strong>Confidence:</strong> ${result.confidence.toFixed(1)}%</p>
           <p><strong>Sensor:</strong> ${result.sensor}</p>

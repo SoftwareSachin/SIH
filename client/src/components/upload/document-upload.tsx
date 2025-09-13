@@ -221,11 +221,11 @@ export default function DocumentUpload() {
       case 'uploading':
         return <Badge variant="secondary">Uploading</Badge>;
       case 'processing':
-        return <Badge className="bg-blue-100 text-blue-800">🔄 AI Processing</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800">AI Processing</Badge>;
       case 'completed':
-        return <Badge className="bg-green-100 text-green-800">✅ Completed</Badge>;
+        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
       case 'error':
-        return <Badge variant="destructive">❌ Error</Badge>;
+        return <Badge variant="destructive">Error</Badge>;
     }
   };
 
