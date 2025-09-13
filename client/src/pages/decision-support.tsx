@@ -35,11 +35,6 @@ export default function DecisionSupport() {
     queryKey: ["/api/geo/villages/all"],
   });
 
-  // Debug logging
-  console.log('Villages data:', villages);
-  console.log('Villages loading:', villagesLoading);
-  console.log('Villages error:', villagesError);
-
   const { data: recommendations } = useQuery<any>({
     queryKey: ["/api/dss/village-recommendations", selectedVillage],
     enabled: !!selectedVillage,
@@ -130,19 +125,28 @@ export default function DecisionSupport() {
                     <div className="text-center py-4 text-red-500">
                       Error loading villages: {villagesError.message}
                     </div>
+                  ) : villages.length === 0 ? (
+                    <div className="text-center py-4 text-yellow-600">
+                      No villages found. Please check the database.
+                    </div>
                   ) : (
-                    <Select value={selectedVillage} onValueChange={setSelectedVillage}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={`Select a village (${villages.length} available)`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {villages.map((village: Village) => (
-                          <SelectItem key={village.id} value={village.id}>
-                            {village.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        🏘️ {villages.length} villages available for analysis
+                      </p>
+                      <Select value={selectedVillage} onValueChange={setSelectedVillage}>
+                        <SelectTrigger className="w-full border-2 border-blue-200 focus:border-blue-400">
+                          <SelectValue placeholder="👆 Click here to select a village" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {villages.map((village: Village) => (
+                            <SelectItem key={village.id} value={village.id}>
+                              📍 {village.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
                 </CardContent>
               </Card>
