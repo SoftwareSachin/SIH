@@ -288,7 +288,9 @@ export function VerificationWorkflow({ claimId }: VerificationWorkflowProps) {
     );
   }
 
-  const { workflow, steps }: { workflow: VerificationWorkflow; steps: WorkflowStep[] } = workflowData || { workflow: {} as VerificationWorkflow, steps: [] };
+  const workflowResult = workflowData as any;
+  const workflow = workflowResult?.workflow || {} as VerificationWorkflow;
+  const steps = workflowResult?.steps || [] as WorkflowStep[];
   const currentStep = steps[workflow.currentStep];
   const completedSteps = steps.filter(s => s.status === 'completed').length;
   const progressPercentage = (completedSteps / steps.length) * 100;

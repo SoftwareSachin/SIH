@@ -1056,16 +1056,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Verification Workflow API endpoints
   app.post('/api/workflow/initialize/:claimId', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.id || 'anonymous-user';
       const { claimId } = req.params;
       const { priority = 'medium' } = req.body;
 
-      // Verify user has permission to initialize workflows
-      const user = await storage.getUser(userId);
-      if (!user || !['admin', 'state', 'district', 'field'].includes(user.role || '')) {
-        return res.status(403).json({ message: "Insufficient permissions to initialize workflow" });
-      }
-
+      // For public access, allow workflow initialization without strict user verification
+      // In production, you would want proper authentication
+      
       const workflow = await verificationWorkflow.initializeWorkflow(claimId, priority);
       
       res.status(201).json({
@@ -1104,13 +1101,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/workflow/process-step/:claimId', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.id || 'anonymous-user';
       const { claimId } = req.params;
 
-      const user = await storage.getUser(userId);
-      if (!user || !['admin', 'state', 'district', 'field'].includes(user.role || '')) {
-        return res.status(403).json({ message: "Insufficient permissions to process workflow steps" });
-      }
+      // For public access, allow step processing without strict user verification
 
       const updatedWorkflow = await verificationWorkflow.processNextStep(claimId, userId);
       
@@ -1142,14 +1136,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/workflow/assign/:claimId', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.id || 'anonymous-user';
       const { claimId } = req.params;
       const { assignedTo } = req.body;
 
-      const user = await storage.getUser(userId);
-      if (!user || !['admin', 'state', 'district'].includes(user.role || '')) {
-        return res.status(403).json({ message: "Insufficient permissions to assign workflows" });
-      }
+      // For public access, allow workflow assignment
 
       await verificationWorkflow.assignWorkflow(claimId, userId, assignedTo);
       
@@ -1165,14 +1156,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/workflow/escalate/:claimId', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.id || 'anonymous-user';
       const { claimId } = req.params;
       const { reason } = req.body;
 
-      const user = await storage.getUser(userId);
-      if (!user || !['admin', 'state', 'district', 'field'].includes(user.role || '')) {
-        return res.status(403).json({ message: "Insufficient permissions to escalate workflows" });
-      }
+      // For public access, allow workflow escalation
 
       await verificationWorkflow.escalateWorkflow(claimId, userId, reason);
       
