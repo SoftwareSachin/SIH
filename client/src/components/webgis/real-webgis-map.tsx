@@ -1918,7 +1918,7 @@ export default function RealWebGISMap() {
       </div>
 
       {/* Enhanced Control Panel */}
-      <div className="w-80 bg-card border-l border-border p-4 overflow-y-auto pointer-events-auto h-full" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+      <div className="w-80 bg-card border-l border-border p-4 overflow-y-auto pointer-events-auto max-h-screen" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 mb-4">
           <Globe className="h-5 w-5" />
           <h3 className="font-semibold">WebGIS Controls</h3>
