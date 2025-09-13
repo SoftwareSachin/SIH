@@ -70,7 +70,7 @@ export default function RealWebGISMap() {
     {
       id: 'satellite_google',
       name: 'Satellite (Google)',
-      url: 'http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
+      url: 'https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
       attribution: '&copy; Google',
       maxZoom: 20,
       icon: 'globe'
@@ -86,7 +86,7 @@ export default function RealWebGISMap() {
     {
       id: 'terrain_google',
       name: 'Terrain (Google)',
-      url: 'http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}',
+      url: 'https://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}',
       attribution: '&copy; Google',
       maxZoom: 20,
       icon: 'mountain'
@@ -177,11 +177,15 @@ export default function RealWebGISMap() {
       }).addTo(map);
     }
 
-    // Initialize layer groups
+    // Initialize layer groups (respect initial visibility)
     console.log('🗂️ Initializing layer groups for', layers.length, 'layers');
     layers.forEach(layer => {
-      console.log('🗂️ Creating layer reference for:', layer.id);
-      layersRef.current[layer.id] = L.layerGroup().addTo(map);
+      console.log('🗂️ Creating layer reference for:', layer.id, 'visible:', layer.visible);
+      layersRef.current[layer.id] = L.layerGroup();
+      // Only add to map if initially visible
+      if (layer.visible) {
+        layersRef.current[layer.id].addTo(map);
+      }
     });
     console.log('✅ Layer groups initialized:', Object.keys(layersRef.current));
     
@@ -1914,7 +1918,7 @@ export default function RealWebGISMap() {
       </div>
 
       {/* Enhanced Control Panel */}
-      <div className="w-80 bg-card border-l border-border p-4 overflow-y-auto pointer-events-auto" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+      <div className="w-80 bg-card border-l border-border p-4 overflow-y-auto pointer-events-auto h-full" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 mb-4">
           <Globe className="h-5 w-5" />
           <h3 className="font-semibold">WebGIS Controls</h3>

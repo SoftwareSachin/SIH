@@ -7,10 +7,10 @@ export default function WebGIS() {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
         <TopBar />
         
-        <div className="h-full">
+        <div className="flex-1">
           <RealWebGISMap />
         </div>
       </div>
