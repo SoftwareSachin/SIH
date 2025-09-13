@@ -617,49 +617,67 @@ export default function RealWebGISMap() {
 
   // Preset zoom levels for different administrative boundaries
   const zoomToIndia = () => {
+    console.log('🏠 Zoom to India button clicked');
     if (mapInstance.current) {
+      console.log('🗺️ Flying to India coordinates: [23.5937, 78.9629]');
       mapInstance.current.flyTo([23.5937, 78.9629], 5, {
         animate: true,
         duration: 2
       });
+    } else {
+      console.error('❌ Map instance not available');
     }
   };
 
   const zoomToState = () => {
+    console.log('🏢 Zoom to State button clicked');
     // Zoom to Madhya Pradesh (one of the main FRA states)
     if (mapInstance.current) {
+      console.log('🗺️ Flying to Madhya Pradesh coordinates: [23.4734, 77.9476]');
       mapInstance.current.flyTo([23.4734, 77.9476], 7, {
         animate: true,
         duration: 1.5
       });
+    } else {
+      console.error('❌ Map instance not available');
     }
   };
 
   const zoomToDistrict = () => {
+    console.log('🌳 Zoom to District button clicked');
     // Zoom to Mandla district (major FRA implementation area)
     if (mapInstance.current) {
+      console.log('🗺️ Flying to Mandla district coordinates: [22.5988, 80.3720]');
       mapInstance.current.flyTo([22.5988, 80.3720], 9, {
         animate: true,
         duration: 1.5
       });
+    } else {
+      console.error('❌ Map instance not available');
     }
   };
 
   const zoomToVillage = () => {
+    console.log('📍 Zoom to Village button clicked');
     // Zoom to village level for detailed view
     const villagesData = Array.isArray(villages) ? villages : [];
+    console.log('📊 Villages data:', villagesData.length, 'villages found');
     if (villagesData && villagesData.length > 0) {
       const firstVillage = villagesData[0];
       if (firstVillage.latitude && firstVillage.longitude) {
         const lat = typeof firstVillage.latitude === 'string' ? parseFloat(firstVillage.latitude) : firstVillage.latitude;
         const lng = typeof firstVillage.longitude === 'string' ? parseFloat(firstVillage.longitude) : firstVillage.longitude;
+        console.log(`🗺️ Flying to village: ${firstVillage.name} at [${lat}, ${lng}]`);
         flyToLocation(lat, lng, 13);
       }
     } else if (mapInstance.current) {
+      console.log('🗺️ No village data, flying to fallback coordinates: [22.6000, 80.3800]');
       mapInstance.current.flyTo([22.6000, 80.3800], 11, {
         animate: true,
         duration: 1.5
       });
+    } else {
+      console.error('❌ Map instance not available');
     }
   };
 
@@ -1228,7 +1246,10 @@ export default function RealWebGISMap() {
   }, {} as Record<string, LayerConfig[]>);
 
   // Legacy export function for backward compatibility
-  const exportMap = () => exportMapData('json');
+  const exportMap = () => {
+    console.log('📥 Export Map button clicked');
+    exportMapData('json');
+  };
 
   return (
     <div className="h-full flex">
