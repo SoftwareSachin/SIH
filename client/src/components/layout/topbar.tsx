@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Bell } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function TopBar() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,6 +29,9 @@ export default function TopBar() {
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           </div>
+          
+          {/* Theme Toggle */}
+          <ThemeToggle />
           
           {/* Notifications */}
           <Button variant="ghost" size="icon">
