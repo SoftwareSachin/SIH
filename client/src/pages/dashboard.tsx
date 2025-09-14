@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import StatsCards from "@/components/dashboard/stats-cards";
-import RealWebGISMap from "@/components/webgis/real-webgis-map";
+import RealWebGISMap from "@/components/real-webgis-map";
 import ClaimsPanel from "@/components/dashboard/claims-panel";
 import AIProcessingPanel from "@/components/dashboard/ai-processing-panel";
 import DecisionSupportPanel from "@/components/dashboard/decision-support-panel";

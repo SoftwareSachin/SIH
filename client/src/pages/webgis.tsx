@@ -1,6 +1,6 @@
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
-import RealWebGISMap from "@/components/webgis/real-webgis-map";
+import RealWebGISMap from "@/components/real-webgis-map";
 
 export default function WebGIS() {
   return (
