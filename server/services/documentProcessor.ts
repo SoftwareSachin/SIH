@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { PythonOCRClient } from './pythonOCRClient';
 import path from 'path';
 import fs from 'fs';
@@ -377,31 +377,52 @@ export class DocumentProcessor {
                      fileType.includes('jpg') || fileType.includes('jpeg') ? 'image/jpeg' : 
                      'image/png';
 
-      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      // Use Gemini 2.5 Pro for enhanced OCR capabilities with advanced configuration
+      const model = this.genAI.getGenerativeModel({ 
+        model: "gemini-2.5-pro",
+        systemInstruction: "You are an expert AI specializing in Indian government document OCR with deep knowledge of Forest Rights Act (FRA) documents. You excel at extracting text from complex multilingual documents containing Telugu, Hindi, Bengali, English, and other Indian languages. You understand government document formats, official stamps, and handwritten annotations.",
+        generationConfig: {
+          temperature: 0.1, // Lower temperature for more accurate OCR
+          topP: 0.8,
+          topK: 40,
+          maxOutputTokens: 8192,
+          responseMimeType: "text/plain"
+        }
+      });
 
       const prompt = `
-You are an expert OCR system specializing in Indian government documents, particularly Forest Rights Act (FRA) documents. 
+EXTRACT ALL TEXT from this Forest Rights Act (FRA) document with MAXIMUM ACCURACY.
 
-Please extract ALL text from this image with the highest accuracy possible. The document contains:
-- Text in Telugu script and English
-- Government form fields and data
-- Numbers, dates, and reference codes
-- Official stamps and signatures
+DOCUMENT ANALYSIS:
+- Multiple scripts: Telugu, Hindi, Bengali, English
+- Government forms with structured fields
+- Handwritten and printed text
+- Official seals, stamps, signatures
+- Tables, checkboxes, form fields
 
-INSTRUCTIONS:
-1. Recognize both Telugu and English text accurately
-2. Preserve the document structure and formatting
-3. Include ALL visible text, numbers, and codes
-4. Maintain proper spacing and line breaks
-5. Do not translate - keep original language text as-is
-6. Pay special attention to:
-   - Claim numbers (format: CFF/YYYY/TS/XXX/NNN)
-   - Names of applicants and communities
-   - Village and district names
-   - Survey numbers and boundaries
-   - Dates and official stamps
+CRITICAL EXTRACTION REQUIREMENTS:
+1. **PRESERVE EXACT TEXT**: Do not translate, summarize, or interpret
+2. **MAINTAIN STRUCTURE**: Keep original formatting, spacing, line breaks
+3. **CAPTURE EVERYTHING**: Include all numbers, codes, stamps, annotations
+4. **SCRIPT ACCURACY**: Maintain original script (తెలుగు, हिंदी, বাংলা, English)
 
-Return only the extracted text, preserving the original layout and structure.
+SPECIAL ATTENTION TO:
+• Claim numbers: CFF/YYYY/TS/XXX/NNN format
+• Survey numbers: XXX/X patterns  
+• Names: Applicants, fathers, communities
+• Locations: Villages, districts, boundaries
+• Dates: All date formats (DD/MM/YYYY, DD-MM-YY)
+• Reference codes: File numbers, application IDs
+• Checkbox selections and form field values
+
+FEW-SHOT EXAMPLES:
+Input: [Telugu text] "దరఖాస్తుదారుని పేరు: రాము"
+Output: "దరఖాస్తుదారుని పేరు: రాము"
+
+Input: "Claim No: CFF/2023/TS/001/123"
+Output: "Claim No: CFF/2023/TS/001/123"
+
+PROCESS THE DOCUMENT NOW - RETURN ONLY THE EXTRACTED TEXT:
 `;
 
       const result = await model.generateContent([
@@ -435,7 +456,7 @@ Return only the extracted text, preserving the original layout and structure.
         metadata: {
           processingTime: Date.now() - startTime,
           imageQuality: confidence > 80 ? 'excellent' : confidence > 60 ? 'good' : 'fair',
-          ocrMethod: 'Gemini-2.5-Flash-Vision',
+          ocrMethod: 'Gemini-2.5-Pro-Vision-Enhanced',
           preprocessingApplied: ['ai_vision_processing'],
           documentId,
           characterCount: extractedText.length,
@@ -470,36 +491,118 @@ Return only the extracted text, preserving the original layout and structure.
   private async extractEntitiesWithAI(text: string): Promise<any> {
     if (!this.genAI) throw new Error('AI not available');
 
-    const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Use Gemini 2.5 Pro with structured output for maximum entity extraction accuracy
+    const model = this.genAI.getGenerativeModel({ 
+      model: "gemini-2.5-pro",
+      systemInstruction: "You are an expert entity extraction AI specializing in Indian Forest Rights Act (FRA) documents. You excel at identifying names, places, numbers, and legal entities from multilingual government documents.",
+      generationConfig: {
+        temperature: 0.2, // Low temperature for consistent structured output
+        topP: 0.9,
+        topK: 40,
+        maxOutputTokens: 4096,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: SchemaType.OBJECT,
+          properties: {
+            claimantNames: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "Full names of forest rights claimants/applicants"
+            },
+            fatherNames: {
+              type: SchemaType.ARRAY, 
+              items: { type: SchemaType.STRING },
+              description: "Father's names of applicants"
+            },
+            claimTypes: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "Type of forest rights claim"
+            },
+            documentTypes: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "Types of documents (patta, survey settlement, revenue record)"
+            },
+            surveyNumbers: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "Land survey numbers in XXX/X format"
+            },
+            claimNumbers: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "FRA claim numbers in CFF/YYYY/TS/XXX/NNN format"
+            },
+            villages: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "Village names"
+            },
+            districts: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "District names"
+            },
+            boundaries: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "Land boundary descriptions"
+            },
+            dates: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "Important dates in the document"
+            },
+            states: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "State names"
+            },
+            confidence: {
+              type: SchemaType.NUMBER,
+              description: "Overall confidence score for extraction accuracy"
+            }
+          },
+          required: ["claimantNames", "claimTypes", "documentTypes", "confidence"]
+        }
+      }
+    });
     
     const prompt = `
-Extract forest rights and land claim entities from this text. Return as JSON:
-{
-  "claimantNames": ["name1", "name2"],
-  "claimTypes": ["individual", "community"],
-  "documentTypes": ["patta", "survey"],
-  "surveyNumbers": ["123/4", "567/8"],
-  "boundaries": ["north: road", "south: river"]
-}
+Extract ALL entities from this Forest Rights Act (FRA) document text with MAXIMUM PRECISION.
 
-Text: ${text.substring(0, 2000)}
+ENTITY EXTRACTION FOCUS:
+- Names: Full applicant names, father's names, community names
+- Claim Information: Claim numbers, claim types, application details  
+- Location Data: Villages, districts, states, survey numbers
+- Legal References: Document types, reference numbers, dates
+- Land Details: Survey numbers, boundaries, area measurements
+
+MULTILINGUAL PROCESSING:
+- Recognize names in Telugu, Hindi, Bengali, English scripts
+- Extract transliterated names accurately
+- Preserve original spelling and formatting
+
+TEXT TO PROCESS:
+${text.substring(0, 3000)}
+
+Return a comprehensive JSON object with all extracted entities and confidence score.
 `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const aiText = response.text();
-
     try {
-      // Extract JSON from AI response
-      const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-    } catch (e) {
-      console.warn('Failed to parse AI entities response');
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const extractedData = JSON.parse(response.text());
+      
+      console.log(`🤖 AI Entity Extraction completed with ${extractedData.confidence || 85}% confidence`);
+      console.log(`   Found: ${extractedData.claimantNames?.length || 0} names, ${extractedData.surveyNumbers?.length || 0} survey numbers, ${extractedData.villages?.length || 0} villages`);
+      
+      return extractedData;
+    } catch (error) {
+      console.warn('⚠️ Advanced AI entity extraction failed, using fallback:', error);
+      return this.extractEntitiesBasic(text);
     }
-
-    return this.extractEntitiesBasic(text);
   }
 
   private extractEntitiesBasic(text: string): any {
