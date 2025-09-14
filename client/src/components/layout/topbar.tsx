@@ -12,15 +12,17 @@ export default function TopBar() {
     <header className="bg-card border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-3">
-            <img 
-              src={governmentEmblem} 
-              alt="Government of India Emblem" 
-              className="h-10 w-auto object-contain drop-shadow-sm"
-            />
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">FRA Atlas Dashboard</h2>
-              <p className="text-sm text-muted-foreground">Real-time monitoring and decision support</p>
+          <div className="flex items-center space-x-4">
+            <div className="flex-shrink-0">
+              <img 
+                src={governmentEmblem} 
+                alt="Government of India Emblem" 
+                className="h-16 w-16 object-contain drop-shadow-md"
+              />
+            </div>
+            <div className="border-l border-border pl-4">
+              <h2 className="text-2xl font-bold text-foreground">FRA Atlas Dashboard</h2>
+              <p className="text-sm text-muted-foreground font-medium">Real-time monitoring and decision support</p>
             </div>
           </div>
         </div>
