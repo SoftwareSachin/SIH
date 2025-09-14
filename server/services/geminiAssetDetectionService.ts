@@ -274,7 +274,8 @@ EXECUTE MAXIMUM PRECISION SATELLITE IMAGE ANALYSIS NOW:
       // In production, this would use the actual satellite imagery
       const width = 512;
       const height = 512;
-      const canvas = require('canvas').createCanvas(width, height);
+      const { createCanvas } = await import('canvas');
+      const canvas = createCanvas(width, height);
       const ctx = canvas.getContext('2d');
 
       // Create realistic satellite image simulation based on real spectral data
