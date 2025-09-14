@@ -96,11 +96,8 @@ export default function DecisionSupport() {
                   <div className="space-y-4">
                     <div className="flex items-center gap-4">
                       <div className="relative">
-                        <div className="flex items-center justify-center w-16 h-16 bg-primary/10 border-2 border-primary/20 rounded-2xl">
-                          <Target className="h-8 w-8 text-primary" />
-                        </div>
-                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                          <Zap className="h-3 w-3 text-primary-foreground" />
+                        <div className="flex items-center justify-center w-16 h-16 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg">
+                          <Target className="h-8 w-8 text-slate-700 dark:text-slate-300" />
                         </div>
                       </div>
                       <div>
@@ -120,22 +117,22 @@ export default function DecisionSupport() {
                   {/* Stats Cards */}
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:min-w-96">
                     <div className="bg-background border border-border rounded-xl p-4 text-center">
-                      <div className="flex items-center justify-center w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg mx-auto mb-2">
-                        <Database className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      <div className="flex items-center justify-center w-10 h-10 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg mx-auto mb-2">
+                        <Database className="h-5 w-5 text-slate-700 dark:text-slate-300" />
                       </div>
                       <div className="text-2xl font-bold text-foreground">{schemes?.length || '—'}</div>
                       <div className="text-xs text-muted-foreground font-medium">Active Schemes</div>
                     </div>
                     <div className="bg-background border border-border rounded-xl p-4 text-center">
-                      <div className="flex items-center justify-center w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg mx-auto mb-2">
-                        <MapPin className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <div className="flex items-center justify-center w-10 h-10 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg mx-auto mb-2">
+                        <MapPin className="h-5 w-5 text-slate-700 dark:text-slate-300" />
                       </div>
                       <div className="text-2xl font-bold text-foreground">{villages?.length || '—'}</div>
                       <div className="text-xs text-muted-foreground font-medium">Villages Analyzed</div>
                     </div>
                     <div className="bg-background border border-border rounded-xl p-4 text-center col-span-2 lg:col-span-1">
-                      <div className="flex items-center justify-center w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg mx-auto mb-2">
-                        <Shield className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      <div className="flex items-center justify-center w-10 h-10 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg mx-auto mb-2">
+                        <Shield className="h-5 w-5 text-slate-700 dark:text-slate-300" />
                       </div>
                       <div className="text-2xl font-bold text-foreground">98%</div>
                       <div className="text-xs text-muted-foreground font-medium">Accuracy Rate</div>
@@ -168,8 +165,8 @@ export default function DecisionSupport() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <div className="p-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-slate-700 dark:text-slate-300" />
                   </div>
                   Analysis Dashboard
                 </h2>
@@ -197,11 +194,11 @@ export default function DecisionSupport() {
 
               <TabsContent value="recommendations" className="space-y-6">
                 {/* Enhanced Village Selection */}
-                <Card className="border-2 border-primary/20 bg-primary/5 dark:bg-primary/5">
+                <Card className="border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <Filter className="h-5 w-5 text-primary" />
+                      <div className="p-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg">
+                        <Filter className="h-5 w-5 text-slate-700 dark:text-slate-300" />
                       </div>
                       <div>
                         <CardTitle className="text-xl text-foreground">Village Selection & Analysis</CardTitle>
@@ -213,46 +210,46 @@ export default function DecisionSupport() {
                     {villagesLoading ? (
                       <div className="flex flex-col items-center justify-center py-8">
                         <div className="relative">
-                          <div className="w-12 h-12 border-4 border-primary/20 rounded-full"></div>
-                          <div className="absolute top-0 left-0 w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 rounded-full"></div>
+                          <div className="absolute top-0 left-0 w-12 h-12 border-4 border-slate-600 dark:border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                         </div>
                         <span className="mt-4 text-muted-foreground font-medium">Loading village database...</span>
                         <span className="mt-1 text-xs text-muted-foreground">Fetching geographic data</span>
                       </div>
                     ) : villagesError ? (
                       <div className="text-center py-8">
-                        <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full w-fit mx-auto mb-4">
-                          <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+                        <div className="p-3 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg w-fit mx-auto mb-4">
+                          <AlertCircle className="h-8 w-8 text-slate-600 dark:text-slate-400" />
                         </div>
                         <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Villages</h3>
-                        <p className="text-red-600 dark:text-red-400">{villagesError.message}</p>
+                        <p className="text-slate-600 dark:text-slate-400">{villagesError.message}</p>
                       </div>
                     ) : villages.length === 0 ? (
                       <div className="text-center py-8">
-                        <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-full w-fit mx-auto mb-4">
-                          <AlertCircle className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
+                        <div className="p-3 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg w-fit mx-auto mb-4">
+                          <AlertCircle className="h-8 w-8 text-slate-600 dark:text-slate-400" />
                         </div>
                         <h3 className="text-lg font-semibold text-foreground mb-2">No Villages Found</h3>
-                        <p className="text-yellow-600 dark:text-yellow-400">Please check the database configuration</p>
+                        <p className="text-slate-600 dark:text-slate-400">Please check the database configuration</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <CheckCircle2 className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                             <span className="text-sm font-medium text-muted-foreground">
                               {villages.length} villages available for analysis
                             </span>
                           </div>
                           {selectedVillage && (
-                            <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
+                            <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
                               Village Selected
                             </Badge>
                           )}
                         </div>
                         <Select value={selectedVillage} onValueChange={setSelectedVillage}>
-                          <SelectTrigger className="w-full h-12 border-2 border-primary/30 focus:border-primary bg-background hover:bg-muted/50 transition-colors">
-                            <SelectValue placeholder="🏘️ Select a village to begin analysis..." />
+                          <SelectTrigger className="w-full h-12 border border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 bg-background hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <SelectValue placeholder="Select a village to begin analysis" />
                           </SelectTrigger>
                           <SelectContent>
                             {villages.map((village: Village) => (
