@@ -10,10 +10,10 @@ export default function AssetDetection() {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
         <TopBar />
         
-        <div className="p-6 overflow-y-auto h-full">
+        <div className="flex-1 overflow-auto p-6">
           <div className="max-w-4xl mx-auto">
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-foreground">Asset Detection</h1>

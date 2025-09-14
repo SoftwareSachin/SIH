@@ -18,10 +18,10 @@ export default function Dashboard() {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
         <TopBar />
         
-        <div className="p-6 overflow-y-auto h-full">
+        <div className="flex-1 overflow-auto p-6">
           {/* Stats Overview */}
           <StatsCards stats={stats as any} isLoading={statsLoading} />
 

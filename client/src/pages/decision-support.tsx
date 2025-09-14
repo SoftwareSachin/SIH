@@ -84,10 +84,10 @@ export default function DecisionSupport() {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
         <TopBar />
         
-        <div className="p-6 overflow-y-auto h-full pb-20">
+        <div className="flex-1 overflow-auto p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground">Decision Support System</h1>

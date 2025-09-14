@@ -14,10 +14,10 @@ export default function Claims() {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
         <TopBar />
         
-        <div className="p-6 overflow-y-auto h-full">
+        <div className="flex-1 overflow-auto p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground">Claims Management</h1>
