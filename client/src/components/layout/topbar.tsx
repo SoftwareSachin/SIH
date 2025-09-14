@@ -13,11 +13,11 @@ export default function TopBar() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-4">
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 p-2 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 shadow-sm">
               <img 
                 src={governmentEmblem} 
                 alt="Government of India Emblem" 
-                className="h-16 w-16 object-contain drop-shadow-md"
+                className="h-14 w-14 object-contain filter drop-shadow-lg brightness-110 contrast-110"
               />
             </div>
             <div className="border-l border-border pl-4">
