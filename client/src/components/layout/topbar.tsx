@@ -16,7 +16,7 @@ export default function TopBar() {
             <img 
               src={governmentEmblem} 
               alt="Government of India Emblem" 
-              className="h-12 w-auto object-contain"
+              className="h-12 w-auto object-contain bg-transparent"
             />
             <div>
               <h2 className="text-xl font-semibold text-foreground">FRA Atlas Dashboard</h2>
