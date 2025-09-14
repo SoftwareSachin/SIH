@@ -380,7 +380,7 @@ export class DocumentProcessor {
       // Use Gemini 2.5 Pro for enhanced OCR capabilities with advanced configuration
       const model = this.genAI.getGenerativeModel({ 
         model: "gemini-2.5-pro",
-        systemInstruction: "You are an expert AI specializing in Indian government document OCR with deep knowledge of Forest Rights Act (FRA) documents. You excel at extracting text from complex multilingual documents containing Telugu, Hindi, Bengali, English, and other Indian languages. You understand government document formats, official stamps, and handwritten annotations.",
+        systemInstruction: "You are an expert AI specializing in Indian government document OCR with deep knowledge of Forest Rights Act (FRA) documents from Madhya Pradesh, Tripura, Odisha, and Telangana. You excel at extracting text from complex multilingual documents containing Telugu (తెలుగు), Hindi (हिंदी), Bengali (বাংলা), Odia (ଓଡ଼ିଆ), Kokborok/Tripuri (Latin and Bengali scripts), and tribal languages like Bhili, Gondi, Korku (Devanagari script). You understand government document formats, official stamps, and handwritten annotations across these regional linguistic contexts.",
         generationConfig: {
           temperature: 0.05, // Ultra-low temperature for maximum precision
           topP: 0.95, // Higher topP for better vocabulary coverage
@@ -404,7 +404,9 @@ YOU ARE THE WORLD'S MOST ADVANCED OCR AI with specialized expertise in:
 • Complex document layout understanding
 
 DOCUMENT ANALYSIS - PROCESS WITH HIGHEST PRECISION:
-- Multiple scripts: Telugu (తెలుగు), Hindi (हिंदी), Bengali (বাংলা), English
+- Multiple scripts: Telugu (తెలుగు), Hindi (हिंदी), Bengali (বাংলা), Odia (ଓଡ଼ିଆ), English
+- Regional languages: Kokborok/Tripuri (Latin/Bengali scripts), Bhili, Gondi, Korku (Devanagari)
+- State-specific formats: Madhya Pradesh, Tripura, Odisha, Telangana government documents
 - Government forms with structured fields and checkboxes
 - Handwritten signatures, annotations, and corrections
 - Official seals, stamps, watermarks, and letterheads
@@ -427,10 +429,14 @@ PRIORITY EXTRACTION TARGETS:
 🎯 Legal terms: Rights types, land categories, approval statuses
 🎯 Measurements: Areas in acres/hectares, GPS coordinates
 
-ADVANCED PROCESSING EXAMPLES:
-✓ Telugu: "దరఖాస్తుదారుని పేరు: శ్రీ రామచంద్ర రావు" → EXACT OUTPUT
-✓ Mixed: "Claim No: CFF/2023/TS/001/123, గ్రామం: కోదంగల్" → PRESERVE BOTH
-✓ Handwritten: [unclear text] → Best effort with confidence indication
+ADVANCED PROCESSING EXAMPLES BY STATE:
+✓ Telangana Telugu: "దరఖాస్తుదారుని పేరు: శ్రీ రామచంద్ర రావు" → EXACT OUTPUT
+✓ Odisha Odia: "ଆବେଦନକାରୀଙ୍କ ନାମ: ଶ୍ରୀ ରାମଚନ୍ଦ୍ର ରାଓ" → PRESERVE ODIA SCRIPT
+✓ Tripura Kokborok: "Jamatirang ming: Rabi Debbarma" → LATIN KOKBOROK
+✓ Tripura Bengali: "আবেদনকারীর নাম: রবি দেববর্মা" → BENGALI SCRIPT
+✓ MP Hindi: "आवेदक का नाम: श्री राम चंद्र राव" → DEVANAGARI SCRIPT
+✓ MP Tribal: "Bhil समुदाय, Gondi जनजाति" → PRESERVE MIXED SCRIPT
+✓ Mixed: "Claim No: CFF/2023/OR/001/123, ଗ୍ରାମ: କୋଦାଙ୍ଗଲ" → PRESERVE BOTH
 
 EXECUTE MAXIMUM PRECISION EXTRACTION NOW:
 `;
@@ -498,13 +504,33 @@ EXECUTE MAXIMUM PRECISION EXTRACTION NOW:
     return Math.min(95, Math.max(50, confidence)); // Clamp between 50-95%
   }
 
+  // Script detection utility for dynamic language selection
+  private detectScripts(text: string): string[] {
+    const scripts = [];
+    
+    // Unicode ranges for different scripts
+    if (/[\u0c00-\u0c7F]/.test(text)) scripts.push('tel'); // Telugu
+    if (/[\u0900-\u097F]/.test(text)) scripts.push('hin'); // Hindi/Devanagari
+    if (/[\u0980-\u09FF]/.test(text)) scripts.push('ben'); // Bengali
+    if (/[\u0b00-\u0b7F]/.test(text)) scripts.push('ori'); // Odia
+    if (/[a-zA-Z]/.test(text)) scripts.push('eng'); // English/Latin
+    
+    // Return optimized language combinations for Tesseract
+    if (scripts.includes('tel')) return ['tel+eng', 'tel', 'eng'];
+    if (scripts.includes('hin')) return ['hin+eng', 'hin', 'eng'];
+    if (scripts.includes('ben')) return ['ben+eng', 'ben', 'eng'];
+    if (scripts.includes('ori')) return ['ori+eng', 'ori', 'eng'];
+    
+    return ['eng']; // Default fallback
+  }
+
   private async extractEntitiesWithAI(text: string): Promise<any> {
     if (!this.genAI) throw new Error('AI not available');
 
     // Use Gemini 2.5 Pro with structured output for maximum entity extraction accuracy
     const model = this.genAI.getGenerativeModel({ 
       model: "gemini-2.5-pro",
-      systemInstruction: "You are an expert entity extraction AI specializing in Indian Forest Rights Act (FRA) documents. You excel at identifying names, places, numbers, and legal entities from multilingual government documents.",
+      systemInstruction: "You are an expert entity extraction AI specializing in Indian Forest Rights Act (FRA) documents from Madhya Pradesh, Tripura, Odisha, and Telangana. You excel at identifying names, places, numbers, and legal entities from multilingual government documents in Telugu (తెలుగు), Hindi (हिंदी), Bengali (বাংলা), Odia (ଓଡ଼ିଆ), Kokborok/Tripuri, and tribal languages (Bhili, Gondi, Korku). You understand regional naming conventions, place names, and administrative terminology specific to these states.",
       generationConfig: {
         temperature: 0.1, // Ultra-low temperature for consistent structured output
         topP: 0.95, // Higher topP for better entity recognition
@@ -571,7 +597,29 @@ EXECUTE MAXIMUM PRECISION EXTRACTION NOW:
             states: {
               type: SchemaType.ARRAY,
               items: { type: SchemaType.STRING },
-              description: "State names"
+              description: "State names (Madhya Pradesh, Tripura, Odisha, Telangana)"
+            },
+            languagesDetected: {
+              type: SchemaType.ARRAY,
+              items: {
+                type: SchemaType.OBJECT,
+                properties: {
+                  language: { type: SchemaType.STRING },
+                  script: { type: SchemaType.STRING },
+                  confidence: { type: SchemaType.NUMBER }
+                }
+              },
+              description: "Languages and scripts detected in the document"
+            },
+            regionalContext: {
+              type: SchemaType.OBJECT,
+              properties: {
+                state: { type: SchemaType.STRING },
+                primaryLanguage: { type: SchemaType.STRING },
+                tribalCommunity: { type: SchemaType.STRING },
+                administrativeLevel: { type: SchemaType.STRING }
+              },
+              description: "Regional administrative context"
             },
             confidence: {
               type: SchemaType.NUMBER,
@@ -588,7 +636,7 @@ ULTRA-ADVANCED ENTITY EXTRACTION from Forest Rights Act (FRA) document.
 
 YOU ARE THE MOST SOPHISTICATED ENTITY EXTRACTION AI with specialized capabilities:
 🧠 Deep understanding of Indian legal terminology and FRA processes
-🌐 Native-level comprehension of Telugu, Hindi, Bengali, English scripts
+🌐 Native-level comprehension of Telugu, Hindi, Bengali, Odia, Kokborok, and tribal language scripts
 🎯 Pattern recognition for government document structures and formats
 📊 Confidence scoring based on extraction certainty
 
@@ -601,12 +649,14 @@ MAXIMUM PRECISION EXTRACTION TARGETS:
 🏞️ LAND DATA: Survey numbers, boundaries (N/S/E/W), areas, land classifications
 ⚖️ LEGAL: Rights types (individual/community/family), approval statuses, conditions
 
-ADVANCED PROCESSING INSTRUCTIONS:
-• Extract names in original script - preserve Telugu/Hindi/Bengali characters
-• Identify transliterated names and their original forms when possible
-• Recognize government terminology and abbreviations
-• Handle incomplete or damaged text with appropriate confidence scoring
-• Cross-reference extracted data for consistency validation
+ADVANCED PROCESSING INSTRUCTIONS BY STATE:
+• Telangana: Telugu (తెలుగు) names like రాముడు, లక్ష్మి, villages like హైదరాబాద్, వరంగల్
+• Odisha: Odia (ଓଡ଼ିଆ) names like ରାମଚନ୍ଦ୍ର, ସୀତା, villages like ଭୁବନେଶ୍ୱର, କଟକ
+• Tripura: Bengali script + Kokborok names like Debbarma, Reang, places like Agartala
+• Madhya Pradesh: Hindi + tribal languages, names like राम, सीता, Bhil/Gond communities
+• Extract names preserving original scripts without transliteration
+• Recognize state-specific administrative terminology and place naming conventions
+• Handle mixed-script documents with appropriate confidence scoring
 
 CONFIDENCE SCORING CRITERIA:
 90-100%: Clear, unambiguous text with perfect recognition
@@ -629,7 +679,7 @@ RETURN: Comprehensive JSON with all entities and precise confidence assessment.
       const confidenceScore = extractedData.confidence >= 1 ? extractedData.confidence : (extractedData.confidence * 100);
       console.log(`🤖 AI Entity Extraction completed with ${confidenceScore}% confidence`);
       console.log(`   Found: ${extractedData.claimantNames?.length || 0} names, ${extractedData.surveyNumbers?.length || 0} survey numbers, ${extractedData.villages?.length || 0} villages`);
-      console.log(`   🚀 MAXIMUM POWER: Gemini 2.5 Pro + Ultra-low temp (0.1) + Structured JSON + 8K tokens`);
+      console.log(`   🚀 MAXIMUM POWER: Gemini 2.5 Pro + Multi-state languages (MP/Tripura/Odisha/Telangana) + Structured JSON`);
       
       return extractedData;
     } catch (error) {
@@ -649,16 +699,24 @@ RETURN: Comprehensive JSON with all entities and precise confidence assessment.
       states: []
     };
 
-    console.log('🔍 Extracting entities from bilingual FRA text:', text.substring(0, 300) + '...');
+    console.log('🔍 Extracting entities from multilingual FRA text (MP/Tripura/Odisha/Telangana):', text.substring(0, 300) + '...');
 
-    // Enhanced patterns for bilingual Bengali+English FRA documents
-    // Handle both English and Bengali field labels and mixed content
+    // Enhanced patterns for multilingual FRA documents
+    // Handle Telugu, Hindi, Bengali, Odia, Kokborok and English field labels and mixed content
     
-    // Extract applicant names - multiple patterns for FRA documents
+    // Extract applicant names - multiple patterns for multilingual FRA documents
     const namePatterns = [
+      // Telugu patterns
+      /(?:దరఖాస్తుదారుని\s*పేరు|applicant\s*name)(?:\s*\([^)]*\))?\s*:?\s*([A-Za-z\u0c00-\u0c7F\s]+?)(?:\s*\([^)]*\))?(?:\s+(?:father|తండ్రి|village|గ్రామం))/i,
+      // Hindi patterns  
+      /(?:आवेदक\s*का\s*नाम|applicant\s*name)(?:\s*\([^)]*\))?\s*:?\s*([A-Za-z\u0900-\u097F\s]+?)(?:\s*\([^)]*\))?(?:\s+(?:father|पिता|village|गाँव))/i,
+      // Bengali patterns
       /(?:applicant\s*name|নাম)(?:\s*\([^)]*\))?\s*:?\s*([A-Za-z\u0980-\u09FF\s]+?)(?:\s*\([^)]*\))?(?:\s+(?:father|পিতার|village|গ্রাম))/i,
-      /applicant\s*name[^:]*:\s*([A-Za-z\u0980-\u09FF\s]+)/i,
-      /name[^:]*:\s*([A-Za-z\u0980-\u09FF\s]+?)(?:\s+(?:father|village))/i
+      // Odia patterns
+      /(?:ଆବେଦନକାରୀଙ୍କ\s*ନାମ|applicant\s*name)(?:\s*\([^)]*\))?\s*:?\s*([A-Za-z\u0b00-\u0b7F\s]+?)(?:\s*\([^)]*\))?(?:\s+(?:father|ପିତା|village|ଗାଁ))/i,
+      // Generic English patterns
+      /applicant\s*name[^:]*:\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0b00-\u0b7F\u0c00-\u0c7F\s]+)/i,
+      /name[^:]*:\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0b00-\u0b7F\u0c00-\u0c7F\s]+?)(?:\s+(?:father|village))/i
     ];
     
     for (const pattern of namePatterns) {
