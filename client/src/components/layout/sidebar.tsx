@@ -57,26 +57,36 @@ export default function Sidebar() {
             </div>
           )}
           {isCollapsed && (
-            <div className="flex-shrink-0 p-2 rounded-lg bg-card dark:bg-slate-800 border border-border shadow-md mx-auto">
-              <img 
-                src={governmentEmblem} 
-                alt="Government of India Emblem" 
-                className="h-8 w-8 object-contain"
-              />
+            <div className="flex flex-col items-center space-y-3 mx-auto">
+              <div className="flex-shrink-0 p-2 rounded-lg bg-card dark:bg-slate-800 border border-border shadow-md">
+                <img 
+                  src={governmentEmblem} 
+                  alt="Government of India Emblem" 
+                  className="h-6 w-6 object-contain"
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="hover:bg-white/80 dark:hover:bg-slate-600 text-foreground rounded-lg shadow-sm border border-border/50 h-8 w-8"
+                data-testid="button-sidebar-toggle"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className={cn(
-              "hover:bg-white/80 dark:hover:bg-slate-600 text-foreground rounded-lg shadow-sm border border-border/50",
-              isCollapsed ? "mx-auto mt-3" : "ml-auto"
-            )}
-            data-testid="button-sidebar-toggle"
-          >
-            {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
-          </Button>
+          {!isCollapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hover:bg-white/80 dark:hover:bg-slate-600 text-foreground rounded-lg shadow-sm border border-border/50 ml-auto"
+              data-testid="button-sidebar-toggle"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
