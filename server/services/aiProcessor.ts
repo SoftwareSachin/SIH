@@ -1,5 +1,6 @@
 import { storage } from '../storage';
 import { landUseClassificationService, type LandUseResult } from './landUseClassificationService';
+import { geminiAssetDetectionService } from './geminiAssetDetectionService';
 
 interface ProcessingStatus {
   ocrQueue: number;
@@ -193,9 +194,60 @@ class AIProcessor {
 
   async detectAssetsAtCoordinates(lat: number, lng: number, villageId?: string): Promise<AssetDetectionResult[]> {
     try {
-      console.log(`Starting genuine asset detection for coordinates: ${lat}, ${lng}`);
+      console.log(`🚀 Starting enhanced Gemini AI asset detection for coordinates: ${lat}, ${lng}`);
       
-      // First, validate that we can get real satellite data for this location
+      // PRIORITY 1: Use Gemini AI Vision for enhanced asset detection
+      try {
+        console.log('🤖 Attempting Gemini AI Vision asset detection...');
+        const geminiResults = await geminiAssetDetectionService.detectAssets({
+          latitude: lat,
+          longitude: lng,
+          enhancedAnalysis: true,
+          assetTypes: ['agricultural_land', 'water_bodies', 'forest_cover', 'homesteads', 'infrastructure']
+        });
+
+        if (geminiResults && geminiResults.length > 0) {
+          console.log(`✅ Gemini AI detected ${geminiResults.length} high-confidence assets`);
+          
+          // Convert Gemini results to standard format
+          const standardizedAssets: AssetDetectionResult[] = geminiResults.map(result => ({
+            type: result.assetType,
+            confidence: result.confidence,
+            coordinates: { 
+              type: 'Point', 
+              coordinates: [result.coordinates.longitude, result.coordinates.latitude] 
+            },
+            area: result.area
+          }));
+
+          // Save detected assets to database if villageId provided
+          if (villageId) {
+            for (const asset of standardizedAssets) {
+              await storage.createAsset({
+                villageId,
+                assetType: asset.type as any,
+                coordinates: asset.coordinates,
+                area: asset.area?.toString(),
+                confidence: asset.confidence.toString(),
+                processingDate: new Date(),
+                metadata: JSON.stringify({
+                  detectionService: 'gemini_ai_vision',
+                  analysisTimestamp: new Date().toISOString(),
+                  model: 'gemini-2.5-pro',
+                  detectionMethod: 'gemini_ai_vision'
+                })
+              });
+            }
+          }
+
+          return standardizedAssets;
+        }
+      } catch (geminiError) {
+        console.warn('⚠️ Gemini AI asset detection failed, falling back to traditional methods:', geminiError);
+      }
+      
+      // FALLBACK: Use traditional satellite analysis if Gemini AI fails
+      console.log('📡 Falling back to traditional satellite analysis...');
       const apiKey = process.env.SENTINEL_HUB_API_KEY;
       const landUseResult = await landUseClassificationService.classifyLandUse({ 
         lat, 
