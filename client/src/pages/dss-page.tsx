@@ -97,23 +97,23 @@ export default function DSSPage() {
         
         <div className="flex-1 overflow-auto p-6 space-y-6" data-testid="dss-page">
           {/* Header Section */}
-          <div className="bg-white dark:bg-card rounded-lg shadow-sm border border-gray-200 dark:border-border p-6">
+          <div className="bg-card dark:bg-card rounded-lg shadow-sm border border-border p-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="flex items-center justify-center w-10 h-10 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <Target className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                <div className="flex items-center justify-center w-10 h-10 bg-muted dark:bg-muted border border-border rounded-lg">
+                  <Target className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-foreground" data-testid="page-title">
+                <h1 className="text-3xl font-bold text-foreground" data-testid="page-title">
                   Decision Support System
                 </h1>
               </div>
-              <p className="text-gray-600 dark:text-muted-foreground">Intelligent scheme recommendations</p>
+              <p className="text-muted-foreground">Intelligent scheme recommendations</p>
             </div>
           </div>
           
           {/* Action Section */}
-          <div className="bg-gray-50 dark:bg-muted/50 border border-gray-200 dark:border-border rounded-lg p-6">
-            <p className="text-gray-700 dark:text-muted-foreground mb-4 leading-relaxed" data-testid="page-description">
+          <div className="bg-muted/30 dark:bg-muted/50 border border-border rounded-lg p-6">
+            <p className="text-muted-foreground mb-4 leading-relaxed" data-testid="page-description">
               Get AI-powered recommendations for Central Sector Schemes and government benefits 
               based on your Forest Rights Act claim profile and eligibility criteria.
             </p>
@@ -121,7 +121,7 @@ export default function DSSPage() {
               onClick={generateRecommendations}
               disabled={loading}
               size="lg"
-              className="bg-blue-600 hover:bg-blue-700 dark:bg-primary dark:hover:bg-primary/90 text-white font-medium"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
               data-testid="generate-recommendations-btn"
             >
               {loading ? (

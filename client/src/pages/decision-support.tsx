@@ -246,19 +246,19 @@ export default function DecisionSupport() {
                   {selectedVillage && eligibilityMatrix ? (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                           <div className="text-2xl font-bold text-blue-600">
                             {eligibilityMatrix?.totalClaims || 0}
                           </div>
                           <p className="text-sm text-muted-foreground">Total Claims</p>
                         </div>
-                        <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
                           <div className="text-2xl font-bold text-green-600">
                             {eligibilityMatrix?.verifiedClaims || 0}
                           </div>
                           <p className="text-sm text-muted-foreground">Verified Claims</p>
                         </div>
-                        <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                        <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg">
                           <div className="text-2xl font-bold text-yellow-600">
                             {eligibilityMatrix?.schemes?.length || 0}
                           </div>
@@ -269,7 +269,7 @@ export default function DecisionSupport() {
                       {/* Eligibility Table */}
                       <div className="border rounded-lg">
                         <table className="w-full">
-                          <thead className="bg-muted">
+                          <thead className="bg-muted dark:bg-muted">
                             <tr>
                               <th className="px-4 py-3 text-left text-sm font-medium">Scheme</th>
                               <th className="px-4 py-3 text-left text-sm font-medium">Eligibility</th>
@@ -277,7 +277,7 @@ export default function DecisionSupport() {
                               <th className="px-4 py-3 text-left text-sm font-medium">Action Required</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y">
+                          <tbody className="divide-y divide-border">
                             {schemes.map((scheme: any, index: number) => (
                               <tr key={index}>
                                 <td className="px-4 py-3 text-sm font-medium">{scheme.name}</td>
