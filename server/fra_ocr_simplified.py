@@ -187,54 +187,71 @@ class SimplifiedFRAOCR:
         enhanced_patterns = {
             'patta_holders': [
                 # Enhanced name patterns with better field extraction
-                r'(?:name|claimant|applicant)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s\.]{3,50})',
-                r'(?:patta\s+holder|applicant)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s\.]{3,50})',
+                r'(?i)(?:name|claimant|applicant)\s*(?:\([^)]*\))?\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s\.]{3,50})',
+                r'(?i)(?:patta\s+holder|applicant)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s\.]{3,50})',
                 # Line-based patterns for better field capture
-                r'Name\s*:\s*([^\n\r]+)',
-                r'Claimant\s*:\s*([^\n\r]+)',
-                r'Applicant\s*:\s*([^\n\r]+)',
-                # Common name patterns
-                r'\b([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b',
+                r'(?i)(?:Applicant\s+)?Name\s*(?:\([^)]*\))?\s*:?\s*([^\n\r\|]+)',
+                r'(?i)Claimant\s*:?\s*([^\n\r\|]+)',
+                r'(?i)Applicant\s*:?\s*([^\n\r\|]+)',
+                # Common name patterns - more flexible case handling
+                r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b',
+                r'([A-Z][A-Z\s]+[A-Z])\s*\(([^)]+)\)',  # Handle "NAME (Bengali name)" format
             ],
             'village_names': [
-                r'(?:village|gram)\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,50})',
-                r'Village\s*:\s*([^\n\r]+)',
-                r'(?:vill|gram)\s*[:-]\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})',
-                r'(?:of|in)\s+village\s+([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})'
+                r'(?i)(?:village|gram)\s*(?:\([^)]*\))?\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,50})',
+                r'(?i)Village\s*(?:\([^)]*\))?\s*:?\s*([^\n\r\|]+)',
+                r'(?i)(?:vill|gram)\s*[:-]\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})',
+                r'(?i)(?:of|in)\s+village\s+([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})',
+                # Handle district field as possible village source
+                r'(?i)District\s*(?:\([^)]*\))?\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})'
             ],
             'survey_numbers': [
-                r'(?:survey|sy|s\.no|plot)\s*(?:no|number)?\s*:?\s*(\d+(?:[/-]\d+)*)',
-                r'Survey\s*No\.?\s*:?\s*(\d+(?:[/-]\d+)*)',
-                r'S\.?\s*No\.?\s*:?\s*(\d+(?:[/-]\d+)*)',
-                r'Plot\s*No\.?\s*:?\s*(\d+(?:[/-]\d+)*)'
+                r'(?i)(?:survey|sy|s\.?\s*no?|plot)\s*(?:no|number)?\s*(?:\([^)]*\))?\s*:?\s*(\d+(?:[/-]\d+)*)',
+                r'(?i)Survey\s*No\.?\s*(?:\([^)]*\))?\s*:?\s*(\d+(?:[/-]\d+)*)',
+                r'(?i)S\.?\s*No?\.?\s*:?\s*(\d+(?:[/-]\d+)*)',
+                r'(?i)Plot\s*No\.?\s*:?\s*(\d+(?:[/-]\d+)*)',
+                # Avoid matching dates by being more specific
+                r'(?<!Date\s)(?<!date\s)(\d{2,3}/\d{1,2})\b(?!\d{2,4})'
             ],
             'patta_numbers': [
-                r'(?:patta|title)\s*(?:no|number)?\s*:?\s*([A-Z0-9\/-]{2,20})',
-                r'Patta\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})',
-                r'Title\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})',
-                r'Patta\s*Number\s*:?\s*([A-Z0-9\/-]{2,20})'
+                r'(?i)(?:patta|title)\s*(?:no|number)?\s*:?\s*([A-Z0-9\/-]{2,20})',
+                r'(?i)Patta\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})',
+                r'(?i)Title\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})',
+                r'(?i)Patta\s*Number\s*:?\s*([A-Z0-9\/-]{2,20})'
             ],
             'claim_numbers': [
-                r'(?:claim|application)\s*(?:no|number)?\s*:?\s*([A-Z0-9\/-]{2,20})',
-                r'Claim\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})',
-                r'Application\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,20})'
+                r'(?i)(?:claim|application)\s*(?:no|number)?\s*:?\s*([A-Z0-9\/-]{2,30})',
+                r'(?i)Claim\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,30})',
+                r'(?i)Application\s*No\.?\s*:?\s*([A-Z0-9\/-]{2,30})',
+                # Specific pattern for IFR claims
+                r'(IFR/\d{4}/[A-Z]{2}/[A-Z]{2,3}/\d{3})'
+            ],
+            'coordinates': [
+                # Add coordinate patterns that were missing
+                r'(\d{1,2}[°\s]*\d{0,2}[\'\s′]*\d{0,2}["\s″]*[NSns]?)\s*[,\s]*(\d{1,3}[°\s]*\d{0,2}[\'\s′]*\d{0,2}["\s″]*[EWew]?)',
+                r'(?i)(?:lat|latitude)\s*:?\s*([\d°\'"NSEWnsew\s.-]+)',
+                r'(?i)(?:long|longitude)\s*:?\s*([\d°\'"NSEWnsew\s.-]+)',
+                r'(\d{1,2}\.\d{3,6})[,\s]+(\d{1,3}\.\d{3,6})',
+                # Handle simple decimal coordinates
+                r'(?i)Coordinates?\s*(?:\([^)]*\))?\s*:?\s*(\d{2}\.\d{3})\s*[NSns]?,?\s*(\d{2}\.\d{3})\s*[EWew]?'
             ],
             'dates': [
-                r'(?:date)\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
-                r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
-                r'Date\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})'
+                r'(?i)(?:date)\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+                r'Date\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+                # Be more specific to avoid confusion with survey numbers
+                r'(?:Date|date)\s*[:\s]+(\d{1,2}/\d{1,2}/\d{4})'
             ],
             'areas': [
-                r'(\d+(?:\.\d+)?)\s*(?:hectare|acre|ha|ac)',
-                r'(?:area)\s*:?\s*(\d+(?:\.\d+)?)\s*(?:hectare|acre|ha|ac)',
-                r'Area\s*:?\s*(\d+(?:\.\d+)?)\s*(?:hectare|acre|ha|ac)'
+                r'(\d+(?:\.\d+)?)\s*(?:hectare|acre|ha|ac|Hectare)',
+                r'(?i)(?:area|claimed\s+area)\s*(?:\([^)]*\))?\s*:?\s*(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:hectare|acre|ha|ac|Hectare)',
+                r'(?i)Area\s*:?\s*(\d+(?:\.\d+)?)\s*(?:hectare|acre|ha|ac)'
             ],
             'states': [
-                r'State\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})',
-                r'(?:Madhya\s+Pradesh|Odisha|Jharkhand|Chhattisgarh|Assam|West\s+Bengal|Telangana)'
+                r'(?i)State\s*:?\s*([A-Za-z\u0900-\u097F\u0980-\u09FF\u0B00-\u0B7F\u0C00-\u0C7F\s]{2,30})',
+                r'(?:Madhya\s+Pradesh|Odisha|Jharkhand|Chhattisgarh|Assam|West\s+Bengal|Telangana|Tripura)'
             ],
             'rights_claimed': [
-                r'Rights?\s*Claimed?\s*:?\s*([^\n\r]+)',
+                r'(?i)Rights?\s*Claimed?\s*:?\s*([^\n\r]+)',
                 r'(?:Individual|Community)\s*(?:forest\s*)?(?:dwelling|rights?)\s*\([^)]+\)',
                 r'IFD\s*rights?',
                 r'CFR\s*rights?'
@@ -339,7 +356,7 @@ class SimplifiedFRAOCR:
         """
         Enhanced line-based parsing around matched headers to capture missed field values
         """
-        lines = text.split('\\n')
+        lines = text.split('\n')
         enhanced_entities = entities.copy()
         
         for i, line in enumerate(lines):
@@ -348,11 +365,13 @@ class SimplifiedFRAOCR:
                 continue
                 
             # Look for field labels and extract values from same line or next line
-            if re.search(r'(?i)name\\s*:', line):
+            if re.search(r'(?i)name\s*:', line):
                 # Extract name from same line or next line
-                name_match = re.search(r'(?i)name\\s*:?\\s*(.+)', line)
+                name_match = re.search(r'(?i)name\s*:?\s*(.+)', line)
                 if name_match and name_match.group(1).strip():
                     name = name_match.group(1).strip()
+                    # Clean up parenthetical information
+                    name = re.sub(r'\s*\([^)]*\)\s*', ' ', name).strip()
                     if len(name) > 2 and name not in enhanced_entities.get('patta_holders', []):
                         enhanced_entities.setdefault('patta_holders', []).append(name)
                 elif i + 1 < len(lines):  # Check next line
@@ -360,10 +379,12 @@ class SimplifiedFRAOCR:
                     if next_line and len(next_line) > 2:
                         enhanced_entities.setdefault('patta_holders', []).append(next_line)
             
-            elif re.search(r'(?i)village\\s*:', line):
-                village_match = re.search(r'(?i)village\\s*:?\\s*(.+)', line)
+            elif re.search(r'(?i)village\s*:', line):
+                village_match = re.search(r'(?i)village\s*:?\s*(.+)', line)
                 if village_match and village_match.group(1).strip():
                     village = village_match.group(1).strip()
+                    # Clean up parenthetical information
+                    village = re.sub(r'\s*\([^)]*\)\s*', ' ', village).strip()
                     if len(village) > 2 and village not in enhanced_entities.get('village_names', []):
                         enhanced_entities.setdefault('village_names', []).append(village)
                 elif i + 1 < len(lines):
@@ -371,27 +392,43 @@ class SimplifiedFRAOCR:
                     if next_line and len(next_line) > 2:
                         enhanced_entities.setdefault('village_names', []).append(next_line)
             
-            elif re.search(r'(?i)patta\\s*(?:no|number)', line):
-                patta_match = re.search(r'(?i)patta\\s*(?:no|number)\\s*:?\\s*([A-Z0-9\\/-]+)', line)
+            elif re.search(r'(?i)district\s*:', line):
+                district_match = re.search(r'(?i)district\s*:?\s*(.+)', line)
+                if district_match and district_match.group(1).strip():
+                    district = district_match.group(1).strip()
+                    # Clean up parenthetical information
+                    district = re.sub(r'\s*\([^)]*\)\s*', ' ', district).strip()
+                    if len(district) > 2 and district not in enhanced_entities.get('village_names', []):
+                        enhanced_entities.setdefault('village_names', []).append(district)
+            
+            elif re.search(r'(?i)patta\s*(?:no|number)', line):
+                patta_match = re.search(r'(?i)patta\s*(?:no|number)\s*:?\s*([A-Z0-9\/-]+)', line)
                 if patta_match and patta_match.group(1).strip():
                     patta = patta_match.group(1).strip()
                     if len(patta) > 1 and patta not in enhanced_entities.get('patta_numbers', []):
                         enhanced_entities.setdefault('patta_numbers', []).append(patta)
                 elif i + 1 < len(lines):
                     next_line = lines[i + 1].strip()
-                    patta_match_next = re.search(r'^([A-Z0-9\\/-]{2,20})$', next_line)
+                    patta_match_next = re.search(r'^([A-Z0-9\/-]{2,20})$', next_line)
                     if patta_match_next:
                         enhanced_entities.setdefault('patta_numbers', []).append(patta_match_next.group(1))
             
-            elif re.search(r'(?i)claim\\s*(?:no|number)', line):
-                claim_match = re.search(r'(?i)claim\\s*(?:no|number)\\s*:?\\s*([A-Z0-9\\/-]+)', line)
+            elif re.search(r'(?i)claim\s*(?:no|number)', line):
+                claim_match = re.search(r'(?i)claim\s*(?:no|number)\s*:?\s*([A-Z0-9\/-]+)', line)
                 if claim_match and claim_match.group(1).strip():
                     claim = claim_match.group(1).strip()
                     if len(claim) > 1 and claim not in enhanced_entities.get('claim_numbers', []):
                         enhanced_entities.setdefault('claim_numbers', []).append(claim)
             
-            elif re.search(r'(?i)state\\s*:', line):
-                state_match = re.search(r'(?i)state\\s*:?\\s*(.+)', line)
+            elif re.search(r'(?i)coordinates?\s*:', line):
+                coord_match = re.search(r'(?i)coordinates?\s*:?\s*(.+)', line)
+                if coord_match and coord_match.group(1).strip():
+                    coords = coord_match.group(1).strip()
+                    if len(coords) > 5 and coords not in enhanced_entities.get('coordinates', []):
+                        enhanced_entities.setdefault('coordinates', []).append(coords)
+            
+            elif re.search(r'(?i)state\s*:', line):
+                state_match = re.search(r'(?i)state\s*:?\s*(.+)', line)
                 if state_match and state_match.group(1).strip():
                     state = state_match.group(1).strip()
                     if len(state) > 2 and state not in enhanced_entities.get('states', []):
