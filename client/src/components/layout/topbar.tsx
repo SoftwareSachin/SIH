@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Bell } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import governmentEmblem from "@/assets/government-emblem.png";
 
 export default function TopBar() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -11,9 +12,16 @@ export default function TopBar() {
     <header className="bg-card border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">FRA Atlas Dashboard</h2>
-            <p className="text-sm text-muted-foreground">Real-time monitoring and decision support</p>
+          <div className="flex items-center space-x-3">
+            <img 
+              src={governmentEmblem} 
+              alt="Government of India Emblem" 
+              className="h-12 w-auto object-contain"
+            />
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">FRA Atlas Dashboard</h2>
+              <p className="text-sm text-muted-foreground">Real-time monitoring and decision support</p>
+            </div>
           </div>
         </div>
         
