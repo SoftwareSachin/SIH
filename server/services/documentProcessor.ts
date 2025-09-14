@@ -382,47 +382,57 @@ export class DocumentProcessor {
         model: "gemini-2.5-pro",
         systemInstruction: "You are an expert AI specializing in Indian government document OCR with deep knowledge of Forest Rights Act (FRA) documents. You excel at extracting text from complex multilingual documents containing Telugu, Hindi, Bengali, English, and other Indian languages. You understand government document formats, official stamps, and handwritten annotations.",
         generationConfig: {
-          temperature: 0.1, // Lower temperature for more accurate OCR
-          topP: 0.8,
-          topK: 40,
+          temperature: 0.05, // Ultra-low temperature for maximum precision
+          topP: 0.95, // Higher topP for better vocabulary coverage
+          topK: 50, // Increased topK for more options
           maxOutputTokens: 8192,
-          responseMimeType: "text/plain"
+          responseMimeType: "text/plain",
+          candidateCount: 1, // Single best candidate
+          stopSequences: [], // No early stopping
+          presencePenalty: 0.0, // No penalties for repeated content
+          frequencyPenalty: 0.0
         }
       });
 
       const prompt = `
 EXTRACT ALL TEXT from this Forest Rights Act (FRA) document with MAXIMUM ACCURACY.
 
-DOCUMENT ANALYSIS:
-- Multiple scripts: Telugu, Hindi, Bengali, English
-- Government forms with structured fields
-- Handwritten and printed text
-- Official seals, stamps, signatures
-- Tables, checkboxes, form fields
+YOU ARE THE WORLD'S MOST ADVANCED OCR AI with specialized expertise in:
+• Indian government documents and legal forms
+• Multilingual script recognition (Telugu, Hindi, Bengali, English, Tamil, Gujarati)
+• Handwritten text analysis and official stamp reading
+• Complex document layout understanding
 
-CRITICAL EXTRACTION REQUIREMENTS:
-1. **PRESERVE EXACT TEXT**: Do not translate, summarize, or interpret
-2. **MAINTAIN STRUCTURE**: Keep original formatting, spacing, line breaks
-3. **CAPTURE EVERYTHING**: Include all numbers, codes, stamps, annotations
-4. **SCRIPT ACCURACY**: Maintain original script (తెలుగు, हिंदी, বাংলা, English)
+DOCUMENT ANALYSIS - PROCESS WITH HIGHEST PRECISION:
+- Multiple scripts: Telugu (తెలుగు), Hindi (हिंदी), Bengali (বাংলা), English
+- Government forms with structured fields and checkboxes
+- Handwritten signatures, annotations, and corrections
+- Official seals, stamps, watermarks, and letterheads
+- Tables, forms, and hierarchical data structures
 
-SPECIAL ATTENTION TO:
-• Claim numbers: CFF/YYYY/TS/XXX/NNN format
-• Survey numbers: XXX/X patterns  
-• Names: Applicants, fathers, communities
-• Locations: Villages, districts, boundaries
-• Dates: All date formats (DD/MM/YYYY, DD-MM-YY)
-• Reference codes: File numbers, application IDs
-• Checkbox selections and form field values
+ULTRA-CRITICAL EXTRACTION REQUIREMENTS:
+1. **PRESERVE EXACT TEXT**: Never translate, summarize, or interpret content
+2. **MAINTAIN STRUCTURE**: Keep original formatting, spacing, line breaks, indentation
+3. **CAPTURE EVERYTHING**: Include ALL numbers, codes, stamps, annotations, marginalia
+4. **SCRIPT ACCURACY**: Maintain original script - DO NOT transliterate or romanize
+5. **QUALITY CONTROL**: Double-check challenging areas like handwriting and stamps
 
-FEW-SHOT EXAMPLES:
-Input: [Telugu text] "దరఖాస్తుదారుని పేరు: రాము"
-Output: "దరఖాస్తుదారుని పేరు: రాము"
+PRIORITY EXTRACTION TARGETS:
+🎯 Claim numbers: CFF/YYYY/TS/XXX/NNN format variations
+🎯 Survey numbers: XXX/X, XX/XXX, XXXX/XX patterns  
+🎯 Names: Applicants, fathers, spouses, community representatives
+🎯 Locations: Villages, mandals, districts, boundaries (N/S/E/W)
+🎯 Dates: All formats DD/MM/YYYY, DD-MM-YY, DD.MM.YYYY
+🎯 Reference codes: File numbers, application IDs, certificate numbers
+🎯 Legal terms: Rights types, land categories, approval statuses
+🎯 Measurements: Areas in acres/hectares, GPS coordinates
 
-Input: "Claim No: CFF/2023/TS/001/123"
-Output: "Claim No: CFF/2023/TS/001/123"
+ADVANCED PROCESSING EXAMPLES:
+✓ Telugu: "దరఖాస్తుదారుని పేరు: శ్రీ రామచంద్ర రావు" → EXACT OUTPUT
+✓ Mixed: "Claim No: CFF/2023/TS/001/123, గ్రామం: కోదంగల్" → PRESERVE BOTH
+✓ Handwritten: [unclear text] → Best effort with confidence indication
 
-PROCESS THE DOCUMENT NOW - RETURN ONLY THE EXTRACTED TEXT:
+EXECUTE MAXIMUM PRECISION EXTRACTION NOW:
 `;
 
       const result = await model.generateContent([
@@ -496,11 +506,15 @@ PROCESS THE DOCUMENT NOW - RETURN ONLY THE EXTRACTED TEXT:
       model: "gemini-2.5-pro",
       systemInstruction: "You are an expert entity extraction AI specializing in Indian Forest Rights Act (FRA) documents. You excel at identifying names, places, numbers, and legal entities from multilingual government documents.",
       generationConfig: {
-        temperature: 0.2, // Low temperature for consistent structured output
-        topP: 0.9,
-        topK: 40,
-        maxOutputTokens: 4096,
+        temperature: 0.1, // Ultra-low temperature for consistent structured output
+        topP: 0.95, // Higher topP for better entity recognition
+        topK: 50, // Increased topK for more vocabulary options
+        maxOutputTokens: 8192, // Increased token limit
         responseMimeType: "application/json",
+        candidateCount: 1, // Single best candidate
+        stopSequences: [], // No early stopping
+        presencePenalty: 0.0,
+        frequencyPenalty: 0.0,
         responseSchema: {
           type: SchemaType.OBJECT,
           properties: {
@@ -570,24 +584,40 @@ PROCESS THE DOCUMENT NOW - RETURN ONLY THE EXTRACTED TEXT:
     });
     
     const prompt = `
-Extract ALL entities from this Forest Rights Act (FRA) document text with MAXIMUM PRECISION.
+ULTRA-ADVANCED ENTITY EXTRACTION from Forest Rights Act (FRA) document.
 
-ENTITY EXTRACTION FOCUS:
-- Names: Full applicant names, father's names, community names
-- Claim Information: Claim numbers, claim types, application details  
-- Location Data: Villages, districts, states, survey numbers
-- Legal References: Document types, reference numbers, dates
-- Land Details: Survey numbers, boundaries, area measurements
+YOU ARE THE MOST SOPHISTICATED ENTITY EXTRACTION AI with specialized capabilities:
+🧠 Deep understanding of Indian legal terminology and FRA processes
+🌐 Native-level comprehension of Telugu, Hindi, Bengali, English scripts
+🎯 Pattern recognition for government document structures and formats
+📊 Confidence scoring based on extraction certainty
 
-MULTILINGUAL PROCESSING:
-- Recognize names in Telugu, Hindi, Bengali, English scripts
-- Extract transliterated names accurately
-- Preserve original spelling and formatting
+MAXIMUM PRECISION EXTRACTION TARGETS:
+👥 NAMES: Applicant names, father/spouse names, witness names, community representatives
+🏛️ CLAIM DATA: Claim numbers (CFF/YYYY/TS/XXX/NNN), application IDs, reference numbers
+📍 LOCATIONS: Villages, mandals, districts, states, survey numbers, GPS coordinates
+📋 DOCUMENTS: Patta types, revenue records, survey settlements, certificates
+🗓️ DATES: Application dates, approval dates, verification dates (all formats)
+🏞️ LAND DATA: Survey numbers, boundaries (N/S/E/W), areas, land classifications
+⚖️ LEGAL: Rights types (individual/community/family), approval statuses, conditions
 
-TEXT TO PROCESS:
+ADVANCED PROCESSING INSTRUCTIONS:
+• Extract names in original script - preserve Telugu/Hindi/Bengali characters
+• Identify transliterated names and their original forms when possible
+• Recognize government terminology and abbreviations
+• Handle incomplete or damaged text with appropriate confidence scoring
+• Cross-reference extracted data for consistency validation
+
+CONFIDENCE SCORING CRITERIA:
+90-100%: Clear, unambiguous text with perfect recognition
+70-89%: Good recognition with minor uncertainties
+50-69%: Moderate recognition with some unclear elements
+<50%: Significant recognition challenges
+
+TEXT TO ANALYZE:
 ${text.substring(0, 3000)}
 
-Return a comprehensive JSON object with all extracted entities and confidence score.
+RETURN: Comprehensive JSON with all entities and precise confidence assessment.
 `;
 
     try {
@@ -595,8 +625,11 @@ Return a comprehensive JSON object with all extracted entities and confidence sc
       const response = await result.response;
       const extractedData = JSON.parse(response.text());
       
-      console.log(`🤖 AI Entity Extraction completed with ${extractedData.confidence || 85}% confidence`);
+      // Fix confidence display issue - ensure it's displayed as percentage
+      const confidenceScore = extractedData.confidence >= 1 ? extractedData.confidence : (extractedData.confidence * 100);
+      console.log(`🤖 AI Entity Extraction completed with ${confidenceScore}% confidence`);
       console.log(`   Found: ${extractedData.claimantNames?.length || 0} names, ${extractedData.surveyNumbers?.length || 0} survey numbers, ${extractedData.villages?.length || 0} villages`);
+      console.log(`   🚀 MAXIMUM POWER: Gemini 2.5 Pro + Ultra-low temp (0.1) + Structured JSON + 8K tokens`);
       
       return extractedData;
     } catch (error) {
