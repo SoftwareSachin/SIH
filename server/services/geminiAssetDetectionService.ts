@@ -267,6 +267,10 @@ Use your complete analytical capabilities to detect assets with the highest poss
     targetAssetTypes: string[],
     enhancedAnalysis: boolean = true
   ): Promise<GeminiAssetDetectionResult[]> {
+    if (!this.genAI) {
+      throw new Error('Gemini AI not initialized - cannot perform AI-powered analysis');
+    }
+
     try {
       console.log('🚀 Using MAXIMUM Gemini AI power for asset detection...');
       
