@@ -2,29 +2,35 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shrub, Map, BarChart3, Brain, Users, CheckCircle, TreePine, Shield, FileText, Satellite, Award, ArrowRight } from "lucide-react";
-import governmentMeetingImage from "@assets/generated_images/Government_forest_management_meeting_5f35e229.png";
-import forestAerialImage from "@assets/generated_images/Forest_conservation_aerial_view_8aa1e263.png";
-import fieldOfficerImage from "@assets/generated_images/Field_officer_forest_documentation_e28df0c4.png";
-import madhyaPradeshMap from "@assets/image_1756619529128.png";
-import tripuraMap from "@assets/image_1756619548972.png";
-import odishaMap from "@assets/image_1756619567129.png";
-import telanganaMap from "@assets/image_1756619579419.png";
-import governmentMeetingImage2 from "@assets/generated_images/Government_forest_rights_meeting_dd699004.png";
-import tribalVillageImage from "@assets/generated_images/Tribal_village_forest_community_6a9d4cf0.png";
-import forestOfficerDigitalImage from "@assets/generated_images/Forest_officer_digital_documentation_58d31e36.png";
-import satelliteForestImage from "@assets/generated_images/Satellite_forest_mapping_view_060d3bfa.png";
-import ministryTribalAffairsImage from "@assets/generated_images/Ministry_tribal_affairs_office_9ca7af8a.png";
-import districtTribalWelfareImage from "@assets/generated_images/District_tribal_welfare_meeting_c10c304e.png";
-import forestRevenueImage from "@assets/generated_images/Forest_revenue_department_office_f2ccf6ad.png";
-import planningAuthoritiesImage from "@assets/generated_images/Planning_authorities_development_meeting_9438b4ad.png";
-import ngoCommunitiesImage from "@assets/generated_images/NGO_community_awareness_campaign_a50a3fed.png";
-import fieldOfficersImage from "@assets/generated_images/Field_officers_data_collection_c12e1cfc.png";
-import webgisWorkstationImage from "@assets/generated_images/WebGIS_geospatial_analysis_workstation_72df1d4f.png";
-import aiProcessingImage from "@assets/generated_images/AI_document_processing_system_9316c4d4.png";
-import decisionSupportImage from "@assets/generated_images/Decision_support_analytics_dashboard_b15f56b5.png";
-import forestLandscapeImage from "@assets/generated_images/Forest_landscape_with_tribal_villages_51760b8e.png";
-import governmentDigitalImage from "@assets/generated_images/Government_digital_governance_center_c1be9c77.png";
-import forestRightsCollageImage from "@assets/generated_images/Forest_rights_management_collage_67549422.png";
+import governmentEmblem from "@/assets/government-emblem.png";
+
+// Fallback image for missing assets
+const fallbackImage = governmentEmblem;
+
+// Image imports with fallback handling
+const governmentMeetingImage = fallbackImage;
+const forestAerialImage = fallbackImage;
+const fieldOfficerImage = fallbackImage;
+const madhyaPradeshMap = fallbackImage;
+const tripuraMap = fallbackImage;
+const odishaMap = fallbackImage;
+const telanganaMap = fallbackImage;
+const governmentMeetingImage2 = fallbackImage;
+const tribalVillageImage = fallbackImage;
+const forestOfficerDigitalImage = fallbackImage;
+const satelliteForestImage = fallbackImage;
+const ministryTribalAffairsImage = fallbackImage;
+const districtTribalWelfareImage = fallbackImage;
+const forestRevenueImage = fallbackImage;
+const planningAuthoritiesImage = fallbackImage;
+const ngoCommunitiesImage = fallbackImage;
+const fieldOfficersImage = fallbackImage;
+const webgisWorkstationImage = fallbackImage;
+const aiProcessingImage = fallbackImage;
+const decisionSupportImage = fallbackImage;
+const forestLandscapeImage = fallbackImage;
+const governmentDigitalImage = fallbackImage;
+const forestRightsCollageImage = fallbackImage;
 
 export default function Landing() {
   return (
