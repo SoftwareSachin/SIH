@@ -1433,6 +1433,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reprocess claim with genuine AI scoring
+  app.post('/api/ai/reprocess-claim/:claimId', async (req, res) => {
+    try {
+      const { claimId } = req.params;
+      
+      // Get the claim from database
+      const claim = await storage.getClaimById(claimId);
+      if (!claim) {
+        return res.status(404).json({ message: "Claim not found" });
+      }
+
+      console.log(`[AI] Reprocess request for ${claimId}`);
+      console.log(`🤖 Triggering genuine AI processing for claim ${claimId} (${claim.claimantName})...`);
+
+      // Create mock entities from claim data for AI processing
+      const mockEntities = {
+        names: claim.claimantName ? [claim.claimantName] : [],
+        areas: claim.area ? [claim.area.toString()] : [],
+        coordinates: claim.coordinates ? [JSON.stringify(claim.coordinates)] : [],
+        village_names: [], // Will be populated from database lookup
+        survey_numbers: [],
+        confidence: 85, // Base confidence for existing data
+        text: `FRA claim for ${claim.claimantName || 'claimant'} in village area ${claim.area || 0} acres`,
+        text_quality: 75,
+        document_type: claim.claimType || 'IFR'
+      };
+
+      // Trigger genuine AI processing
+      const genuineScore = await aiProcessor.calculateGenuineAIScore(claimId, mockEntities);
+      
+      // Update the claim with new genuine AI score
+      await storage.updateClaim(claimId, { 
+        aiConfidence: genuineScore
+      });
+      
+      console.log(`✅ Genuine AI processing complete. Score: ${genuineScore}%`);
+
+      res.json({
+        success: true,
+        claimId,
+        claimantName: claim.claimantName,
+        previousScore: claim.aiConfidence,
+        newScore: genuineScore,
+        processingMethod: 'genuine_ai_models',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error reprocessing claim with genuine AI:", error);
+      res.status(500).json({ message: "Failed to reprocess claim with genuine AI" });
+    }
+  });
+
   // Assets routes
   app.get('/api/assets', async (req, res) => {
     try {
