@@ -42,8 +42,8 @@ export class DocumentProcessor {
 
   private initializeAI() {
     try {
-      if (process.env.OCR_GEMINI_KEY) {
-        this.genAI = new GoogleGenerativeAI(process.env.OCR_GEMINI_KEY);
+      if (process.env.GEMINI_API_KEY) {
+        this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         console.log('✅ Gemini AI initialized for enhanced OCR processing');
       } else {
         console.log('ℹ️  No OCR Gemini API key found - using OCR only');

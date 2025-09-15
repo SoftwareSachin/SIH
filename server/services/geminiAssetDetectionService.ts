@@ -43,7 +43,7 @@ export class GeminiAssetDetectionService {
   ];
 
   constructor() {
-    const apiKey = process.env.ASSET_DETECTION_GEMINI_KEY;
+    const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       console.log('ℹ️  No Asset Detection Gemini API key found - asset detection will use fallback methods');
       this.genAI = null;
