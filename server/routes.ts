@@ -12,6 +12,7 @@ import { batchProcessor } from "./services/batchProcessor";
 import { landUseClassificationService } from "./services/landUseClassificationService";
 import { gisIntegrationService } from "./services/gisIntegrationService";
 import { verificationWorkflow } from "./services/verificationWorkflow";
+import { initializeGeoData } from "./seedGeoData";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -30,6 +31,13 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize geographical data on startup
+  try {
+    await initializeGeoData();
+  } catch (error) {
+    console.error('Failed to initialize geographical data:', error);
+  }
+  
   // Parse JSON requests
   app.use(express.json());
   
