@@ -4,16 +4,16 @@ import * as path from 'path';
 import { satelliteImageryService } from './satelliteImageryService';
 
 interface GeminiAssetDetectionResult {
-  assetType: string;
+  type: string; // Changed from assetType to type for consistency
   confidence: number;
   coordinates: {
-    latitude: number;
-    longitude: number;
+    type: 'Point';
+    coordinates: [number, number]; // Changed to GeoJSON format for consistency
   };
   area: number;
-  description: string;
-  detectionMethod: string;
-  metadata: {
+  description?: string;
+  detectionMethod?: string;
+  metadata?: {
     imageSource: string;
     analysisTimestamp: string;
     geminiModel: string;
@@ -50,7 +50,7 @@ export class GeminiAssetDetectionService {
       return;
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    console.log('✅ Gemini Asset Detection Service initialized');
+    console.log('✅ Gemini Asset Detection Service initialized with Gemini 2.5 Pro at MAXIMUM POWER');
   }
 
   /**
@@ -95,9 +95,9 @@ export class GeminiAssetDetectionService {
     // Return mock/simulated data for development when Gemini is not available
     const mockAssets: GeminiAssetDetectionResult[] = [
       {
-        assetType: 'agricultural_land',
-        confidence: 0.75,
-        coordinates: { latitude: request.latitude, longitude: request.longitude },
+        type: 'agricultural_land',
+        confidence: 75,
+        coordinates: { type: 'Point', coordinates: [request.longitude, request.latitude] },
         area: 2.5,
         description: 'Agricultural land detected using fallback method',
         detectionMethod: 'fallback_simulation',
@@ -105,7 +105,7 @@ export class GeminiAssetDetectionService {
           imageSource: 'simulated_satellite_data',
           analysisTimestamp: new Date().toISOString(),
           geminiModel: 'fallback_method',
-          detectionAccuracy: 0.75
+          detectionAccuracy: 75
         }
       }
     ];
@@ -366,14 +366,17 @@ Use your complete analytical capabilities to detect assets with the highest poss
     if (geminiResult.detectedAssets) {
       for (const asset of geminiResult.detectedAssets) {
         results.push({
-          assetType: asset.assetType,
+          type: asset.assetType || asset.type,
           confidence: asset.confidence || 0,
           coordinates: {
-            latitude: asset.centerCoordinate?.lat || baseLat,
-            longitude: asset.centerCoordinate?.lng || baseLng
+            type: 'Point',
+            coordinates: [
+              asset.centerCoordinate?.lng || baseLng,
+              asset.centerCoordinate?.lat || baseLat
+            ]
           },
           area: asset.area || 0,
-          description: asset.description || `${asset.assetType} detected by Gemini AI`,
+          description: asset.description || `${asset.assetType || asset.type} detected by Gemini AI`,
           detectionMethod: 'gemini_ai_vision',
           metadata: {
             imageSource: satelliteData.metadata?.sensor || 'satellite',
