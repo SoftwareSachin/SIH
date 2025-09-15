@@ -14,7 +14,7 @@ import { Scan, Brain, Satellite, Upload, RefreshCw, Activity, Zap, Target } from
 export default function AIProcessing() {
   const { data: processingStatus, isLoading, error } = useQuery({
     queryKey: ["/api/ai/processing-status"],
-    refetchInterval: 5000, // Refetch every 5 seconds
+    refetchInterval: 2000, // Refetch every 2 seconds for real-time updates
   });
 
   // Error fallback
@@ -80,6 +80,61 @@ export default function AIProcessing() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
+                {/* Real-Time Activity Banner */}
+                <div className={`rounded-lg p-4 border transition-all duration-300 ${
+                  (processingStatus as any)?.recentActivity?.currentlyProcessing 
+                    ? 'bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200 dark:border-green-800'
+                    : (processingStatus as any)?.recentActivity?.lastMinute > 0 
+                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800'
+                      : 'bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20 border-gray-200 dark:border-gray-700'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                        (processingStatus as any)?.recentActivity?.currentlyProcessing 
+                          ? 'bg-green-500 animate-pulse'
+                          : (processingStatus as any)?.recentActivity?.lastMinute > 0 
+                            ? 'bg-blue-500'
+                            : 'bg-gray-400'
+                      }`}>
+                        <Activity className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground flex items-center space-x-2">
+                          <span>Real-Time Activity</span>
+                          {(processingStatus as any)?.recentActivity?.currentlyProcessing && (
+                            <div className="flex items-center space-x-1">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              <span className="text-sm text-green-600 dark:text-green-400 font-medium">PROCESSING LIVE</span>
+                            </div>
+                          )}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {(processingStatus as any)?.recentActivity?.currentlyProcessing 
+                            ? `🔄 Documents being processed right now...` 
+                            : (processingStatus as any)?.recentActivity?.lastMinute > 0 
+                              ? `✅ ${(processingStatus as any)?.recentActivity?.lastMinute} documents processed in the last minute`
+                              : (processingStatus as any)?.recentActivity?.lastHour > 0
+                                ? `📊 ${(processingStatus as any)?.recentActivity?.lastHour} documents processed in the last hour`
+                                : '💤 No recent processing activity'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-foreground">
+                        {(processingStatus as any)?.totalProcessed || 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground">total processed</p>
+                      {(processingStatus as any)?.recentActivity?.lastProcessed && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Last: {new Date((processingStatus as any).recentActivity.lastProcessed).toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <Card className="bg-card border border-border">
                     <CardContent className="p-6">
@@ -89,10 +144,23 @@ export default function AIProcessing() {
                           <p className="text-3xl font-bold text-foreground mt-2">
                             {isLoading ? '—' : (processingStatus as any)?.ocrQueue || 0}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">Pending documents</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {(processingStatus as any)?.recentActivity?.currentlyProcessing 
+                              ? 'Currently processing...'
+                              : 'Pending documents'
+                            }
+                          </p>
                         </div>
-                        <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                          <Scan className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        <div className={`h-12 w-12 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                          (processingStatus as any)?.recentActivity?.currentlyProcessing 
+                            ? 'bg-green-100 dark:bg-green-900/30 animate-pulse'
+                            : 'bg-blue-50 dark:bg-blue-900/20'
+                        }`}>
+                          <Scan className={`h-6 w-6 ${
+                            (processingStatus as any)?.recentActivity?.currentlyProcessing 
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-blue-600 dark:text-blue-400'
+                          }`} />
                         </div>
                       </div>
                     </CardContent>

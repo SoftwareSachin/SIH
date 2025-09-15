@@ -737,7 +737,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process document immediately for instant feedback
       try {
+        // Track processing start
+        aiProcessor.trackProcessingStart('ocr', document.id);
+        
         const processedData = await documentProcessor.processDocument(file.path, file.mimetype, document.id);
+        
+        // Track processing completion
+        aiProcessor.trackProcessingComplete('ocr', document.id, true);
         
         // Update document with OCR results
         await storage.updateDocument(document.id, {
@@ -781,6 +787,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (processingError) {
         console.error("Document processing failed:", processingError);
+        
+        // Track processing failure
+        aiProcessor.trackProcessingComplete('ocr', document.id, false);
         
         // Clean up file on error
         try {

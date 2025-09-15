@@ -8,6 +8,18 @@ interface ProcessingStatus {
   assetDetectionQueue: number;
   totalProcessed: number;
   totalPending: number;
+  recentActivity: {
+    lastMinute: number;
+    lastHour: number;
+    currentlyProcessing: boolean;
+    lastProcessed?: string;
+  };
+  processingHistory: Array<{
+    timestamp: string;
+    type: 'ocr' | 'ner' | 'asset_detection';
+    documentId?: string;
+    status: 'started' | 'completed' | 'failed';
+  }>;
 }
 
 interface AssetDetectionResult {
@@ -61,6 +73,50 @@ function mapAssetTypeToEnum(detectedType: string): string {
 }
 
 class AIProcessor {
+  private processingHistory: Array<{
+    timestamp: string;
+    type: 'ocr' | 'ner' | 'asset_detection';
+    documentId?: string;
+    status: 'started' | 'completed' | 'failed';
+  }> = [];
+
+  private currentlyProcessing = new Set<string>();
+
+  // Track when processing starts
+  trackProcessingStart(type: 'ocr' | 'ner' | 'asset_detection', documentId?: string) {
+    const timestamp = new Date().toISOString();
+    this.processingHistory.unshift({
+      timestamp,
+      type,
+      documentId,
+      status: 'started'
+    });
+    
+    if (documentId) {
+      this.currentlyProcessing.add(documentId);
+    }
+    
+    // Keep only last 50 entries
+    this.processingHistory = this.processingHistory.slice(0, 50);
+  }
+
+  // Track when processing completes
+  trackProcessingComplete(type: 'ocr' | 'ner' | 'asset_detection', documentId?: string, success: boolean = true) {
+    const timestamp = new Date().toISOString();
+    this.processingHistory.unshift({
+      timestamp,
+      type,
+      documentId,
+      status: success ? 'completed' : 'failed'
+    });
+    
+    if (documentId) {
+      this.currentlyProcessing.delete(documentId);
+    }
+    
+    // Keep only last 50 entries
+    this.processingHistory = this.processingHistory.slice(0, 50);
+  }
   
   async getProcessingStatus(): Promise<ProcessingStatus> {
     try {
@@ -70,12 +126,30 @@ class AIProcessor {
       const pendingAssets = await storage.getAssetDetectionQueue();
       const totalProcessed = await storage.getTotalProcessedDocuments();
 
+      // Calculate recent activity
+      const now = new Date();
+      const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      
+      const recentActivity = {
+        lastMinute: this.processingHistory.filter(item => 
+          new Date(item.timestamp) >= oneMinuteAgo
+        ).length,
+        lastHour: this.processingHistory.filter(item => 
+          new Date(item.timestamp) >= oneHourAgo
+        ).length,
+        currentlyProcessing: this.currentlyProcessing.size > 0,
+        lastProcessed: this.processingHistory.find(item => item.status === 'completed')?.timestamp
+      };
+
       return {
         ocrQueue: pendingOCR.length,
         nerQueue: pendingNER.length,
         assetDetectionQueue: pendingAssets.length,
         totalProcessed,
         totalPending: pendingOCR.length + pendingNER.length + pendingAssets.length,
+        recentActivity,
+        processingHistory: this.processingHistory.slice(0, 10) // Return last 10 items
       };
     } catch (error) {
       console.error('Error getting processing status:', error);
