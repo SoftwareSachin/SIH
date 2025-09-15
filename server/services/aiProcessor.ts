@@ -17,6 +17,49 @@ interface AssetDetectionResult {
   area?: number;
 }
 
+// Asset type mapping function to ensure compatibility with database enum
+function mapAssetTypeToEnum(detectedType: string): string {
+  const typeMapping: { [key: string]: string } = {
+    // Water-related assets
+    'water_body': 'water_body',
+    'water_bodies': 'water_bodies',
+    'pond': 'pond',
+    'farm_pond': 'pond',
+    'check_dam': 'water_body',
+    'water_stress_area': 'water_body',
+    
+    // Agricultural assets
+    'agricultural_land': 'agricultural_land',
+    'farm': 'farm',
+    'irrigation_channel': 'irrigation_systems',
+    'field_boundary': 'agricultural_land',
+    
+    // Forest assets
+    'forest': 'forest',
+    'forest_cover': 'forest_cover',
+    'community_forest_resource': 'forest_cover',
+    'deforestation_risk_area': 'forest',
+    'forest_regeneration_area': 'forest_cover',
+    
+    // Infrastructure and built-up
+    'built_up': 'infrastructure',
+    'infrastructure': 'infrastructure',
+    'road_network': 'roads',
+    'roads': 'roads',
+    
+    // Settlements
+    'homestead': 'homestead',
+    'homesteads': 'homesteads',
+    'religious_cultural_site': 'homestead',
+    
+    // Other
+    'village_boundaries': 'village_boundaries',
+    'irrigation_systems': 'irrigation_systems'
+  };
+  
+  return typeMapping[detectedType] || 'infrastructure'; // Default fallback
+}
+
 class AIProcessor {
   
   async getProcessingStatus(): Promise<ProcessingStatus> {
@@ -225,17 +268,11 @@ class AIProcessor {
             for (const asset of standardizedAssets) {
               await storage.createAsset({
                 villageId,
-                assetType: asset.type as any,
+                assetType: mapAssetTypeToEnum(asset.type) as any,
                 coordinates: asset.coordinates,
                 area: asset.area?.toString(),
                 confidence: asset.confidence.toString(),
-                processingDate: new Date(),
-                metadata: JSON.stringify({
-                  detectionService: 'gemini_ai_vision',
-                  analysisTimestamp: new Date().toISOString(),
-                  model: 'gemini-2.5-pro',
-                  detectionMethod: 'gemini_ai_vision'
-                })
+                detectedAt: new Date()
               });
             }
           }
@@ -327,11 +364,11 @@ class AIProcessor {
         for (const asset of detectedAssets) {
           await storage.createAsset({
             villageId,
-            assetType: asset.type as any,
+            assetType: mapAssetTypeToEnum(asset.type) as any,
             coordinates: asset.coordinates,
             area: asset.area?.toString(),
             confidence: asset.confidence.toString(),
-            detectedAt: new Date(),
+            detectedAt: new Date()
           });
         }
       }
