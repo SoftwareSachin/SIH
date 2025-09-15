@@ -188,8 +188,12 @@ export const documents = pgTable("documents", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Asset types enum
-export const assetTypeEnum = pgEnum('asset_type', ['pond', 'farm', 'homestead', 'forest', 'water_body', 'infrastructure']);
+// Asset types enum - Enhanced to support all Gemini AI detected asset types
+export const assetTypeEnum = pgEnum('asset_type', [
+  'pond', 'farm', 'homestead', 'forest', 'water_body', 'infrastructure',
+  'agricultural_land', 'forest_cover', 'homesteads', 'roads', 
+  'irrigation_systems', 'village_boundaries', 'water_bodies'
+]);
 
 // Assets detected by AI
 export const assets = pgTable("assets", {
